@@ -10,8 +10,8 @@
   --card-foreground: 210 11% 15%;
   --popover: 0 0% 100%;
   --popover-foreground: 210 11% 15%;
-  --primary: 213 94% 68%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 213 90% 48%;
+  --primary-foreground: 0 0% 100%;
   --secondary: 210 14% 89%;
   --secondary-foreground: 210 11% 15%;
   --muted: 210 14% 93%;
@@ -22,7 +22,7 @@
   --destructive-foreground: 210 40% 98%;
   --border: 214 14% 80%;
   --input: 214 14% 80%;
-  --ring: 213 94% 68%;
+  --ring: 213 90% 48%;
   --radius: 0.5rem;
 
   /* Signal/Noise Categories */
