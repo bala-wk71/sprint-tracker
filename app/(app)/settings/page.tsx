@@ -1,3 +1,14 @@
+import Link from "next/link";
+
+const SECTIONS = [
+  {
+    href: "/settings/access",
+    title: "Access",
+    description:
+      "Invite reviewers, manage who can see your sprints, and accept invites to review others.",
+  },
+];
+
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
@@ -7,8 +18,21 @@ export default function SettingsPage() {
           Profile, notifications, and access management.
         </p>
       </div>
-      <div className="rounded-lg border border-border bg-card p-6">
-        <p className="text-muted-foreground">Settings coming soon.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {SECTIONS.map((section) => (
+          <Link
+            key={section.href}
+            href={section.href}
+            className="rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary"
+          >
+            <h2 className="text-lg font-semibold text-foreground">
+              {section.title}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {section.description}
+            </p>
+          </Link>
+        ))}
       </div>
     </div>
   );
