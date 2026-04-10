@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 
 const icons: Record<string, string> = {
   LayoutDashboard: "📊",
@@ -15,10 +17,34 @@ const icons: Record<string, string> = {
   Settings: "⚙️",
 };
 
-export function Sidebar() {
+export type SidebarUser = {
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+};
+
+export function Sidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  };
+
+  const initials = user.name
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   return (
     <>
@@ -96,17 +122,42 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* User area (placeholder) */}
+        {/* User area */}
         <div className="border-t border-border p-3">
           <div className="flex items-center gap-3 rounded-md px-3 py-2">
-            <div className="h-8 w-8 rounded-full bg-muted" />
+            {user.avatarUrl ? (
+              <Image
+                src={user.avatarUrl}
+                alt={user.name}
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-full"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                {initials || "?"}
+              </div>
+            )}
             {!collapsed && (
               <div className="flex-1 truncate">
-                <p className="text-sm font-medium text-foreground">User</p>
-                <p className="text-xs text-muted-foreground">user@email.com</p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {user.name}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {user.email}
+                </p>
               </div>
             )}
           </div>
+          {!collapsed && (
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="mt-1 w-full rounded-md px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
+          )}
         </div>
       </aside>
     </>
