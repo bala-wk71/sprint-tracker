@@ -120,7 +120,7 @@ export function TasksEditor({
         editingId === task.id && draft ? (
           <div
             key={task.id}
-            className="grid gap-2 rounded-md border border-primary/40 bg-background p-3 sm:grid-cols-[2fr_1.2fr_0.8fr_auto_auto_auto]"
+            className="grid gap-2 rounded-md border border-primary/40 bg-background p-3 lg:grid-cols-[2fr_1.2fr_0.8fr_auto_auto_auto]"
           >
             <input
               type="text"
@@ -220,7 +220,7 @@ export function TasksEditor({
       )}
 
       {adding ? (
-        <div className="grid gap-2 rounded-md border border-primary/40 bg-background p-3 sm:grid-cols-[2fr_1.2fr_0.8fr_auto_auto_auto]">
+        <div className="grid gap-2 rounded-md border border-primary/40 bg-background p-3 lg:grid-cols-[2fr_1.2fr_0.8fr_auto_auto_auto]">
           <input
             type="text"
             placeholder="Task name"

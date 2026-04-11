@@ -11,8 +11,9 @@ export function Header() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-6 backdrop-blur-sm">
-      <div />
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm md:px-6">
+      {/* Spacer that reserves room for the mobile hamburger button */}
+      <div className="w-10 md:hidden" />
       <div className="flex items-center gap-4">
         {mounted && (
           <button

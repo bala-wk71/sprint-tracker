@@ -107,7 +107,7 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
           {fields.map((field, index) => (
             <div
               key={field.id}
-              className="grid gap-2 rounded-md border border-border bg-background p-3 sm:grid-cols-[2fr_1.2fr_0.8fr_auto_auto]"
+              className="grid gap-2 rounded-md border border-border bg-background p-3 lg:grid-cols-[2fr_1.2fr_0.8fr_auto_auto]"
             >
               <input
                 type="text"
