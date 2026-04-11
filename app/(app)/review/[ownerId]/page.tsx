@@ -118,7 +118,12 @@ export default async function ReviewOwnerPage({
         reviewers.
       </div>
 
-      <WeekSummary ownerId={ownerId} weekStart={weekStart} readOnly />
+      <WeekSummary
+        ownerId={ownerId}
+        weekStart={weekStart}
+        readOnly
+        revalidatePath={basePath}
+      />
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
 } from "@/lib/constants";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
 import { WeeklyReflection } from "@/app/(app)/dashboard/WeeklyReflection";
+import { CommentThread } from "@/components/comments/CommentThread";
+import { loadComments } from "@/components/comments/loadComments";
 
 function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
@@ -29,13 +31,24 @@ const EVENING_EMOJI: Record<EveningMood, string> = Object.fromEntries(
 type Props = {
   ownerId: string;
   weekStart: string;
-  /** When true, hide editors (weekly reflection) and disable day-cell links. */
+  /** When true, hide editors (weekly reflection) and route day-cell links
+   *  to the reviewer-side daily view. */
   readOnly?: boolean;
+  /** Path to revalidate when comment mutations occur. */
+  revalidatePath?: string;
 };
 
-export async function WeekSummary({ ownerId, weekStart, readOnly = false }: Props) {
+export async function WeekSummary({
+  ownerId,
+  weekStart,
+  readOnly = false,
+  revalidatePath,
+}: Props) {
   const weekEnd = addDaysIso(weekStart, 6);
   const supabase = await createClient();
+  const {
+    data: { user: viewer },
+  } = await supabase.auth.getUser();
 
   // Sprint for this week (may not exist).
   const { data: sprint } = await supabase
@@ -50,6 +63,11 @@ export async function WeekSummary({ ownerId, weekStart, readOnly = false }: Prop
   const tasks = (sprint?.tasks ?? [])
     .slice()
     .sort((a, b) => a.position - b.position);
+
+  // Comments thread lives on the sprint row (one thread per week).
+  const sprintComments = sprint
+    ? await loadComments("sprint", sprint.id)
+    : [];
 
   // All daily logs for the week.
   const { data: dailyLogs } = await supabase
@@ -417,17 +435,13 @@ export async function WeekSummary({ ownerId, weekStart, readOnly = false }: Prop
                   )}
                 </>
               );
-              if (readOnly) {
-                return (
-                  <div key={cell.date} className={cellClass}>
-                    {inner}
-                  </div>
-                );
-              }
+              const href = readOnly
+                ? `/review/${ownerId}/daily/${cell.date}`
+                : `/daily?date=${cell.date}`;
               return (
                 <Link
                   key={cell.date}
-                  href={`/daily?date=${cell.date}`}
+                  href={href}
                   className={`${cellClass} transition-colors hover:border-primary`}
                 >
                   {inner}
@@ -458,6 +472,23 @@ export async function WeekSummary({ ownerId, weekStart, readOnly = false }: Prop
               initialLesson={sprint.reflection_lesson ?? ""}
             />
           )}
+        </section>
+      )}
+
+      {/* Weekly comments thread */}
+      {sprint && viewer && (
+        <section className="rounded-lg border border-border bg-card p-6">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">
+            Weekly feedback
+          </h2>
+          <CommentThread
+            targetType="sprint"
+            targetId={sprint.id}
+            ownerId={ownerId}
+            currentUserId={viewer.id}
+            initialComments={sprintComments}
+            revalidatePaths={revalidatePath ? [revalidatePath] : undefined}
+          />
         </section>
       )}
     </>

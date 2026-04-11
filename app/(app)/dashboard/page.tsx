@@ -42,7 +42,11 @@ export default async function DashboardPage({
         </div>
         <WeekNav weekStart={weekStart} currentWeekStart={currentWeekStart} />
       </div>
-      <WeekSummary ownerId={user.id} weekStart={weekStart} />
+      <WeekSummary
+        ownerId={user.id}
+        weekStart={weekStart}
+        revalidatePath="/dashboard"
+      />
     </div>
   );
 }

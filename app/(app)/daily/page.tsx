@@ -9,6 +9,8 @@ import {
   type SprintTaskOption,
 } from "./TimeEntries";
 import { EveningWrapUp, type EveningPriority } from "./EveningWrapUp";
+import { CommentThread } from "@/components/comments/CommentThread";
+import { loadComments } from "@/components/comments/loadComments";
 
 type SearchParams = Promise<{ date?: string }>;
 
@@ -120,6 +122,11 @@ export default async function DailyPage({
       category: t.category as TaskCategory,
     }));
 
+  // Comments on this day's log (only present once the log row exists).
+  const dayComments = dailyLog
+    ? await loadComments("daily_log", dailyLog.id)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -167,6 +174,22 @@ export default async function DailyPage({
           priorities={eveningPriorities}
         />
       </section>
+
+      {dailyLog && (
+        <section className="rounded-lg border border-border bg-card p-6">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">
+            Feedback
+          </h2>
+          <CommentThread
+            targetType="daily_log"
+            targetId={dailyLog.id}
+            ownerId={user.id}
+            currentUserId={user.id}
+            initialComments={dayComments}
+            revalidatePaths={["/daily"]}
+          />
+        </section>
+      )}
     </div>
   );
 }
