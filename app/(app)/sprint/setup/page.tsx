@@ -3,6 +3,7 @@ import { format, startOfWeek } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { CreateSprintForm } from "./CreateSprintForm";
+import { UseAsTemplateButton } from "./UseAsTemplateButton";
 
 export default async function SprintSetupPage() {
   const supabase = await createClient();
@@ -47,7 +48,7 @@ export default async function SprintSetupPage() {
             {sprints.map((sprint) => {
               const taskCount = sprint.tasks?.[0]?.count ?? 0;
               return (
-                <li key={sprint.id} className="flex items-center justify-between py-3">
+                <li key={sprint.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div>
                     <Link
                       href={`/sprint/${sprint.id}`}
@@ -60,13 +61,19 @@ export default async function SprintSetupPage() {
                       {sprint.notes ? ` · ${sprint.notes}` : ""}
                     </p>
                   </div>
-                  <Link
-                    href={`/sprint/${sprint.id}`}
-                    className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
-                  >
-                    Open
-                    <ChevronRight className="h-3 w-3" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <UseAsTemplateButton
+                      templateSprintId={sprint.id}
+                      defaultWeekStart={defaultWeekStart}
+                    />
+                    <Link
+                      href={`/sprint/${sprint.id}`}
+                      className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+                    >
+                      Open
+                      <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </li>
               );
             })}

@@ -116,3 +116,74 @@ export async function deleteSprint(sprintId: string): Promise<ActionResult> {
 export async function goToSprint(sprintId: string) {
   redirect(`/sprint/${sprintId}`);
 }
+
+/**
+ * Copy all tasks from an existing sprint into a brand-new sprint for
+ * `newWeekStart`. Used by the "Use as template" rollover button.
+ */
+export async function rolloverSprint(
+  templateSprintId: string,
+  newWeekStart: string
+): Promise<ActionResult> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newWeekStart)) {
+    return { ok: false, error: "Invalid week start date." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated" };
+
+  // Load template tasks (must belong to this user).
+  const { data: templateTasks, error: taskLoadErr } = await supabase
+    .from("tasks")
+    .select("name, category, target_hours, is_recurring, position")
+    .eq("sprint_id", templateSprintId)
+    .eq("owner_id", user.id)
+    .order("position", { ascending: true });
+
+  if (taskLoadErr) return { ok: false, error: taskLoadErr.message };
+  if (!templateTasks || templateTasks.length === 0) {
+    return { ok: false, error: "The template sprint has no tasks to copy." };
+  }
+
+  // Create the new sprint.
+  const { data: newSprint, error: sprintErr } = await supabase
+    .from("sprints")
+    .insert({ owner_id: user.id, week_start_date: newWeekStart })
+    .select("id")
+    .single();
+
+  if (sprintErr || !newSprint) {
+    if (sprintErr?.code === "23505") {
+      return {
+        ok: false,
+        error: `A sprint already exists for the week of ${newWeekStart}.`,
+      };
+    }
+    return { ok: false, error: sprintErr?.message ?? "Failed to create sprint" };
+  }
+
+  // Copy tasks into the new sprint.
+  const { error: insertErr } = await supabase.from("tasks").insert(
+    templateTasks.map((t, i) => ({
+      sprint_id: newSprint.id,
+      owner_id: user.id,
+      name: t.name,
+      category: t.category,
+      target_hours: t.target_hours,
+      is_recurring: t.is_recurring,
+      position: i,
+    }))
+  );
+
+  if (insertErr) {
+    await supabase.from("sprints").delete().eq("id", newSprint.id);
+    return { ok: false, error: insertErr.message };
+  }
+
+  revalidatePath("/sprint/setup");
+  revalidatePath("/dashboard");
+  return { ok: true, sprintId: newSprint.id };
+}
