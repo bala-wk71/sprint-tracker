@@ -6,6 +6,7 @@ import { format } from "date-fns";
 type Props = {
   weekStart: string;
   currentWeekStart: string;
+  basePath?: string;
 };
 
 function shiftWeek(weekStart: string, weeks: number): string {
@@ -14,14 +15,18 @@ function shiftWeek(weekStart: string, weeks: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function WeekNav({ weekStart, currentWeekStart }: Props) {
+export function WeekNav({
+  weekStart,
+  currentWeekStart,
+  basePath = "/dashboard",
+}: Props) {
   const router = useRouter();
 
   const go = (next: string) => {
     if (next === currentWeekStart) {
-      router.push("/dashboard");
+      router.push(basePath);
     } else {
-      router.push(`/dashboard?week=${next}`);
+      router.push(`${basePath}?week=${next}`);
     }
   };
 
