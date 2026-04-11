@@ -4,17 +4,31 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  BarChart3,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  ListTodo,
+  LogOut,
+  Menu,
+  Settings,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 
-const icons: Record<string, string> = {
-  LayoutDashboard: "📊",
-  ListTodo: "📋",
-  CalendarDays: "📅",
-  BarChart3: "📈",
-  Users: "👥",
-  Settings: "⚙️",
+const icons: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  ListTodo,
+  CalendarDays,
+  BarChart3,
+  Users,
+  Settings,
 };
 
 export type SidebarUser = {
@@ -51,11 +65,11 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       {/* Mobile hamburger (only visible when sidebar closed on mobile) */}
       {!mobileOpen && (
         <button
-          className="fixed top-4 left-4 z-50 rounded-md border border-border bg-card p-2 shadow-md md:hidden"
+          className="fixed top-4 left-4 z-50 rounded-md border border-border bg-card p-2 text-foreground shadow-md md:hidden"
           onClick={() => setMobileOpen(true)}
           aria-label="Open menu"
         >
-          ☰
+          <Menu className="h-5 w-5" />
         </button>
       )}
 
@@ -88,14 +102,18 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             onClick={() => setCollapsed(!collapsed)}
             aria-label="Toggle sidebar"
           >
-            {collapsed ? "→" : "←"}
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </button>
           <button
             className="ml-auto rounded p-1 text-muted-foreground hover:text-foreground md:hidden"
             onClick={() => setMobileOpen(false)}
             aria-label="Close menu"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -103,6 +121,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
         <nav className="flex-1 space-y-1 p-3">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname.startsWith(item.href);
+            const Icon = icons[item.icon];
             return (
               <Link
                 key={item.href}
@@ -114,8 +133,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
+                title={collapsed ? item.label : undefined}
               >
-                <span className="text-lg">{icons[item.icon]}</span>
+                {Icon && <Icon className="h-[18px] w-[18px] shrink-0" />}
                 {!collapsed && <span>{item.label}</span>}
               </Link>
             );
@@ -149,15 +169,20 @@ export function Sidebar({ user }: { user: SidebarUser }) {
               </div>
             )}
           </div>
-          {!collapsed && (
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="mt-1 w-full rounded-md px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </button>
-          )}
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className={cn(
+              "mt-1 flex items-center gap-3 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50",
+              collapsed ? "w-full justify-center" : "w-full"
+            )}
+            title={collapsed ? "Sign out" : undefined}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && (
+              <span>{signingOut ? "Signing out…" : "Sign out"}</span>
+            )}
+          </button>
         </div>
       </aside>
     </>

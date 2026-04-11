@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { format, startOfWeek } from "date-fns";
+import { ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { CreateSprintForm } from "./CreateSprintForm";
 
@@ -61,9 +62,10 @@ export default async function SprintSetupPage() {
                   </div>
                   <Link
                     href={`/sprint/${sprint.id}`}
-                    className="text-xs font-medium text-primary hover:underline"
+                    className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
                   >
-                    Open →
+                    Open
+                    <ChevronRight className="h-3 w-3" />
                   </Link>
                 </li>
               );

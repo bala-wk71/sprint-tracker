@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
 import { addTaskToSprint, deleteTask, updateTask } from "./actions";
@@ -137,7 +138,7 @@ export function TasksEditor({
               {(Object.entries(TASK_CATEGORIES) as [TaskCategory, typeof TASK_CATEGORIES[TaskCategory]][]).map(
                 ([value, meta]) => (
                   <option key={value} value={value}>
-                    {meta.emoji} {meta.label}
+                    {meta.label}
                   </option>
                 )
               )}
@@ -288,9 +289,10 @@ export function TasksEditor({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+          className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
         >
-          + Add task
+          <Plus className="h-3 w-3" />
+          Add task
         </button>
       )}
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
 import { TasksEditor, type EditableTask } from "./TasksEditor";
@@ -69,9 +70,10 @@ export default async function SprintDetailPage({
         <div>
           <Link
             href="/sprint/setup"
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            ← All sprints
+            <ArrowLeft className="h-3 w-3" />
+            All sprints
           </Link>
           <h1 className="mt-1 text-2xl font-bold text-foreground">
             Week of {format(new Date(sprint.week_start_date), "MMMM d, yyyy")}

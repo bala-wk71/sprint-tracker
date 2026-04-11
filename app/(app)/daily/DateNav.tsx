@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
   date: string;
@@ -33,9 +34,10 @@ export function DateNav({ date, todayIso }: Props) {
       <button
         type="button"
         onClick={() => go(shiftDate(date, -1))}
-        className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+        className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
       >
-        ← Prev
+        <ChevronLeft className="h-3.5 w-3.5" />
+        Prev
       </button>
       <input
         type="date"
@@ -48,9 +50,10 @@ export function DateNav({ date, todayIso }: Props) {
         type="button"
         onClick={() => go(shiftDate(date, 1))}
         disabled={isToday}
-        className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent disabled:opacity-40"
+        className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent disabled:opacity-40"
       >
-        Next →
+        Next
+        <ChevronRight className="h-3.5 w-3.5" />
       </button>
       {!isToday && (
         <button

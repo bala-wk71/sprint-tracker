@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { format, startOfWeek } from "date-fns";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { WeekNav } from "@/app/(app)/dashboard/WeekNav";
@@ -77,9 +78,10 @@ export default async function ReviewOwnerPage({
       <div>
         <Link
           href="/review"
-          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          ← Back to all reviewees
+          <ArrowLeft className="h-3 w-3" />
+          Back to all reviewees
         </Link>
       </div>
 

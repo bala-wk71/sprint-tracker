@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
+import { ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 type Owner = {
@@ -94,7 +95,7 @@ export default async function ReviewListPage() {
                       {format(new Date(o.since), "MMM d, yyyy")}
                     </p>
                   </div>
-                  <span className="text-muted-foreground">→</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
               </li>
             );

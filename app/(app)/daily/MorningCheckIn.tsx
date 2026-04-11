@@ -96,7 +96,7 @@ export function MorningCheckIn({
                   : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
               }`}
             >
-              <span className="text-lg">{m.emoji}</span>
+              <span className="text-lg leading-none">{m.emoji}</span>
               <span>{m.label}</span>
             </button>
           ))}

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
+import { Plus, Trash2 } from "lucide-react";
 import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
 import { createSprintWithTasks } from "./actions";
 
@@ -96,9 +97,10 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
           <button
             type="button"
             onClick={() => append({ ...EMPTY_TASK })}
-            className="rounded-md border border-border bg-card px-3 py-1 text-xs font-medium text-foreground hover:bg-accent"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1 text-xs font-medium text-foreground hover:bg-accent"
           >
-            + Add task
+            <Plus className="h-3 w-3" />
+            Add task
           </button>
         </div>
         <div className="space-y-2">
@@ -120,7 +122,7 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
                 {(Object.entries(TASK_CATEGORIES) as [TaskCategory, typeof TASK_CATEGORIES[TaskCategory]][]).map(
                   ([value, meta]) => (
                     <option key={value} value={value}>
-                      {meta.emoji} {meta.label}
+                      {meta.label}
                     </option>
                   )
                 )}
@@ -145,10 +147,10 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
                 type="button"
                 onClick={() => fields.length > 1 && remove(index)}
                 disabled={fields.length === 1}
-                className="rounded-md px-2 text-sm text-muted-foreground hover:text-destructive disabled:opacity-30"
+                className="inline-flex items-center justify-center rounded-md px-2 text-muted-foreground hover:text-destructive disabled:opacity-30"
                 aria-label={`Remove task ${index + 1}`}
               >
-                ✕
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
           ))}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_INVITES } from "@/lib/constants";
 import { InviteForm } from "./InviteForm";
@@ -42,9 +43,10 @@ export default async function AccessSettingsPage() {
         <div>
           <Link
             href="/settings"
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            ← Settings
+            <ArrowLeft className="h-3 w-3" />
+            Settings
           </Link>
           <h1 className="mt-1 text-2xl font-bold text-foreground">Access</h1>
           <p className="text-sm text-muted-foreground">

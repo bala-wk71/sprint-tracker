@@ -1,4 +1,5 @@
 import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
+import { CATEGORY_DOT_CLASSES } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_CLASSES: Record<TaskCategory, string> = {
@@ -12,22 +13,30 @@ const CATEGORY_CLASSES: Record<TaskCategory, string> = {
 export function CategoryBadge({
   category,
   className,
-  showEmoji = true,
+  showDot = true,
 }: {
   category: TaskCategory;
   className?: string;
-  showEmoji?: boolean;
+  showDot?: boolean;
 }) {
   const meta = TASK_CATEGORIES[category];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
         CATEGORY_CLASSES[category],
         className
       )}
     >
-      {showEmoji && <span aria-hidden>{meta.emoji}</span>}
+      {showDot && (
+        <span
+          aria-hidden
+          className={cn(
+            "inline-block h-1.5 w-1.5 rounded-full",
+            CATEGORY_DOT_CLASSES[category]
+          )}
+        />
+      )}
       <span>{meta.label}</span>
     </span>
   );

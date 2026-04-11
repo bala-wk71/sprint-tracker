@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
   weekStart: string;
@@ -41,17 +42,19 @@ export function WeekNav({
       <button
         type="button"
         onClick={() => go(shiftWeek(weekStart, -1))}
-        className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+        className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
       >
-        ← Prev week
+        <ChevronLeft className="h-3.5 w-3.5" />
+        Prev week
       </button>
       <button
         type="button"
         onClick={() => go(shiftWeek(weekStart, 1))}
         disabled={isCurrent}
-        className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent disabled:opacity-40"
+        className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent disabled:opacity-40"
       >
-        Next week →
+        Next week
+        <ChevronRight className="h-3.5 w-3.5" />
       </button>
       {!isCurrent && (
         <button

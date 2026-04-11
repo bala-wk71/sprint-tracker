@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
+import { ArrowLeft, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   MORNING_MOODS,
@@ -158,9 +159,10 @@ export default async function ReviewDailyPage({
       <div>
         <Link
           href={`/review/${ownerId}`}
-          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          ← Back to {ownerName}&apos;s week
+          <ArrowLeft className="h-3 w-3" />
+          Back to {ownerName}&apos;s week
         </Link>
       </div>
 
@@ -395,8 +397,9 @@ function EmptyValue() {
 
 function PrivateNote() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs italic text-muted-foreground">
-      🔒 Private note
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs italic text-muted-foreground">
+      <Lock className="h-3 w-3" />
+      Private note
     </span>
   );
 }
