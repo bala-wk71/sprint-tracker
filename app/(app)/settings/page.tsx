@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExportForm } from "./ExportForm";
 
 const SECTIONS = [
   {
@@ -34,6 +35,16 @@ export default function SettingsPage() {
           </Link>
         ))}
       </div>
+
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="mb-1 text-lg font-semibold text-foreground">
+          Export data
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Download your sprint logs and time entries as a CSV file.
+        </p>
+        <ExportForm />
+      </section>
     </div>
   );
 }
