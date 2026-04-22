@@ -2,40 +2,40 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ===== GitHub Dark Color Palette ===== */
+/* ===== Color Palette ===== */
 :root {
-  --background: 210 20% 98%;
+  --background: 40 40% 97%;
   --foreground: 210 11% 15%;
   --card: 0 0% 100%;
   --card-foreground: 210 11% 15%;
   --popover: 0 0% 100%;
   --popover-foreground: 210 11% 15%;
-  --primary: 213 90% 48%;
+  --primary: 218 92% 40%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 14% 89%;
+  --secondary: 35 40% 90%;
   --secondary-foreground: 210 11% 15%;
-  --muted: 210 14% 93%;
-  --muted-foreground: 210 8% 55%;
-  --accent: 210 14% 89%;
+  --muted: 35 30% 93%;
+  --muted-foreground: 30 8% 40%;
+  --accent: 213 90% 94%;
   --accent-foreground: 210 11% 15%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214 14% 80%;
-  --input: 214 14% 80%;
-  --ring: 213 90% 48%;
+  --border: 35 20% 85%;
+  --input: 35 20% 85%;
+  --ring: 218 92% 40%;
   --radius: 0.5rem;
 
-  /* Signal/Noise Categories */
-  --strong-signal: 140 49% 48%;
-  --weak-signal: 40 72% 49%;
-  --strong-noise: 0 90% 63%;
-  --weak-noise: 269 58% 72%;
-  --personal: 212 92% 67%;
+  /* Signal/Noise Categories — deeper, more saturated for light background */
+  --strong-signal: 140 64% 33%;
+  --weak-signal: 38 94% 38%;
+  --strong-noise: 355 72% 48%;
+  --weak-noise: 258 92% 66%;
+  --personal: 213 90% 48%;
 
   /* Progress Indicators */
-  --progress-good: 140 49% 48%;
-  --progress-warning: 40 72% 49%;
-  --progress-danger: 0 90% 63%;
+  --progress-good: 140 64% 33%;
+  --progress-warning: 38 94% 38%;
+  --progress-danger: 355 72% 48%;
 }
 
 .dark {

@@ -301,9 +301,9 @@ export async function WeekSummary({
                                 <div
                                   className={`h-full transition-all ${
                                     overTarget
-                                      ? "bg-yellow-500"
+                                      ? "bg-[hsl(var(--weak-signal))]"
                                       : pct >= 100
-                                        ? "bg-green-500"
+                                        ? "bg-[hsl(var(--strong-signal))]"
                                         : "bg-primary"
                                   }`}
                                   style={{ width: `${pct}%` }}

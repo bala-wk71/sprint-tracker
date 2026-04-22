@@ -1,6 +1,8 @@
 import { format, startOfWeek } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
+import { StreakCards } from "@/components/dashboard/StreakCards";
+import { computeDailyStreak, computeWeeklyStreak } from "@/lib/streaks";
 import { WeekNav } from "./WeekNav";
 
 type SearchParams = Promise<{ week?: string }>;
@@ -31,6 +33,11 @@ export default async function DashboardPage({
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const [dailyStreak, weeklyStreak] = await Promise.all([
+    computeDailyStreak(supabase, user.id),
+    computeWeeklyStreak(supabase, user.id),
+  ]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -42,6 +49,7 @@ export default async function DashboardPage({
         </div>
         <WeekNav weekStart={weekStart} currentWeekStart={currentWeekStart} />
       </div>
+      <StreakCards daily={dailyStreak} weekly={weeklyStreak} />
       <WeekSummary
         ownerId={user.id}
         weekStart={weekStart}

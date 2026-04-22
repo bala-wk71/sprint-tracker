@@ -10,6 +10,17 @@ export default function DashboardLoading() {
         <div className="h-9 w-48 rounded-md bg-muted" />
       </div>
 
+      {/* Streak cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-2">
+            <div className="h-3 w-24 rounded bg-muted" />
+            <div className="h-8 w-20 rounded bg-muted" />
+            <div className="h-3 w-28 rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
