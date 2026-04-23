@@ -60,6 +60,54 @@
   --ring: 213 94% 68%;
 }
 
+.colourful {
+  --background: 345 100% 98%;
+  --foreground: 278 28% 24%;
+  --card: 0 0% 100%;
+  --card-foreground: 278 28% 24%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 278 28% 24%;
+  --primary: 335 100% 72%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 30 100% 83%;
+  --secondary-foreground: 278 28% 24%;
+  --muted: 330 60% 95%;
+  --muted-foreground: 278 18% 42%;
+  --accent: 172 65% 70%;
+  --accent-foreground: 278 28% 24%;
+  --destructive: 0 80% 70%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 330 45% 88%;
+  --input: 330 45% 88%;
+  --ring: 335 100% 72%;
+
+  --strong-signal: 138 55% 64%;
+  --weak-signal: 46 100% 64%;
+  --strong-noise: 0 100% 77%;
+  --weak-noise: 266 100% 83%;
+  --personal: 208 100% 74%;
+
+  --progress-good: 138 55% 64%;
+  --progress-warning: 46 100% 64%;
+  --progress-danger: 0 100% 77%;
+}
+
+.colourful :is(div, section, article)[class~="bg-card"][class*="rounded-"] {
+  border-top: 3px solid hsl(var(--strong-signal));
+}
+.colourful :is(div, section, article)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n+2) {
+  border-top-color: hsl(var(--personal));
+}
+.colourful :is(div, section, article)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n+3) {
+  border-top-color: hsl(var(--weak-signal));
+}
+.colourful :is(div, section, article)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n+4) {
+  border-top-color: hsl(var(--weak-noise));
+}
+.colourful :is(div, section, article)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n+5) {
+  border-top-color: hsl(var(--strong-noise));
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -125,3 +173,7 @@ body {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: hsl(215 14% 35%);
 }
+
+.colourful ::-webkit-scrollbar-track  { background: hsl(345 100% 98%); }
+.colourful ::-webkit-scrollbar-thumb  { background: hsl(335 100% 85%); border-radius: 4px; }
+.colourful ::-webkit-scrollbar-thumb:hover { background: hsl(335 100% 78%); }
