@@ -101,6 +101,7 @@ export const NAV_ITEMS = [
   { href: "/daily", label: "Daily Log", icon: "CalendarDays" },
   { href: "/analytics", label: "Analytics", icon: "BarChart3" },
   { href: "/review", label: "Reviewing", icon: "Users" },
+  { href: "/todo", label: "Todo", icon: "CheckSquare" },
   { href: "/settings", label: "Settings", icon: "Settings" },
 ] as const;
 

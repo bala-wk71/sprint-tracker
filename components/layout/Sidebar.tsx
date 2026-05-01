@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
   BarChart3,
   CalendarDays,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
@@ -28,6 +29,7 @@ const icons: Record<string, LucideIcon> = {
   CalendarDays,
   BarChart3,
   Users,
+  CheckSquare,
   Settings,
 };
 

@@ -468,6 +468,108 @@ export type Database = {
           },
         ]
       }
+      todo_sections: {
+        Row: {
+          id: string
+          owner_id: string
+          parent_id: string | null
+          name: string
+          position: number
+          is_collapsed: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          parent_id?: string | null
+          name: string
+          position?: number
+          is_collapsed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          parent_id?: string | null
+          name?: string
+          position?: number
+          is_collapsed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_sections_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_sections_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "todo_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      todo_tasks: {
+        Row: {
+          id: string
+          owner_id: string
+          section_id: string
+          title: string
+          description: string | null
+          is_completed: boolean
+          completed_at: string | null
+          position: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          section_id: string
+          title: string
+          description?: string | null
+          is_completed?: boolean
+          completed_at?: string | null
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          section_id?: string
+          title?: string
+          description?: string | null
+          is_completed?: boolean
+          completed_at?: string | null
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_tasks_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_tasks_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "todo_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_entries: {
         Row: {
           created_at: string
