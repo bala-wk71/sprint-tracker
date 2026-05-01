@@ -331,7 +331,7 @@ function ChartCard({
 }) {
   return (
     <div
-      className={`rounded-lg border border-border bg-card p-6 ${className ?? ""}`}
+      className={`rounded-lg border border-border bg-card p-4 sm:p-6 ${className ?? ""}`}
     >
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-foreground">{title}</h2>

@@ -45,7 +45,7 @@ export default async function ReviewListPage() {
       </div>
 
       {owners.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <p className="text-sm text-muted-foreground">
             You&apos;re not reviewing anyone yet. When someone invites you as
             their reviewer and you accept the invite, they&apos;ll appear here.

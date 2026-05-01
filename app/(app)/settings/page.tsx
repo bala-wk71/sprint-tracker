@@ -24,7 +24,7 @@ export default function SettingsPage() {
           <Link
             key={section.href}
             href={section.href}
-            className="rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary"
+            className="rounded-lg border border-border bg-card p-4 sm:p-6 transition-colors hover:border-primary"
           >
             <h2 className="text-lg font-semibold text-foreground">
               {section.title}
@@ -36,7 +36,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <section className="rounded-lg border border-border bg-card p-6">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-1 text-lg font-semibold text-foreground">
           Export data
         </h2>

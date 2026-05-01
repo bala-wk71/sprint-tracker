@@ -210,7 +210,7 @@ export async function WeekSummary({
       </div>
 
       {!sprint ? (
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h2 className="mb-2 text-lg font-semibold text-foreground">
             No sprint for this week
           </h2>
@@ -238,7 +238,7 @@ export async function WeekSummary({
       ) : (
         <>
           {/* Task progress */}
-          <section className="rounded-lg border border-border bg-card p-6">
+          <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
               Task progress
             </h2>
@@ -338,7 +338,7 @@ export async function WeekSummary({
 
           {/* Category breakdown */}
           {categoryRows.length > 0 && (
-            <section className="rounded-lg border border-border bg-card p-6">
+            <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
               <h2 className="mb-4 text-lg font-semibold text-foreground">
                 Category breakdown
               </h2>
@@ -373,12 +373,12 @@ export async function WeekSummary({
       )}
 
       {/* 7-day metrics grid */}
-      <section className="rounded-lg border border-border bg-card p-6">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           Daily metrics
         </h2>
         <div className="overflow-x-auto">
-          <div className="grid min-w-[640px] grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7 md:min-w-0">
             {dayCells.map((cell) => {
               const isFuture = new Date(`${cell.date}T00:00:00`) > new Date();
               const hasData =
@@ -454,7 +454,7 @@ export async function WeekSummary({
 
       {/* Weekly reflection */}
       {sprint && (
-        <section className="rounded-lg border border-border bg-card p-6">
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold text-foreground">
             Weekly reflection
           </h2>
@@ -477,7 +477,7 @@ export async function WeekSummary({
 
       {/* Weekly comments thread */}
       {sprint && viewer && (
-        <section className="rounded-lg border border-border bg-card p-6">
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold text-foreground">
             Weekly feedback
           </h2>

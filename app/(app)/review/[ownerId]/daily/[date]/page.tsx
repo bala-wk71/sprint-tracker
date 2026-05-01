@@ -174,7 +174,7 @@ export default async function ReviewDailyPage({
       </div>
 
       {!dailyLog ? (
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <p className="text-sm text-muted-foreground">
             No log recorded for this day.
           </p>
@@ -182,7 +182,7 @@ export default async function ReviewDailyPage({
       ) : (
         <>
           {/* Morning */}
-          <section className="rounded-lg border border-border bg-card p-6">
+          <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
               Morning check-in
             </h2>
@@ -246,7 +246,7 @@ export default async function ReviewDailyPage({
           </section>
 
           {/* Time entries */}
-          <section className="rounded-lg border border-border bg-card p-6">
+          <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <div className="mb-4 flex items-baseline justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 Time entries
@@ -297,7 +297,7 @@ export default async function ReviewDailyPage({
           </section>
 
           {/* Evening */}
-          <section className="rounded-lg border border-border bg-card p-6">
+          <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
               Evening wrap-up
             </h2>
@@ -355,7 +355,7 @@ export default async function ReviewDailyPage({
           </section>
 
           {/* Comments */}
-          <section className="rounded-lg border border-border bg-card p-6">
+          <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
               Feedback
             </h2>

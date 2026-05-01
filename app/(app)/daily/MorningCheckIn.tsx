@@ -158,7 +158,7 @@ export function MorningCheckIn({
           {priorities.map((p, idx) => (
             <div
               key={p.position}
-              className="grid grid-cols-[2rem_1fr_5rem] gap-2"
+              className="grid grid-cols-[2rem_1fr_4rem] gap-2 sm:grid-cols-[2rem_1fr_5rem]"
             >
               <span className="flex h-9 w-8 items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground">
                 {p.position}

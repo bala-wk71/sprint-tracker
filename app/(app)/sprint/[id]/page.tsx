@@ -107,7 +107,7 @@ export default async function SprintDetailPage({
         </div>
       </div>
 
-      <section className="rounded-lg border border-border bg-card p-6">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Tasks</h2>
         <TasksEditor sprintId={sprint.id} initialTasks={tasks} />
       </section>

@@ -139,7 +139,7 @@ export default async function DailyPage({
         <DateNav date={date} todayIso={todayIso} />
       </div>
 
-      <section className="rounded-lg border border-border bg-card p-6">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           Morning check-in
         </h2>
@@ -152,12 +152,12 @@ export default async function DailyPage({
         />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-6">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Time entries</h2>
         <TimeEntries date={date} tasks={sprintTasks} initialEntries={timeEntries} />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-6">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           Evening wrap-up
         </h2>
@@ -176,7 +176,7 @@ export default async function DailyPage({
       </section>
 
       {dailyLog && (
-        <section className="rounded-lg border border-border bg-card p-6">
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold text-foreground">
             Feedback
           </h2>
