@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  Bot,
   CalendarDays,
   CheckSquare,
   ChevronLeft,
@@ -30,6 +31,7 @@ const icons: Record<string, LucideIcon> = {
   BarChart3,
   Users,
   CheckSquare,
+  Bot,
   Settings,
 };
 

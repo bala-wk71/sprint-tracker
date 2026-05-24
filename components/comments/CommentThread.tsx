@@ -4,6 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
+import { Bot } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AI_USER_ID } from "@/lib/constants";
 import {
   createComment,
   updateComment,
@@ -208,8 +211,9 @@ function CommentBody({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const isAI = comment.author_id === AI_USER_ID;
   const isMine = comment.author_id === currentUserId;
-  const name = authorName(comment);
+  const name = isAI ? "Sprint Coach" : authorName(comment);
   const when = formatDistanceToNow(new Date(comment.created_at), {
     addSuffix: true,
   });
@@ -253,7 +257,11 @@ function CommentBody({
 
   return (
     <div className="flex gap-3">
-      {comment.author?.avatar_url ? (
+      {isAI ? (
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <Bot className="h-4 w-4 text-primary" />
+        </div>
+      ) : comment.author?.avatar_url ? (
         <Image
           src={comment.author.avatar_url}
           alt={name}
@@ -268,7 +276,7 @@ function CommentBody({
       )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-sm font-medium text-foreground">{name}</span>
+          <span className={cn("text-sm font-medium", isAI ? "text-primary" : "text-foreground")}>{name}</span>
           <span className="text-xs text-muted-foreground">{when}</span>
           {edited && (
             <span className="text-xs italic text-muted-foreground">edited</span>
@@ -317,7 +325,7 @@ function CommentBody({
           </p>
         )}
 
-        {isMine && !editing && (
+        {isMine && !isAI && !editing && (
           <div className="mt-2 flex gap-3 text-xs">
             <button
               type="button"

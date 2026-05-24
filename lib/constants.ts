@@ -94,6 +94,9 @@ export const INVITE_STATUSES = [
 ] as const;
 export type InviteStatus = (typeof INVITE_STATUSES)[number];
 
+// AI Assistant
+export const AI_USER_ID = "00000000-0000-0000-0000-000000000001";
+
 // Navigation items
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
@@ -102,6 +105,7 @@ export const NAV_ITEMS = [
   { href: "/analytics", label: "Analytics", icon: "BarChart3" },
   { href: "/review", label: "Reviewing", icon: "Users" },
   { href: "/todo", label: "Todo", icon: "CheckSquare" },
+  { href: "/assistant", label: "Assistant", icon: "Bot" },
   { href: "/settings", label: "Settings", icon: "Settings" },
 ] as const;
 
