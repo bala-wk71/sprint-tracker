@@ -2,7 +2,25 @@
 -- AI assistant tables: conversations and messages for the chat interface,
 -- plus a sentinel AI user for automated comments.
 
--- Sentinel AI user for authoring automated comments
+-- Sentinel AI user for authoring automated comments.
+-- Must insert into auth.users first (FK target), then public.users.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, confirmation_token, raw_app_meta_data, raw_user_meta_data)
+values (
+  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
+  'ai@sprint-tracker.internal',
+  '',
+  now(),
+  now(),
+  now(),
+  '',
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"full_name":"Sprint Coach"}'::jsonb
+)
+on conflict (id) do nothing;
+
 insert into public.users (id, email, full_name)
 values ('00000000-0000-0000-0000-000000000001', 'ai@sprint-tracker.internal', 'Sprint Coach')
 on conflict (id) do nothing;

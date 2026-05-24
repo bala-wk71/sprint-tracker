@@ -8,12 +8,11 @@ import { AI_USER_ID } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
-  const expectedKey = `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`;
   const cronSecret = process.env.CRON_SECRET;
 
   const isAuthorized =
-    (authHeader && authHeader === expectedKey) ||
-    (cronSecret && req.headers.get("x-cron-secret") === cronSecret);
+    (authHeader && authHeader === `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`) ||
+    (cronSecret && authHeader === `Bearer ${cronSecret}`);
 
   if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
