@@ -13,11 +13,14 @@ export async function gatherChatContext(
     startOfWeek(new Date(), { weekStartsOn: 1 }),
     "yyyy-MM-dd"
   );
+  const lastMonday = format(subDays(new Date(monday + "T00:00:00"), 7), "yyyy-MM-dd");
+  const twoWeeksAgoMonday = format(subDays(new Date(monday + "T00:00:00"), 14), "yyyy-MM-dd");
 
-  const [sprint, dailyLog, recentLogs] = await Promise.all([
+  const [sprint, lastWeekSprint, dailyLog, recentLogs] = await Promise.all([
     getCurrentSprint(supabase, userId, monday),
+    getCurrentSprint(supabase, userId, lastMonday),
     getDailyLog(supabase, userId, today),
-    getRecentDailyLogs(supabase, userId, 7),
+    getRecentDailyLogs(supabase, userId, 14),
   ]);
 
   const sections: string[] = [];
@@ -31,6 +34,21 @@ export async function gatherChatContext(
       const pct = t.target_hours > 0 ? Math.round((hours / t.target_hours) * 100) : 0;
       sections.push(
         `- [${t.category}] ${t.name}: target ${t.target_hours}h, logged ${hours}h (${pct}%)`
+      );
+    }
+  }
+
+  if (lastWeekSprint) {
+    const totalTarget = lastWeekSprint.tasks.reduce((s, t) => s + t.target_hours, 0);
+    const totalLogged = lastWeekSprint.tasks.reduce((s, t) => s + (t.logged_hours ?? 0), 0);
+    const pct = totalTarget > 0 ? Math.round((totalLogged / totalTarget) * 100) : 0;
+    sections.push(`\n## Last Week Sprint (week of ${lastMonday})`);
+    sections.push(`Overall: ${totalLogged.toFixed(1)}h / ${totalTarget}h (${pct}%)`);
+    for (const t of lastWeekSprint.tasks) {
+      const hours = t.logged_hours ?? 0;
+      const taskPct = t.target_hours > 0 ? Math.round((hours / t.target_hours) * 100) : 0;
+      sections.push(
+        `- [${t.category}] ${t.name}: ${hours}h/${t.target_hours}h (${taskPct}%)`
       );
     }
   }
@@ -70,7 +88,7 @@ export async function gatherChatContext(
   }
 
   if (recentLogs.length > 0) {
-    sections.push(`\n## Recent Days`);
+    sections.push(`\n## Past 2 Weeks Daily Logs`);
     for (const log of recentLogs) {
       const parts: string[] = [`${log.log_date}:`];
       if (log.morning_mood) parts.push(`mood=${log.morning_mood}`);
