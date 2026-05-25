@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateResponse, type GeminiMessage } from "@/lib/ai/gemini";
 import { gatherChatContext } from "@/lib/ai/context";
-import { CHAT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { getChatPrompt, type AiPersona } from "@/lib/ai/prompts";
 
 const COMPACT_THRESHOLD_MESSAGES = 50;
 const COMPACT_THRESHOLD_CHARS = 100_000;
@@ -120,11 +120,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Get user's persona preference
+  const { data: profile } = await supabase
+    .from("users")
+    .select("ai_persona")
+    .eq("id", user.id)
+    .single();
+  const persona: AiPersona = profile?.ai_persona ?? "rational";
+
   // Gather data context
   const dataContext = await gatherChatContext(supabase, user.id);
 
   // Build Gemini messages
-  const systemInstruction = `${CHAT_SYSTEM_PROMPT}\n\n## User's Current Data\n${dataContext}`;
+  const systemInstruction = `${getChatPrompt(persona)}\n\n## User's Current Data\n${dataContext}`;
 
   const geminiMessages: GeminiMessage[] = [];
 

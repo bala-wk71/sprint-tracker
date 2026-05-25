@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateResponse } from "@/lib/ai/gemini";
 import { gatherDailyContext } from "@/lib/ai/context";
-import { DAILY_COMMENT_PROMPT } from "@/lib/ai/prompts";
+import { getDailyCommentPrompt, type AiPersona } from "@/lib/ai/prompts";
 import { AI_USER_ID } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
@@ -49,6 +49,13 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      const { data: userProfile } = await supabase
+        .from("users")
+        .select("ai_persona")
+        .eq("id", log.owner_id)
+        .single();
+      const persona: AiPersona = userProfile?.ai_persona ?? "rational";
+
       const { context } = await gatherDailyContext(
         supabase,
         log.owner_id,
@@ -61,7 +68,7 @@ export async function POST(req: NextRequest) {
       }
 
       const insight = await generateResponse(
-        `${DAILY_COMMENT_PROMPT}\n\n## Today's Data\n${context}`,
+        `${getDailyCommentPrompt(persona)}\n\n## Today's Data\n${context}`,
         [
           {
             role: "user",

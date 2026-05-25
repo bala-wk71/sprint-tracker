@@ -3,7 +3,7 @@ import { format, startOfWeek } from "date-fns";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateResponse } from "@/lib/ai/gemini";
 import { gatherWeeklyContext } from "@/lib/ai/context";
-import { WEEKLY_COMMENT_PROMPT } from "@/lib/ai/prompts";
+import { getWeeklyCommentPrompt, type AiPersona } from "@/lib/ai/prompts";
 import { AI_USER_ID } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
@@ -52,6 +52,13 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      const { data: userProfile } = await supabase
+        .from("users")
+        .select("ai_persona")
+        .eq("id", sprint.owner_id)
+        .single();
+      const persona: AiPersona = userProfile?.ai_persona ?? "rational";
+
       const { context } = await gatherWeeklyContext(
         supabase,
         sprint.owner_id,
@@ -64,7 +71,7 @@ export async function POST(req: NextRequest) {
       }
 
       const summary = await generateResponse(
-        `${WEEKLY_COMMENT_PROMPT}\n\n## Sprint Data\n${context}`,
+        `${getWeeklyCommentPrompt(persona)}\n\n## Sprint Data\n${context}`,
         [
           {
             role: "user",

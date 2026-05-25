@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ChatInterface } from "./ChatInterface";
+import { PersonaSelector } from "./PersonaSelector";
+import type { AiPersona } from "@/lib/ai/prompts";
 
 export default async function AssistantPage() {
   const supabase = await createClient();
@@ -7,6 +9,14 @@ export default async function AssistantPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("ai_persona")
+    .eq("id", user.id)
+    .single();
+
+  const persona: AiPersona = profile?.ai_persona ?? "rational";
 
   // Load existing conversation messages (skip summaries)
   const { data: conversation } = await supabase
@@ -32,10 +42,10 @@ export default async function AssistantPage() {
     <div className="flex h-[calc(100vh-8rem)] flex-col sm:h-[calc(100vh-7rem)]">
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-foreground">Sprint Coach</h1>
-        <p className="text-sm text-muted-foreground">
-          Ask about your data, get productivity advice, or reflect on your
-          patterns.
+        <p className="mb-3 text-sm text-muted-foreground">
+          Choose your coaching style — applies to chat and automated comments.
         </p>
+        <PersonaSelector current={persona} />
       </div>
 
       <ChatInterface initialMessages={initialMessages} />

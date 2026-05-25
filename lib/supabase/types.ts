@@ -642,6 +642,7 @@ export type Database = {
           full_name: string | null
           id: string
           updated_at: string
+          ai_persona: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
         }
         Insert: {
           avatar_url?: string | null
@@ -650,6 +651,7 @@ export type Database = {
           full_name?: string | null
           id: string
           updated_at?: string
+          ai_persona?: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
         }
         Update: {
           avatar_url?: string | null
@@ -658,6 +660,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
+          ai_persona?: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
         }
         Relationships: []
       }
