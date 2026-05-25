@@ -132,28 +132,28 @@ export function ChatInterface({
       )}
 
       {/* Input area */}
-      <div className="border-t border-border p-4">
-        <div className="flex items-end gap-2">
+      <div className="border-t-2 border-border bg-card p-4">
+        <div className="flex items-end gap-3">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Sprint Coach..."
+            placeholder="Type a message..."
             rows={1}
             disabled={sending}
-            className="max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            className="max-h-40 min-h-[2.75rem] flex-1 resize-none rounded-lg border-2 border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           />
           <button
             onClick={sendMessage}
             disabled={sending || !input.trim()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-5 w-5" />
           </button>
         </div>
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for newline
+        <p className="mt-2 text-xs text-muted-foreground">
+          Enter to send · Shift+Enter for newline
         </p>
       </div>
     </div>
