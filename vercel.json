@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/ai/daily-comment",
-      "schedule": "55 23 * * *"
+      "schedule": "25 18 * * *"
     },
     {
       "path": "/api/ai/weekly-comment",
-      "schedule": "55 23 * * 0"
+      "schedule": "25 18 * * 0"
     }
   ]
 }
