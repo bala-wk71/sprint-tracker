@@ -6,7 +6,7 @@ import { gatherDailyContext } from "@/lib/ai/context";
 import { getDailyCommentPrompt, type AiPersona } from "@/lib/ai/prompts";
 import { AI_USER_ID } from "@/lib/constants";
 
-export async function POST(req: NextRequest) {
+async function handleDailyComment(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
@@ -89,9 +89,8 @@ export async function POST(req: NextRequest) {
 
       results.push({ userId: log.owner_id, ok: true });
 
-      // Rate limit: pause between users
       if (logs.indexOf(log) < logs.length - 1) {
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 15000));
       }
     } catch (err) {
       results.push({
@@ -103,4 +102,12 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ processed: results.length, results });
+}
+
+export async function GET(req: NextRequest) {
+  return handleDailyComment(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleDailyComment(req);
 }
