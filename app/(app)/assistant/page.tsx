@@ -8,20 +8,17 @@ export default async function AssistantPage() {
   const user = await getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("ai_persona")
-    .eq("id", user.id)
-    .single();
+  // Persona and conversation lookups are independent.
+  const [{ data: profile }, { data: conversation }] = await Promise.all([
+    supabase.from("users").select("ai_persona").eq("id", user.id).single(),
+    supabase
+      .from("ai_conversations")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   const persona: AiPersona = profile?.ai_persona ?? "rational";
-
-  // Load existing conversation messages (skip summaries)
-  const { data: conversation } = await supabase
-    .from("ai_conversations")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   let initialMessages: { id: string; role: string; content: string; created_at: string }[] = [];
 

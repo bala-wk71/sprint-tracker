@@ -16,6 +16,7 @@ export const XP = {
   sprint_created: 20,
   weekly_reflection: 30,
   weekly_target_hit: 25,
+  todo_done: 5,
 } as const;
 
 export type XpReason = keyof typeof XP;

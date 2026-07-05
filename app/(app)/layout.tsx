@@ -30,6 +30,10 @@ export default async function AppLayout({
     avatarUrl: (meta.avatar_url as string | undefined) ?? null,
     level: level.level,
     levelTitle: level.title,
+    levelProgressPct: Math.min(
+      100,
+      Math.round((level.progress / level.span) * 100)
+    ),
   };
 
   return (

@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { awardXp } from "@/lib/gamification";
 
 export type ActionResult<T = undefined> =
-  | ({ ok: true } & (T extends undefined ? object : { data: T }))
+  | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
   | { ok: false; error: string };
 
 async function getUserOrFail() {
@@ -253,6 +254,14 @@ export async function toggleTaskComplete(
 
   if (error) return { ok: false, error: error.message };
 
+  // XP once per task ever (dedupe on task id) — unchecking and re-checking
+  // can't farm points, so only genuinely new completions count.
+  let xp = 0;
+  if (parsed.data.isCompleted) {
+    xp = await awardXp(ctx.supabase, ctx.user.id, "todo_done", parsed.data.taskId);
+  }
+
   revalidatePath("/todo");
-  return { ok: true };
+  revalidatePath("/dashboard");
+  return { ok: true, xp };
 }

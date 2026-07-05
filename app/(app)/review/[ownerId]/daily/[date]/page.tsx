@@ -47,15 +47,26 @@ export default async function ReviewDailyPage({
   const viewer = await getUser();
   if (!viewer) return null;
 
-  // Verify the reviewer relationship.
-  const { data: relationship } = await supabase
-    .from("reviewer_relationships")
-    .select(
-      "owner_id, owner:users!reviewer_relationships_owner_id_fkey(id, full_name, email)"
-    )
-    .eq("reviewer_id", viewer.id)
-    .eq("owner_id", ownerId)
-    .maybeSingle();
+  // Reviewer relationship check and the daily log load are independent —
+  // RLS already restricts what the log query can return.
+  const [{ data: relationship }, { data: dailyLog }] = await Promise.all([
+    supabase
+      .from("reviewer_relationships")
+      .select(
+        "owner_id, owner:users!reviewer_relationships_owner_id_fkey(id, full_name, email)"
+      )
+      .eq("reviewer_id", viewer.id)
+      .eq("owner_id", ownerId)
+      .maybeSingle(),
+    supabase
+      .from("daily_logs")
+      .select(
+        "id, morning_mood, morning_energy, daily_intention, closing_mood, productivity_rating, reflection, reflection_private, improvement, win, gratitude, gratitude_private"
+      )
+      .eq("owner_id", ownerId)
+      .eq("log_date", date)
+      .maybeSingle(),
+  ]);
 
   if (!relationship) notFound();
 
@@ -65,17 +76,6 @@ export default async function ReviewDailyPage({
     email: string | null;
   } | null;
   const ownerName = owner?.full_name || owner?.email || "Owner";
-
-  // Load the daily log. RLS allows reviewer to see it (but private
-  // reflection/gratitude columns still need app-level blanking).
-  const { data: dailyLog } = await supabase
-    .from("daily_logs")
-    .select(
-      "id, morning_mood, morning_energy, daily_intention, closing_mood, productivity_rating, reflection, reflection_private, improvement, win, gratitude, gratitude_private"
-    )
-    .eq("owner_id", ownerId)
-    .eq("log_date", date)
-    .maybeSingle();
 
   let priorityRows: Array<{
     id: string;
@@ -94,12 +94,28 @@ export default async function ReviewDailyPage({
     task_category: TaskCategory | null;
   }> = [];
 
+  let dayComments: Awaited<ReturnType<typeof loadComments>> = [];
+
   if (dailyLog) {
-    const { data: prios } = await supabase
-      .from("priorities")
-      .select("id, position, description, target_hours, status")
-      .eq("daily_log_id", dailyLog.id)
-      .order("position", { ascending: true });
+    // RLS filters out time_entries where is_private=true for reviewers.
+    const [{ data: prios }, { data: entries }, comments] = await Promise.all([
+      supabase
+        .from("priorities")
+        .select("id, position, description, target_hours, status")
+        .eq("daily_log_id", dailyLog.id)
+        .order("position", { ascending: true }),
+      supabase
+        .from("time_entries")
+        .select(
+          "id, start_time, duration_hours, energy_during, notes, tasks(name, category)"
+        )
+        .eq("daily_log_id", dailyLog.id)
+        .order("start_time", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true }),
+      loadComments("daily_log", dailyLog.id),
+    ]);
+
+    dayComments = comments;
 
     priorityRows = (prios ?? []).map((p) => ({
       id: p.id,
@@ -108,16 +124,6 @@ export default async function ReviewDailyPage({
       target_hours: Number(p.target_hours),
       status: p.status as PriorityStatus,
     }));
-
-    // RLS filters out time_entries where is_private=true for reviewers.
-    const { data: entries } = await supabase
-      .from("time_entries")
-      .select(
-        "id, start_time, duration_hours, energy_during, notes, tasks(name, category)"
-      )
-      .eq("daily_log_id", dailyLog.id)
-      .order("start_time", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true });
 
     entryRows = (entries ?? []).map((row) => {
       const task = Array.isArray(row.tasks) ? row.tasks[0] : row.tasks;
@@ -132,10 +138,6 @@ export default async function ReviewDailyPage({
       };
     });
   }
-
-  const dayComments = dailyLog
-    ? await loadComments("daily_log", dailyLog.id)
-    : [];
 
   const totalHours = entryRows.reduce((sum, e) => sum + e.duration_hours, 0);
   const morningMoodInfo = dailyLog?.morning_mood

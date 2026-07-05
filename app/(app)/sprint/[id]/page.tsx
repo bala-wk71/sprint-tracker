@@ -17,22 +17,23 @@ export default async function SprintDetailPage({
   const user = await getUser();
   if (!user) return null;
 
-  const { data: sprint } = await supabase
-    .from("sprints")
-    .select("id, week_start_date, notes, owner_id")
-    .eq("id", id)
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const [{ data: sprint }, { data: taskRows }] = await Promise.all([
+    supabase
+      .from("sprints")
+      .select("id, week_start_date, notes, owner_id")
+      .eq("id", id)
+      .eq("owner_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("tasks")
+      .select("id, name, category, target_hours, is_recurring, position")
+      .eq("sprint_id", id)
+      .order("position", { ascending: true }),
+  ]);
 
   if (!sprint) {
     notFound();
   }
-
-  const { data: taskRows } = await supabase
-    .from("tasks")
-    .select("id, name, category, target_hours, is_recurring, position")
-    .eq("sprint_id", sprint.id)
-    .order("position", { ascending: true });
 
   const tasks: EditableTask[] = (taskRows ?? []).map((t) => ({
     id: t.id,

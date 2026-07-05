@@ -41,6 +41,8 @@ export type SidebarUser = {
   avatarUrl: string | null;
   level: number;
   levelTitle: string;
+  /** 0–100 progress within the current level. */
+  levelProgressPct: number;
 };
 
 export function Sidebar({ user }: { user: SidebarUser }) {
@@ -134,9 +136,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary/10 text-primary before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
                 title={collapsed ? item.label : undefined}
@@ -175,6 +177,12 @@ export function Sidebar({ user }: { user: SidebarUser }) {
                 <p className="mt-0.5 truncate text-xs font-semibold text-primary">
                   Lv {user.level} · {user.levelTitle}
                 </p>
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${user.levelProgressPct}%` }}
+                  />
+                </div>
               </div>
             )}
           </div>

@@ -48,26 +48,37 @@ export async function WeekSummary({
   const supabase = await createClient();
   const viewer = await getUser();
 
-  // Sprint (may not exist) and the week's daily logs, fetched in parallel.
-  const [{ data: sprint }, { data: dailyLogs }] = await Promise.all([
-    supabase
-      .from("sprints")
-      .select(
-        "id, week_start_date, notes, reflection_went_well, reflection_improve, reflection_lesson, tasks(id, name, category, target_hours, position)"
-      )
-      .eq("owner_id", ownerId)
-      .eq("week_start_date", weekStart)
-      .maybeSingle(),
-    supabase
-      .from("daily_logs")
-      .select(
-        "id, log_date, morning_mood, morning_energy, closing_mood, productivity_rating, priorities(id, status), time_entries(task_id, duration_hours)"
-      )
-      .eq("owner_id", ownerId)
-      .gte("log_date", weekStart)
-      .lte("log_date", weekEnd)
-      .order("log_date", { ascending: true }),
-  ]);
+  // Sprint (may not exist), the week's daily logs, and todo completions,
+  // fetched in parallel. Todos are owner-only (RLS), so skip when reviewing.
+  const [{ data: sprint }, { data: dailyLogs }, { count: todosDone }] =
+    await Promise.all([
+      supabase
+        .from("sprints")
+        .select(
+          "id, week_start_date, notes, reflection_went_well, reflection_improve, reflection_lesson, tasks(id, name, category, target_hours, position)"
+        )
+        .eq("owner_id", ownerId)
+        .eq("week_start_date", weekStart)
+        .maybeSingle(),
+      supabase
+        .from("daily_logs")
+        .select(
+          "id, log_date, morning_mood, morning_energy, closing_mood, productivity_rating, priorities(id, status), time_entries(task_id, duration_hours)"
+        )
+        .eq("owner_id", ownerId)
+        .gte("log_date", weekStart)
+        .lte("log_date", weekEnd)
+        .order("log_date", { ascending: true }),
+      readOnly
+        ? Promise.resolve({ count: null })
+        : supabase
+            .from("todo_tasks")
+            .select("id", { count: "exact", head: true })
+            .eq("owner_id", ownerId)
+            .eq("is_completed", true)
+            .gte("completed_at", `${weekStart}T00:00:00Z`)
+            .lt("completed_at", `${addDaysIso(weekEnd, 1)}T00:00:00Z`),
+    ]);
 
   const tasks = (sprint?.tasks ?? [])
     .slice()
@@ -168,7 +179,11 @@ export async function WeekSummary({
   return (
     <>
       {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={`grid gap-4 sm:grid-cols-2 ${
+          readOnly ? "lg:grid-cols-4" : "lg:grid-cols-3 xl:grid-cols-5"
+        }`}
+      >
         <SummaryCard
           label="Hours logged"
           value={`${totalLogged.toFixed(1)}h`}
@@ -205,6 +220,13 @@ export async function WeekSummary({
               : "no priorities set"
           }
         />
+        {!readOnly && (
+          <SummaryCard
+            label="Todos done"
+            value={String(todosDone ?? 0)}
+            sub="completed this week"
+          />
+        )}
       </div>
 
       {!sprint ? (

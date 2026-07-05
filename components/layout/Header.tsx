@@ -15,10 +15,17 @@ export function Header() {
     () => false
   );
 
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm md:px-6">
       {/* Spacer that reserves room for the mobile hamburger button */}
       <div className="w-10 md:hidden" />
+      <p className="text-sm font-medium text-muted-foreground">{today}</p>
       <div className="flex items-center gap-4">
         {mounted && (() => {
           const cycle = { light: "dark", dark: "colourful", colourful: "light" } as const;

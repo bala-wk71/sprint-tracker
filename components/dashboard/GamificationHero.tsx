@@ -1,4 +1,12 @@
-import { Flame, CalendarCheck, Shield, Sunrise, Timer, Moon } from "lucide-react";
+import {
+  Flame,
+  CalendarCheck,
+  Shield,
+  Sunrise,
+  Timer,
+  Moon,
+  CheckSquare,
+} from "lucide-react";
 import type { LevelInfo, ShieldedStreak } from "@/lib/gamification";
 import type { StreakResult } from "@/lib/streaks";
 
@@ -13,13 +21,20 @@ type Props = {
   daily: ShieldedStreak;
   weekly: StreakResult;
   today: TodayStatus;
+  todosDoneToday?: number;
 };
 
-export function GamificationHero({ level, daily, weekly, today }: Props) {
+export function GamificationHero({
+  level,
+  daily,
+  weekly,
+  today,
+  todosDoneToday = 0,
+}: Props) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <LevelCard level={level} />
-      <TodayCard today={today} />
+      <TodayCard today={today} todosDoneToday={todosDoneToday} />
       <DailyStreakCard daily={daily} />
       <WeeklyStreakCard weekly={weekly} />
     </div>
@@ -63,7 +78,13 @@ const TODAY_STEPS = [
   { key: "wrapup", label: "Evening wrap-up", icon: Moon },
 ] as const;
 
-function TodayCard({ today }: { today: TodayStatus }) {
+function TodayCard({
+  today,
+  todosDoneToday,
+}: {
+  today: TodayStatus;
+  todosDoneToday: number;
+}) {
   const done = TODAY_STEPS.filter((s) => today[s.key]).length;
   const total = TODAY_STEPS.length;
   const r = 26;
@@ -134,6 +155,12 @@ function TodayCard({ today }: { today: TodayStatus }) {
               {label}
             </li>
           ))}
+          {todosDoneToday > 0 && (
+            <li className="flex items-center gap-1.5 text-xs text-[hsl(var(--strong-signal))]">
+              <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+              {todosDoneToday} todo{todosDoneToday === 1 ? "" : "s"} done
+            </li>
+          )}
         </ul>
       </div>
     </div>

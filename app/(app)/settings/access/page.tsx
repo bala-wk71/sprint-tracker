@@ -12,28 +12,27 @@ export default async function AccessSettingsPage() {
   const user = await getUser();
   if (!user) return null;
 
-  // Sent invites (any status)
-  const { data: inviteRows } = await supabase
-    .from("invites")
-    .select("id, invitee_email, invite_type, status, expires_at, created_at, token")
-    .eq("inviter_id", user.id)
-    .order("created_at", { ascending: false });
+  // Sent invites, people reviewing me, and people I review — independent.
+  const [{ data: inviteRows }, { data: myReviewers }, { data: iReview }] =
+    await Promise.all([
+      supabase
+        .from("invites")
+        .select("id, invitee_email, invite_type, status, expires_at, created_at, token")
+        .eq("inviter_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("reviewer_relationships")
+        .select("id, reviewer_id, created_at, users!reviewer_relationships_reviewer_id_fkey(id, full_name, email, avatar_url)")
+        .eq("owner_id", user.id),
+      supabase
+        .from("reviewer_relationships")
+        .select("id, owner_id, created_at, users!reviewer_relationships_owner_id_fkey(id, full_name, email, avatar_url)")
+        .eq("reviewer_id", user.id),
+    ]);
 
   const invites = inviteRows ?? [];
   const pendingCount = invites.filter((i) => i.status === "pending").length;
   const remainingInvites = Math.max(0, MAX_INVITES - pendingCount);
-
-  // People reviewing me (I am the owner)
-  const { data: myReviewers } = await supabase
-    .from("reviewer_relationships")
-    .select("id, reviewer_id, created_at, users!reviewer_relationships_reviewer_id_fkey(id, full_name, email, avatar_url)")
-    .eq("owner_id", user.id);
-
-  // People I am reviewing (I am the reviewer)
-  const { data: iReview } = await supabase
-    .from("reviewer_relationships")
-    .select("id, owner_id, created_at, users!reviewer_relationships_owner_id_fkey(id, full_name, email, avatar_url)")
-    .eq("reviewer_id", user.id);
 
   return (
     <div className="space-y-6">

@@ -45,6 +45,7 @@ export default async function DashboardPage({
     { data: statsRaw },
     { data: achievementRows },
     { data: todayLog },
+    { count: todosDoneToday },
     weeklyStreak,
   ] = await Promise.all([
     supabase.rpc("total_xp"),
@@ -59,6 +60,12 @@ export default async function DashboardPage({
       .eq("log_date", todayIso)
       .limit(1, { referencedTable: "time_entries" })
       .maybeSingle(),
+    supabase
+      .from("todo_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", user.id)
+      .eq("is_completed", true)
+      .gte("completed_at", `${todayIso}T00:00:00Z`),
     computeWeeklyStreak(supabase, user.id),
   ]);
 
@@ -99,6 +106,7 @@ export default async function DashboardPage({
         daily={dailyStreak}
         weekly={weeklyStreak}
         today={today}
+        todosDoneToday={todosDoneToday ?? 0}
       />
       <WeekSummary
         ownerId={user.id}
