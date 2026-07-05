@@ -55,6 +55,7 @@ export function EveningWrapUp({
   const [priorityStatuses, setPriorityStatuses] = useState<EveningPriority[]>(priorities);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [xpGained, setXpGained] = useState(0);
 
   const setStatus = (id: string, status: PriorityStatus) => {
     setPriorityStatuses((prev) =>
@@ -86,6 +87,7 @@ export function EveningWrapUp({
         return;
       }
       setSavedAt(new Date().toLocaleTimeString());
+      setXpGained("xp" in result && result.xp ? result.xp : 0);
       router.refresh();
     });
   };
@@ -276,7 +278,14 @@ export function EveningWrapUp({
           {pending ? "Saving…" : "Save evening wrap-up"}
         </button>
         {savedAt && (
-          <span className="text-xs text-muted-foreground">Saved at {savedAt}</span>
+          <span className="text-xs text-muted-foreground">
+            Saved at {savedAt}
+            {xpGained > 0 && (
+              <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
+                +{xpGained} XP
+              </span>
+            )}
+          </span>
         )}
       </div>
     </div>

@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { awardXp } from "@/lib/gamification";
 
 export type ActionResult<T = undefined> =
-  | ({ ok: true } & (T extends undefined ? object : { data: T }))
+  | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
   | { ok: false; error: string };
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
@@ -153,9 +154,20 @@ export async function saveMorningCheckIn(
       if (insertError) return { ok: false, error: insertError.message };
     }
 
+    // A check-in earns XP once per day (mood or energy actually filled in).
+    let xp = 0;
+    if (parsed.data.morning_mood || parsed.data.morning_energy !== null) {
+      xp = await awardXp(
+        ctx.supabase,
+        ctx.user.id,
+        "morning_checkin",
+        parsed.data.date
+      );
+    }
+
     revalidatePath("/daily");
     revalidatePath("/dashboard");
-    return { ok: true };
+    return { ok: true, xp };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed" };
   }
@@ -192,22 +204,30 @@ export async function addTimeEntry(input: TimeEntryInput): Promise<ActionResult>
   try {
     const log = await ensureDailyLog(ctx, parsed.data.date);
 
-    const { error } = await ctx.supabase.from("time_entries").insert({
-      daily_log_id: log.id,
-      owner_id: ctx.user.id,
-      task_id: parsed.data.task_id,
-      start_time: parsed.data.start_time,
-      duration_hours: parsed.data.duration_hours,
-      energy_during: parsed.data.energy_during,
-      notes: parsed.data.notes || null,
-      is_private: parsed.data.is_private,
-    });
+    const { data: entry, error } = await ctx.supabase
+      .from("time_entries")
+      .insert({
+        daily_log_id: log.id,
+        owner_id: ctx.user.id,
+        task_id: parsed.data.task_id,
+        start_time: parsed.data.start_time,
+        duration_hours: parsed.data.duration_hours,
+        energy_during: parsed.data.energy_during,
+        notes: parsed.data.notes || null,
+        is_private: parsed.data.is_private,
+      })
+      .select("id")
+      .single();
 
     if (error) return { ok: false, error: error.message };
 
+    const xp = entry
+      ? await awardXp(ctx.supabase, ctx.user.id, "time_entry", entry.id)
+      : 0;
+
     revalidatePath("/daily");
     revalidatePath("/dashboard");
-    return { ok: true };
+    return { ok: true, xp };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed" };
   }
@@ -329,9 +349,50 @@ export async function saveEveningWrapUp(
       if (error) return { ok: false, error: error.message };
     }
 
+    let xp = 0;
+    if (parsed.data.closing_mood || parsed.data.productivity_rating !== null) {
+      xp += await awardXp(
+        ctx.supabase,
+        ctx.user.id,
+        "evening_wrapup",
+        parsed.data.date
+      );
+    }
+    for (const p of parsed.data.priority_statuses) {
+      if (p.status === "done") {
+        xp += await awardXp(ctx.supabase, ctx.user.id, "priority_done", p.id);
+      }
+    }
+
+    // Perfect day: check-in + at least one time entry + wrap-up, same date.
+    const [{ data: logRow }, { count: entryCount }] = await Promise.all([
+      ctx.supabase
+        .from("daily_logs")
+        .select("morning_mood, morning_energy, closing_mood")
+        .eq("id", log.id)
+        .single(),
+      ctx.supabase
+        .from("time_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("daily_log_id", log.id),
+    ]);
+    if (
+      logRow &&
+      (logRow.morning_mood || logRow.morning_energy !== null) &&
+      logRow.closing_mood &&
+      (entryCount ?? 0) > 0
+    ) {
+      xp += await awardXp(
+        ctx.supabase,
+        ctx.user.id,
+        "perfect_day",
+        parsed.data.date
+      );
+    }
+
     revalidatePath("/daily");
     revalidatePath("/dashboard");
-    return { ok: true };
+    return { ok: true, xp };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed" };
   }

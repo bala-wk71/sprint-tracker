@@ -570,6 +570,70 @@ export type Database = {
           },
         ]
       }
+      xp_events: {
+        Row: {
+          id: string
+          owner_id: string
+          amount: number
+          reason: string
+          dedupe_key: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          amount: number
+          reason: string
+          dedupe_key: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          amount?: number
+          reason?: string
+          dedupe_key?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_events_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_achievements: {
+        Row: {
+          id: string
+          owner_id: string
+          achievement_id: string
+          unlocked_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          achievement_id: string
+          unlocked_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          achievement_id?: string
+          unlocked_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_entries: {
         Row: {
           created_at: string
@@ -727,6 +791,8 @@ export type Database = {
     Functions: {
       can_view_owner: { Args: { target_owner: string }; Returns: boolean }
       is_reviewer_of: { Args: { target_owner: string }; Returns: boolean }
+      total_xp: { Args: Record<string, never>; Returns: number }
+      gamification_stats: { Args: Record<string, never>; Returns: Json }
     }
     Enums: {
       comment_target_type: "daily_log" | "sprint"

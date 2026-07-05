@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { awardXp } from "@/lib/gamification";
 
 export type ActionResult =
   | { ok: true }
@@ -42,6 +43,15 @@ export async function saveWeeklyReflection(
     .eq("owner_id", user.id);
 
   if (error) return { ok: false, error: error.message };
+
+  // Reflection XP once per sprint, only when all three prompts are answered.
+  if (
+    parsed.data.reflection_went_well &&
+    parsed.data.reflection_improve &&
+    parsed.data.reflection_lesson
+  ) {
+    await awardXp(supabase, user.id, "weekly_reflection", parsed.data.sprint_id);
+  }
 
   revalidatePath("/dashboard");
   return { ok: true };

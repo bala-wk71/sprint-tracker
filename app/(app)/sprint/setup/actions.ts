@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { awardXp } from "@/lib/gamification";
 
 const TASK_CATEGORY = z.enum([
   "strong_signal",
@@ -87,6 +88,8 @@ export async function createSprintWithTasks(
     await supabase.from("sprints").delete().eq("id", sprint.id);
     return { ok: false, error: tasksError.message };
   }
+
+  await awardXp(supabase, user.id, "sprint_created", sprint.id);
 
   revalidatePath("/sprint/setup");
   revalidatePath("/dashboard");

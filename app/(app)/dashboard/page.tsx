@@ -1,8 +1,15 @@
 import { format, startOfWeek } from "date-fns";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
-import { StreakCards } from "@/components/dashboard/StreakCards";
-import { computeDailyStreak, computeWeeklyStreak } from "@/lib/streaks";
+import { GamificationHero } from "@/components/dashboard/GamificationHero";
+import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
+import { AchievementSync } from "@/components/dashboard/AchievementSync";
+import { computeWeeklyStreak } from "@/lib/streaks";
+import {
+  computeShieldedStreak,
+  levelFromXp,
+  type GamificationStats,
+} from "@/lib/gamification";
 import { WeekNav } from "./WeekNav";
 
 type SearchParams = Promise<{ week?: string }>;
@@ -31,10 +38,50 @@ export default async function DashboardPage({
   const user = await getUser();
   if (!user) return null;
 
-  const [dailyStreak, weeklyStreak] = await Promise.all([
-    computeDailyStreak(supabase, user.id),
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const [
+    { data: totalXp },
+    { data: statsRaw },
+    { data: achievementRows },
+    { data: todayLog },
+    weeklyStreak,
+  ] = await Promise.all([
+    supabase.rpc("total_xp"),
+    supabase.rpc("gamification_stats"),
+    supabase.from("user_achievements").select("achievement_id"),
+    supabase
+      .from("daily_logs")
+      .select(
+        "morning_mood, morning_energy, closing_mood, productivity_rating, time_entries(id)"
+      )
+      .eq("owner_id", user.id)
+      .eq("log_date", todayIso)
+      .limit(1, { referencedTable: "time_entries" })
+      .maybeSingle(),
     computeWeeklyStreak(supabase, user.id),
   ]);
+
+  const stats = (statsRaw ?? {
+    log_dates: [],
+    total_hours: 0,
+    priorities_done: 0,
+    sprints_count: 0,
+    reflections_count: 0,
+  }) as unknown as GamificationStats;
+
+  const level = levelFromXp(Number(totalXp ?? 0));
+  const dailyStreak = computeShieldedStreak(stats.log_dates, todayIso);
+  const today = {
+    checkin: Boolean(
+      todayLog && (todayLog.morning_mood || todayLog.morning_energy !== null)
+    ),
+    timeLogged: Boolean(todayLog && (todayLog.time_entries?.length ?? 0) > 0),
+    wrapup: Boolean(
+      todayLog &&
+        (todayLog.closing_mood || todayLog.productivity_rating !== null)
+    ),
+  };
 
   return (
     <div className="space-y-6">
@@ -47,12 +94,21 @@ export default async function DashboardPage({
         </div>
         <WeekNav weekStart={weekStart} currentWeekStart={currentWeekStart} />
       </div>
-      <StreakCards daily={dailyStreak} weekly={weeklyStreak} />
+      <GamificationHero
+        level={level}
+        daily={dailyStreak}
+        weekly={weeklyStreak}
+        today={today}
+      />
       <WeekSummary
         ownerId={user.id}
         weekStart={weekStart}
         revalidatePath="/dashboard"
       />
+      <AchievementsPanel
+        unlockedIds={(achievementRows ?? []).map((r) => r.achievement_id)}
+      />
+      <AchievementSync />
     </div>
   );
 }

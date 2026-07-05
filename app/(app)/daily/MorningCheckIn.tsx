@@ -46,6 +46,7 @@ export function MorningCheckIn({
   });
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [xpGained, setXpGained] = useState(0);
 
   const updatePriority = (idx: number, patch: Partial<MorningPriority>) => {
     setPriorities((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
@@ -73,6 +74,7 @@ export function MorningCheckIn({
         return;
       }
       setSavedAt(new Date().toLocaleTimeString());
+      setXpGained("xp" in result && result.xp ? result.xp : 0);
       router.refresh();
     });
   };
@@ -204,7 +206,14 @@ export function MorningCheckIn({
           {pending ? "Saving…" : "Save morning check-in"}
         </button>
         {savedAt && (
-          <span className="text-xs text-muted-foreground">Saved at {savedAt}</span>
+          <span className="text-xs text-muted-foreground">
+            Saved at {savedAt}
+            {xpGained > 0 && (
+              <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
+                +{xpGained} XP
+              </span>
+            )}
+          </span>
         )}
       </div>
     </div>

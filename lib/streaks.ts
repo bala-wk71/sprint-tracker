@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { format, startOfWeek, subWeeks } from "date-fns";
+import { format, startOfWeek } from "date-fns";
 
 type Client = SupabaseClient<Database>;
 
@@ -8,44 +8,6 @@ export type StreakResult = { current: number; lastActiveDate: string | null };
 
 function mondayIsoOf(date: Date): string {
   return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
-}
-
-function addDays(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-export async function computeDailyStreak(
-  supabase: Client,
-  userId: string
-): Promise<StreakResult> {
-  const { data } = await supabase
-    .from("daily_logs")
-    .select("log_date")
-    .eq("owner_id", userId)
-    .order("log_date", { ascending: false })
-    .limit(90);
-
-  if (!data || data.length === 0) return { current: 0, lastActiveDate: null };
-
-  const dates = new Set(data.map((r) => r.log_date));
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = addDays(today, -1);
-
-  // Grace: if today has no log, we start counting from yesterday
-  let cursor = dates.has(today) ? today : yesterday;
-  if (!dates.has(cursor)) return { current: 0, lastActiveDate: null };
-
-  let streak = 0;
-  let lastActive = cursor;
-  while (dates.has(cursor)) {
-    streak++;
-    lastActive = cursor;
-    cursor = addDays(cursor, -1);
-  }
-
-  return { current: streak, lastActiveDate: lastActive };
 }
 
 export async function computeWeeklyStreak(
