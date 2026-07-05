@@ -29,6 +29,23 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // When an OAuth flow fails, Supabase falls back to redirecting to the Site
+  // URL (root) with error params. Forward them to /login so they are shown
+  // instead of being lost in the / -> /dashboard -> /login redirect chain.
+  if (
+    request.nextUrl.pathname === "/" &&
+    (request.nextUrl.searchParams.has("error") ||
+      request.nextUrl.searchParams.has("error_code"))
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    const code =
+      url.searchParams.get("error_code") ?? url.searchParams.get("error");
+    if (code) url.searchParams.set("error", code);
+    url.searchParams.delete("error_code");
+    return NextResponse.redirect(url);
+  }
+
   // Refresh the session - important for Server Components
   const {
     data: { user },

@@ -4,9 +4,25 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  bad_oauth_state:
+    "Your sign-in session expired before it could finish. This happens if the Google page sat open for a while — just try again.",
+  auth_failed: "Sign-in didn't complete. Please try again.",
+  exchange_failed:
+    "We couldn't finish signing you in. Please try again — it usually works on the next attempt.",
+  access_denied: "Google sign-in was cancelled or denied.",
+};
+
 function LoginInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
+  const errorCode = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
+  const errorMessage = errorCode
+    ? (ERROR_MESSAGES[errorCode] ??
+      errorDescription ??
+      "Something went wrong during sign-in. Please try again.")
+    : null;
 
   const handleGoogleLogin = async () => {
     const supabase = createClient();
@@ -29,6 +45,15 @@ function LoginInner() {
             Weekly sprint planning & productivity tracking
           </p>
         </div>
+
+        {errorMessage && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400"
+          >
+            {errorMessage}
+          </div>
+        )}
 
         <button
           onClick={handleGoogleLogin}
