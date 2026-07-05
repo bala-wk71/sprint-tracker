@@ -1,5 +1,5 @@
 import { format, startOfWeek } from "date-fns";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
 import { DateNav } from "./DateNav";
 import { MorningCheckIn, type MorningPriority } from "./MorningCheckIn";
@@ -35,32 +35,59 @@ export default async function DailyPage({
     params.date && isValidIsoDate(params.date) ? params.date : todayIso;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
-  // Fetch the daily log for (user, date) — may not exist yet.
-  const { data: dailyLog } = await supabase
-    .from("daily_logs")
-    .select(
-      "id, morning_mood, morning_energy, daily_intention, closing_mood, productivity_rating, reflection, reflection_private, improvement, win, gratitude, gratitude_private"
-    )
-    .eq("owner_id", user.id)
-    .eq("log_date", date)
-    .maybeSingle();
+  // Sprint for this week — used to populate the time entry task dropdown.
+  const monday = format(
+    startOfWeek(new Date(`${date}T00:00:00`), { weekStartsOn: 1 }),
+    "yyyy-MM-dd"
+  );
 
-  // Priorities + time entries depend on whether the log exists.
+  // Daily log (may not exist yet) and this week's sprint, fetched in parallel.
+  const [{ data: dailyLog }, { data: sprint }] = await Promise.all([
+    supabase
+      .from("daily_logs")
+      .select(
+        "id, morning_mood, morning_energy, daily_intention, closing_mood, productivity_rating, reflection, reflection_private, improvement, win, gratitude, gratitude_private"
+      )
+      .eq("owner_id", user.id)
+      .eq("log_date", date)
+      .maybeSingle(),
+    supabase
+      .from("sprints")
+      .select("id, tasks(id, name, category, position)")
+      .eq("owner_id", user.id)
+      .eq("week_start_date", monday)
+      .maybeSingle(),
+  ]);
+
+  // Priorities, time entries, and comments depend on the log existing.
   let morningPriorities: MorningPriority[] = [];
   let eveningPriorities: EveningPriority[] = [];
   let timeEntries: DisplayTimeEntry[] = [];
+  let dayComments: Awaited<ReturnType<typeof loadComments>> = [];
 
   if (dailyLog) {
-    const { data: priorityRows } = await supabase
-      .from("priorities")
-      .select("id, position, description, target_hours, status")
-      .eq("daily_log_id", dailyLog.id)
-      .order("position", { ascending: true });
+    const [{ data: priorityRows }, { data: entryRows }, comments] =
+      await Promise.all([
+        supabase
+          .from("priorities")
+          .select("id, position, description, target_hours, status")
+          .eq("daily_log_id", dailyLog.id)
+          .order("position", { ascending: true }),
+        supabase
+          .from("time_entries")
+          .select(
+            "id, task_id, start_time, duration_hours, energy_during, notes, is_private, tasks(name, category)"
+          )
+          .eq("daily_log_id", dailyLog.id)
+          .order("start_time", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true }),
+        loadComments("daily_log", dailyLog.id),
+      ]);
+
+    dayComments = comments;
 
     morningPriorities = (priorityRows ?? []).map((p) => ({
       position: p.position,
@@ -74,15 +101,6 @@ export default async function DailyPage({
       description: p.description,
       status: p.status,
     }));
-
-    const { data: entryRows } = await supabase
-      .from("time_entries")
-      .select(
-        "id, task_id, start_time, duration_hours, energy_during, notes, is_private, tasks(name, category)"
-      )
-      .eq("daily_log_id", dailyLog.id)
-      .order("start_time", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true });
 
     timeEntries = (entryRows ?? []).map((row) => {
       const task = Array.isArray(row.tasks) ? row.tasks[0] : row.tasks;
@@ -100,19 +118,6 @@ export default async function DailyPage({
     });
   }
 
-  // Sprint for this week — used to populate the time entry task dropdown.
-  const monday = format(
-    startOfWeek(new Date(`${date}T00:00:00`), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
-
-  const { data: sprint } = await supabase
-    .from("sprints")
-    .select("id, tasks(id, name, category, position)")
-    .eq("owner_id", user.id)
-    .eq("week_start_date", monday)
-    .maybeSingle();
-
   const sprintTasks: SprintTaskOption[] = (sprint?.tasks ?? [])
     .slice()
     .sort((a, b) => a.position - b.position)
@@ -121,11 +126,6 @@ export default async function DailyPage({
       name: t.name,
       category: t.category as TaskCategory,
     }));
-
-  // Comments on this day's log (only present once the log row exists).
-  const dayComments = dailyLog
-    ? await loadComments("daily_log", dailyLog.id)
-    : [];
 
   return (
     <div className="space-y-6">

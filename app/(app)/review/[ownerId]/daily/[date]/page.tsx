@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { ArrowLeft, Lock } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import {
   MORNING_MOODS,
   EVENING_MOODS,
@@ -44,9 +44,7 @@ export default async function ReviewDailyPage({
   if (!isValidIsoDate(date)) notFound();
 
   const supabase = await createClient();
-  const {
-    data: { user: viewer },
-  } = await supabase.auth.getUser();
+  const viewer = await getUser();
   if (!viewer) return null;
 
   // Verify the reviewer relationship.

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import {
   TASK_CATEGORIES,
   MORNING_MOODS,
@@ -46,19 +46,28 @@ export async function WeekSummary({
 }: Props) {
   const weekEnd = addDaysIso(weekStart, 6);
   const supabase = await createClient();
-  const {
-    data: { user: viewer },
-  } = await supabase.auth.getUser();
+  const viewer = await getUser();
 
-  // Sprint for this week (may not exist).
-  const { data: sprint } = await supabase
-    .from("sprints")
-    .select(
-      "id, week_start_date, notes, reflection_went_well, reflection_improve, reflection_lesson, tasks(id, name, category, target_hours, position)"
-    )
-    .eq("owner_id", ownerId)
-    .eq("week_start_date", weekStart)
-    .maybeSingle();
+  // Sprint (may not exist) and the week's daily logs, fetched in parallel.
+  const [{ data: sprint }, { data: dailyLogs }] = await Promise.all([
+    supabase
+      .from("sprints")
+      .select(
+        "id, week_start_date, notes, reflection_went_well, reflection_improve, reflection_lesson, tasks(id, name, category, target_hours, position)"
+      )
+      .eq("owner_id", ownerId)
+      .eq("week_start_date", weekStart)
+      .maybeSingle(),
+    supabase
+      .from("daily_logs")
+      .select(
+        "id, log_date, morning_mood, morning_energy, closing_mood, productivity_rating, priorities(id, status), time_entries(task_id, duration_hours)"
+      )
+      .eq("owner_id", ownerId)
+      .gte("log_date", weekStart)
+      .lte("log_date", weekEnd)
+      .order("log_date", { ascending: true }),
+  ]);
 
   const tasks = (sprint?.tasks ?? [])
     .slice()
@@ -68,17 +77,6 @@ export async function WeekSummary({
   const sprintComments = sprint
     ? await loadComments("sprint", sprint.id)
     : [];
-
-  // All daily logs for the week.
-  const { data: dailyLogs } = await supabase
-    .from("daily_logs")
-    .select(
-      "id, log_date, morning_mood, morning_energy, closing_mood, productivity_rating, priorities(id, status), time_entries(task_id, duration_hours)"
-    )
-    .eq("owner_id", ownerId)
-    .gte("log_date", weekStart)
-    .lte("log_date", weekEnd)
-    .order("log_date", { ascending: true });
 
   // Aggregate hours per task across the week.
   const hoursByTask = new Map<string, number>();

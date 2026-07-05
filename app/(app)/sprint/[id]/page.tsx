@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { ArrowLeft } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
 import { TasksEditor, type EditableTask } from "./TasksEditor";
 import { DeleteSprintButton } from "./DeleteSprintButton";
@@ -14,9 +14,7 @@ export default async function SprintDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   const { data: sprint } = await supabase

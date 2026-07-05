@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { format, startOfWeek } from "date-fns";
 import { ChevronRight } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { CreateSprintForm } from "./CreateSprintForm";
 import { UseAsTemplateButton } from "./UseAsTemplateButton";
 
 export default async function SprintSetupPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   // (app)/layout.tsx already redirects unauthenticated users; this is just for TS.
   if (!user) return null;

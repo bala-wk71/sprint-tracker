@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
 import { ChevronRight } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 type Owner = {
   id: string;
@@ -13,9 +13,7 @@ type Owner = {
 
 export default async function ReviewListPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   // People who have invited me to review them.

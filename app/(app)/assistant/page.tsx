@@ -1,13 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { ChatInterface } from "./ChatInterface";
 import { PersonaSelector } from "./PersonaSelector";
 import type { AiPersona } from "@/lib/ai/prompts";
 
 export default async function AssistantPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   const { data: profile } = await supabase

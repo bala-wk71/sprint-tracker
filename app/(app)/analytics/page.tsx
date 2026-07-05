@@ -1,5 +1,5 @@
 import { format, startOfWeek, subDays } from "date-fns";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
 import { AnalyticsCharts } from "./AnalyticsCharts";
 
@@ -22,9 +22,7 @@ function todayIsoLocal(): string {
 
 export default async function AnalyticsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   const todayIso = todayIsoLocal();

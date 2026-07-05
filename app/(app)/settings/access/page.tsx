@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { ArrowLeft } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { MAX_INVITES } from "@/lib/constants";
 import { InviteForm } from "./InviteForm";
 import { PendingInvitesList } from "./PendingInvitesList";
@@ -9,9 +9,7 @@ import { ReviewersList } from "./ReviewersList";
 
 export default async function AccessSettingsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   // Sent invites (any status)

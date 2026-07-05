@@ -1,12 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { TodoShell } from "./TodoShell";
 import type { TodoSection, TodoTask } from "./types";
 
 export default async function TodoPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   const [{ data: sectionsRaw }, { data: tasksRaw }] = await Promise.all([

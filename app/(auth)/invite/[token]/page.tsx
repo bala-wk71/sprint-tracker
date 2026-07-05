@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { AcceptInviteButton } from "./AcceptInviteButton";
 
 export default async function InviteAcceptancePage({
@@ -10,9 +10,7 @@ export default async function InviteAcceptancePage({
 }) {
   const { token } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) {
     // Bounce through Google OAuth, then come back to this same page.

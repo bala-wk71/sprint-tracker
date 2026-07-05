@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import type { Database } from "./types";
 
-export async function createClient() {
+// Memoized per request: every server component / helper in a render pass
+// shares one client instead of constructing its own.
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
@@ -26,4 +29,14 @@ export async function createClient() {
       },
     }
   );
-}
+});
+
+// Memoized per request: layout, page, and nested components all trigger a
+// single network round trip to Supabase Auth instead of one each.
+export const getUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});

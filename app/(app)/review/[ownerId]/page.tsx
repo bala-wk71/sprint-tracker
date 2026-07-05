@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { format, startOfWeek } from "date-fns";
 import { ArrowLeft } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { WeekNav } from "@/app/(app)/dashboard/WeekNav";
 
@@ -29,9 +29,7 @@ export default async function ReviewOwnerPage({
   const sp = await searchParams;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   // Verify the relationship — the viewer must be a reviewer of this owner.

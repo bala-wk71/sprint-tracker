@@ -1,5 +1,5 @@
 import { format, startOfWeek } from "date-fns";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { StreakCards } from "@/components/dashboard/StreakCards";
 import { computeDailyStreak, computeWeeklyStreak } from "@/lib/streaks";
@@ -28,9 +28,7 @@ export default async function DashboardPage({
       : currentWeekStart;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
 
   const [dailyStreak, weeklyStreak] = await Promise.all([
