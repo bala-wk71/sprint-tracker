@@ -16,17 +16,19 @@ export async function syncAchievements(): Promise<{ newlyUnlocked: string[] }> {
   if (!user) return { newlyUnlocked: [] };
 
   const supabase = await createClient();
-  const [{ data: statsRaw }, { data: existingRows }] = await Promise.all([
-    supabase.rpc("gamification_stats"),
-    supabase.from("user_achievements").select("achievement_id"),
-  ]);
+  const [{ data: statsRaw }, { data: existingRows }, { data: totalXp }] =
+    await Promise.all([
+      supabase.rpc("gamification_stats"),
+      supabase.from("user_achievements").select("achievement_id"),
+      supabase.rpc("total_xp"),
+    ]);
   if (!statsRaw) return { newlyUnlocked: [] };
 
   const stats = statsRaw as unknown as GamificationStats;
   const existing = new Set(
     (existingRows ?? []).map((r) => r.achievement_id)
   );
-  const newlyUnlocked = earnedAchievementIds(stats).filter(
+  const newlyUnlocked = earnedAchievementIds(stats, Number(totalXp ?? 0)).filter(
     (id) => !existing.has(id)
   );
 
