@@ -1,35 +1,52 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+import { useTheme } from "next-themes";
 import {
   Area,
   AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
-// Fixed HSL values matching CSS variables in globals.css so charts look
-// consistent across light and dark themes.
-const COLORS = {
-  strong_signal: "hsl(140, 49%, 48%)",
-  weak_signal: "hsl(40, 72%, 49%)",
-  strong_noise: "hsl(0, 90%, 63%)",
-  weak_noise: "hsl(269, 58%, 72%)",
-  personal: "hsl(212, 92%, 67%)",
-  untagged: "hsl(215, 14%, 45%)",
-  primary: "hsl(213, 94%, 68%)",
-  grid: "hsl(215, 14%, 30%)",
-  axis: "hsl(214, 12%, 56%)",
+// CVD-validated per surface — keep in sync with the --viz-* vars in
+// globals.css. Recharts writes SVG presentation attributes, which can't
+// resolve CSS variables, so the hex lives here and swaps with the theme.
+const PALETTES = {
+  light: {
+    strong_signal: "#1baf7a",
+    weak_signal: "#eda100",
+    personal: "#2a78d6",
+    strong_noise: "#e34948",
+    weak_noise: "#4a3aa7",
+    untagged: "#898781",
+    energy: "#eda100",
+    primary: "#2a78d6",
+    grid: "#e8e4da",
+    axis: "#7d7466",
+    surface: "#ffffff",
+  },
+  dark: {
+    strong_signal: "#199e70",
+    weak_signal: "#c98500",
+    personal: "#3987e5",
+    strong_noise: "#e66767",
+    weak_noise: "#9085e9",
+    untagged: "#898781",
+    energy: "#c98500",
+    primary: "#3987e5",
+    grid: "#262f3d",
+    axis: "#8b95a5",
+    surface: "#161b22",
+  },
 } as const;
 
 type DailyRow = {
@@ -41,91 +58,94 @@ type DailyRow = {
 };
 
 type WeeklyRow = {
-  weekStart: string;
   label: string;
   strong_signal: number;
   weak_signal: number;
+  personal: number;
   strong_noise: number;
   weak_noise: number;
-  personal: number;
   untagged: number;
   total: number;
-};
-
-type CategoryRow = {
-  key: string;
-  label: string;
-  hours: number;
 };
 
 type Props = {
   dailySeries: DailyRow[];
   weeklySeries: WeeklyRow[];
-  categoryDistribution: CategoryRow[];
 };
 
-const tooltipStyle = {
-  backgroundColor: "hsl(var(--card))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: "6px",
-  color: "hsl(var(--foreground))",
-  fontSize: "12px",
+// Stack order matches SignalMeter: signal → personal → noise → untagged.
+const STACK_KEYS = [
+  "strong_signal",
+  "weak_signal",
+  "personal",
+  "strong_noise",
+  "weak_noise",
+  "untagged",
+] as const;
+
+const CATEGORY_LABELS: Record<(typeof STACK_KEYS)[number], string> = {
+  strong_signal: "Strong Signal",
+  weak_signal: "Weak Signal",
+  personal: "Personal",
+  strong_noise: "Strong Noise",
+  weak_noise: "Weak Noise",
+  untagged: "Untagged",
 };
 
-const axisTickStyle = {
-  fill: COLORS.axis,
-  fontSize: 11,
-};
+const emptySubscribe = () => () => {};
 
-export function AnalyticsCharts({
-  dailySeries,
-  weeklySeries,
-  categoryDistribution,
-}: Props) {
-  // Productivity series has holes for untracked days — Recharts LineChart
-  // handles nulls natively with connectNulls={false}, so pass as-is.
-  const productivityData = dailySeries.map((d) => ({
-    label: d.label,
-    productivity: d.productivity,
-  }));
+export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
+  const { resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+  // "colourful" has light surfaces, so it shares the light chart palette.
+  const c = PALETTES[mounted && resolvedTheme === "dark" ? "dark" : "light"];
 
-  const hasWeekly = weeklySeries.length > 0;
-  const hasCategory = categoryDistribution.length > 0;
+  const tooltipStyle = {
+    backgroundColor: c.surface,
+    border: `1px solid ${c.grid}`,
+    borderRadius: "8px",
+    fontSize: "12px",
+  };
+  const axisTick = { fill: c.axis, fontSize: 11 };
+
+  const hasRatings = dailySeries.some(
+    (d) => d.productivity !== null || d.energy !== null
+  );
+  const hasWeekly = weeklySeries.some((w) => w.total > 0);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Daily hours logged */}
       <ChartCard
-        title="Daily hours logged"
-        subtitle="Hours of tracked work per day"
-        className="lg:col-span-2"
+        title="Daily hours"
+        subtitle="Tracked time per day"
       >
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={240}>
           <AreaChart
             data={dailySeries}
-            margin={{ top: 8, right: 16, left: -8, bottom: 0 }}
+            margin={{ top: 8, right: 12, left: -8, bottom: 0 }}
           >
             <defs>
               <linearGradient id="hoursFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={COLORS.primary} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={COLORS.primary} stopOpacity={0} />
+                <stop offset="0%" stopColor={c.primary} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={c.primary} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={COLORS.grid}
-              vertical={false}
-            />
+            <CartesianGrid stroke={c.grid} vertical={false} />
             <XAxis
               dataKey="label"
-              tick={axisTickStyle}
+              tick={axisTick}
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
               minTickGap={24}
             />
             <YAxis
-              tick={axisTickStyle}
+              tick={axisTick}
               axisLine={false}
               tickLine={false}
               width={32}
@@ -133,13 +153,13 @@ export function AnalyticsCharts({
             />
             <Tooltip
               contentStyle={tooltipStyle}
-              labelStyle={{ color: COLORS.axis }}
+              labelStyle={{ color: c.axis }}
               formatter={(value) => [`${Number(value).toFixed(1)}h`, "Hours"]}
             />
             <Area
               type="monotone"
               dataKey="hours"
-              stroke={COLORS.primary}
+              stroke={c.primary}
               strokeWidth={2}
               fill="url(#hoursFill)"
               isAnimationActive={false}
@@ -148,30 +168,97 @@ export function AnalyticsCharts({
         </ResponsiveContainer>
       </ChartCard>
 
-      {/* Hours by category per week */}
+      {/* Energy vs productivity — same 1–10 scale, one axis */}
       <ChartCard
-        title="Hours by category per week"
-        subtitle="Stacked by Signal/Noise category"
+        title="Energy vs productivity"
+        subtitle="Morning energy and evening productivity, both rated 1–10"
+      >
+        {hasRatings ? (
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart
+              data={dailySeries}
+              margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
+            >
+              <CartesianGrid stroke={c.grid} vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={axisTick}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={24}
+              />
+              <YAxis
+                tick={axisTick}
+                axisLine={false}
+                tickLine={false}
+                width={28}
+                domain={[0, 10]}
+                ticks={[0, 5, 10]}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: c.axis }}
+                formatter={(value, name) => [
+                  `${value}/10`,
+                  name === "energy" ? "Energy" : "Productivity",
+                ]}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: 11, color: c.axis }}
+                formatter={(value: string) =>
+                  value === "energy" ? "Energy (am)" : "Productivity (pm)"
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey="productivity"
+                stroke={c.primary}
+                strokeWidth={2}
+                dot={{ r: 2.5, fill: c.primary, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="energy"
+                stroke={c.energy}
+                strokeWidth={2}
+                dot={{ r: 2.5, fill: c.energy, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyChart message="Rate your mornings and evenings to see this." />
+        )}
+      </ChartCard>
+
+      {/* Weekly hours by category */}
+      <ChartCard
+        title="Where the week went"
+        subtitle="Hours by Signal/Noise category, stacked per week"
+        className="lg:col-span-2"
       >
         {hasWeekly ? (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
               data={weeklySeries}
               margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+              barCategoryGap="28%"
             >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke={COLORS.grid}
-                vertical={false}
-              />
+              <CartesianGrid stroke={c.grid} vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={axisTickStyle}
+                tick={axisTick}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={axisTickStyle}
+                tick={axisTick}
                 axisLine={false}
                 tickLine={false}
                 width={32}
@@ -179,143 +266,38 @@ export function AnalyticsCharts({
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                labelStyle={{ color: COLORS.axis }}
+                labelStyle={{ color: c.axis }}
+                cursor={{ fill: c.grid, opacity: 0.3 }}
                 formatter={(value, name) => [
                   `${Number(value).toFixed(1)}h`,
-                  categoryLabel(String(name)),
+                  CATEGORY_LABELS[name as (typeof STACK_KEYS)[number]] ?? name,
                 ]}
               />
               <Legend
-                wrapperStyle={{ fontSize: 11, color: COLORS.axis }}
-                formatter={(value: string) => categoryLabel(value)}
+                wrapperStyle={{ fontSize: 11, color: c.axis }}
+                formatter={(value: string) =>
+                  CATEGORY_LABELS[value as (typeof STACK_KEYS)[number]] ?? value
+                }
               />
-              <Bar dataKey="strong_signal" stackId="cat" fill={COLORS.strong_signal} />
-              <Bar dataKey="weak_signal" stackId="cat" fill={COLORS.weak_signal} />
-              <Bar dataKey="strong_noise" stackId="cat" fill={COLORS.strong_noise} />
-              <Bar dataKey="weak_noise" stackId="cat" fill={COLORS.weak_noise} />
-              <Bar dataKey="personal" stackId="cat" fill={COLORS.personal} />
-              <Bar dataKey="untagged" stackId="cat" fill={COLORS.untagged} />
+              {STACK_KEYS.map((key) => (
+                <Bar
+                  key={key}
+                  dataKey={key}
+                  stackId="cat"
+                  fill={c[key]}
+                  stroke={c.surface}
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         ) : (
           <EmptyChart message="Not enough weekly data yet." />
         )}
       </ChartCard>
-
-      {/* Productivity trend */}
-      <ChartCard
-        title="Productivity trend"
-        subtitle="Daily self-rated productivity (1–10)"
-      >
-        <ResponsiveContainer width="100%" height={260}>
-          <LineChart
-            data={productivityData}
-            margin={{ top: 8, right: 16, left: -8, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={COLORS.grid}
-              vertical={false}
-            />
-            <XAxis
-              dataKey="label"
-              tick={axisTickStyle}
-              axisLine={false}
-              tickLine={false}
-              interval="preserveStartEnd"
-              minTickGap={24}
-            />
-            <YAxis
-              tick={axisTickStyle}
-              axisLine={false}
-              tickLine={false}
-              width={24}
-              domain={[0, 10]}
-              ticks={[0, 2, 4, 6, 8, 10]}
-            />
-            <Tooltip
-              contentStyle={tooltipStyle}
-              labelStyle={{ color: COLORS.axis }}
-              formatter={(value) => [`${value}/10`, "Productivity"]}
-            />
-            <Line
-              type="monotone"
-              dataKey="productivity"
-              stroke={COLORS.primary}
-              strokeWidth={2}
-              dot={{ r: 3, fill: COLORS.primary, strokeWidth: 0 }}
-              activeDot={{ r: 5 }}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      {/* Category distribution */}
-      <ChartCard
-        title="Time distribution"
-        subtitle={`Total hours by category · last ${dailySeries.length} days`}
-        className="lg:col-span-2"
-      >
-        {hasCategory ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(value, _name, entry) => {
-                  const payload = (entry as unknown as { payload: CategoryRow })
-                    .payload;
-                  return [`${Number(value).toFixed(1)}h`, payload.label];
-                }}
-              />
-              <Legend
-                wrapperStyle={{ fontSize: 11, color: COLORS.axis }}
-                formatter={(value: string) => value}
-              />
-              <Pie
-                data={categoryDistribution}
-                dataKey="hours"
-                nameKey="label"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
-                isAnimationActive={false}
-              >
-                {categoryDistribution.map((row) => (
-                  <Cell
-                    key={row.key}
-                    fill={COLORS[row.key as keyof typeof COLORS] ?? COLORS.untagged}
-                  />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        ) : (
-          <EmptyChart message="No time logged yet." />
-        )}
-      </ChartCard>
     </div>
   );
-}
-
-function categoryLabel(key: string): string {
-  switch (key) {
-    case "strong_signal":
-      return "Strong Signal";
-    case "weak_signal":
-      return "Weak Signal";
-    case "strong_noise":
-      return "Strong Noise";
-    case "weak_noise":
-      return "Weak Noise";
-    case "personal":
-      return "Personal";
-    case "untagged":
-      return "Untagged";
-    default:
-      return key;
-  }
 }
 
 function ChartCard({
@@ -346,7 +328,7 @@ function ChartCard({
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-[260px] items-center justify-center rounded-md border border-dashed border-border">
+    <div className="flex h-[240px] items-center justify-center rounded-md border border-dashed border-border">
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );

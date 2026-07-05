@@ -36,6 +36,33 @@
   --progress-good: 140 64% 33%;
   --progress-warning: 38 94% 38%;
   --progress-danger: 355 72% 48%;
+
+  /* Data-viz palette (hex, CVD-validated per surface — keep in sync with
+     AnalyticsCharts PALETTES). Stack order: signal → personal → noise. */
+  --viz-strong-signal: #1baf7a;
+  --viz-weak-signal: #eda100;
+  --viz-personal: #2a78d6;
+  --viz-strong-noise: #e34948;
+  --viz-weak-noise: #4a3aa7;
+  --viz-untagged: #898781;
+  /* Sequential blue ramp for the consistency heatmap (low → high). */
+  --viz-heat-1: #b7d3f6;
+  --viz-heat-2: #6da7ec;
+  --viz-heat-3: #2a78d6;
+  --viz-heat-4: #184f95;
+}
+
+.dark {
+  --viz-strong-signal: #199e70;
+  --viz-weak-signal: #c98500;
+  --viz-personal: #3987e5;
+  --viz-strong-noise: #e66767;
+  --viz-weak-noise: #9085e9;
+  --viz-untagged: #898781;
+  --viz-heat-1: #0d366b;
+  --viz-heat-2: #1c5cab;
+  --viz-heat-3: #3987e5;
+  --viz-heat-4: #86b6ef;
 }
 
 .dark {

@@ -1,7 +1,9 @@
 import { format, startOfWeek } from "date-fns";
+import { Check, MessageSquare, Moon, Sunrise, Timer, type LucideIcon } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
 import { DateNav } from "./DateNav";
+import { DayProgress } from "./DayProgress";
 import { MorningCheckIn, type MorningPriority } from "./MorningCheckIn";
 import {
   TimeEntries,
@@ -127,22 +129,50 @@ export default async function DailyPage({
       category: t.category as TaskCategory,
     }));
 
+  const steps = {
+    checkin: Boolean(
+      dailyLog && (dailyLog.morning_mood || dailyLog.morning_energy !== null)
+    ),
+    timeLogged: timeEntries.length > 0,
+    wrapup: Boolean(
+      dailyLog &&
+        (dailyLog.closing_mood || dailyLog.productivity_rating !== null)
+    ),
+  };
+  const hoursLogged = timeEntries.reduce((sum, e) => sum + e.duration_hours, 0);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Daily Log</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {date === todayIso
+              ? "Today"
+              : format(new Date(`${date}T00:00:00`), "EEEE, MMM d")}
+          </h1>
           <p className="text-muted-foreground">
-            Morning check-in, time entries, and evening wrap-up.
+            Check in, log your time, wrap up. Three steps, every day.
           </p>
         </div>
         <DateNav date={date} todayIso={todayIso} />
       </div>
 
-      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">
-          Morning check-in
-        </h2>
+      <DayProgress
+        steps={steps}
+        hoursLogged={hoursLogged}
+        isToday={date === todayIso}
+      />
+
+      <section
+        id="morning"
+        className="scroll-mt-20 rounded-xl border border-border bg-card p-4 sm:p-6"
+      >
+        <SectionHeader
+          icon={Sunrise}
+          title="Morning check-in"
+          subtitle="Set the tone — mood, energy, and your top 3 priorities"
+          done={steps.checkin}
+        />
         <MorningCheckIn
           date={date}
           initialMood={dailyLog?.morning_mood ?? null}
@@ -152,15 +182,29 @@ export default async function DailyPage({
         />
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Time entries</h2>
+      <section
+        id="time"
+        className="scroll-mt-20 rounded-xl border border-border bg-card p-4 sm:p-6"
+      >
+        <SectionHeader
+          icon={Timer}
+          title="Time entries"
+          subtitle="Where the hours actually went"
+          done={steps.timeLogged}
+        />
         <TimeEntries date={date} tasks={sprintTasks} initialEntries={timeEntries} />
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">
-          Evening wrap-up
-        </h2>
+      <section
+        id="evening"
+        className="scroll-mt-20 rounded-xl border border-border bg-card p-4 sm:p-6"
+      >
+        <SectionHeader
+          icon={Moon}
+          title="Evening wrap-up"
+          subtitle="Close the loop — rate the day and mark your priorities"
+          done={steps.wrapup}
+        />
         <EveningWrapUp
           date={date}
           initialMood={dailyLog?.closing_mood ?? null}
@@ -177,9 +221,11 @@ export default async function DailyPage({
 
       {dailyLog && (
         <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">
-            Feedback
-          </h2>
+          <SectionHeader
+            icon={MessageSquare}
+            title="Feedback"
+            subtitle="Comments from you and your reviewers"
+          />
           <CommentThread
             targetType="daily_log"
             targetId={dailyLog.id}
@@ -190,6 +236,41 @@ export default async function DailyPage({
           />
         </section>
       )}
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  subtitle,
+  done,
+}: {
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  done?: boolean;
+}) {
+  return (
+    <div className="mb-5 flex items-center gap-3">
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+          done
+            ? "bg-[hsl(var(--strong-signal))]/15 text-[hsl(var(--strong-signal))]"
+            : "bg-primary/10 text-primary"
+        }`}
+      >
+        <Icon className="h-4.5 w-4.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          {title}
+          {done && (
+            <Check className="h-4 w-4 text-[hsl(var(--strong-signal))]" />
+          )}
+        </h2>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
     </div>
   );
 }
