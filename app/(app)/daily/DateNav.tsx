@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
@@ -9,10 +9,10 @@ type Props = {
   todayIso: string;
 };
 
+// Format locally — mixing a local-midnight parse with toISOString() (UTC)
+// drops a day for any timezone ahead of UTC.
 function shiftDate(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return format(addDays(new Date(`${date}T00:00:00`), days), "yyyy-MM-dd");
 }
 
 export function DateNav({ date, todayIso }: Props) {

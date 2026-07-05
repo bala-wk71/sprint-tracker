@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
@@ -10,10 +10,13 @@ type Props = {
   basePath?: string;
 };
 
+// Format locally — mixing a local-midnight parse with toISOString() (UTC)
+// drops a day for any timezone ahead of UTC.
 function shiftWeek(weekStart: string, weeks: number): string {
-  const d = new Date(`${weekStart}T00:00:00`);
-  d.setDate(d.getDate() + weeks * 7);
-  return d.toISOString().slice(0, 10);
+  return format(
+    addDays(new Date(`${weekStart}T00:00:00`), weeks * 7),
+    "yyyy-MM-dd"
+  );
 }
 
 export function WeekNav({
