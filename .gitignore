@@ -46,3 +46,9 @@ next-env.d.ts
 # playwright mcp local cache (snapshots, console logs)
 .playwright-mcp/
 package-lock.json
+
+.vercel
+.env*
+
+# local verification screenshots at repo root
+/*.png
