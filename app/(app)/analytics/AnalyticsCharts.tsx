@@ -127,7 +127,7 @@ export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
         <ResponsiveContainer width="100%" height={240}>
           <AreaChart
             data={dailySeries}
-            margin={{ top: 8, right: 12, left: -8, bottom: 0 }}
+            margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
           >
             <defs>
               <linearGradient id="hoursFill" x1="0" y1="0" x2="0" y2="1">
@@ -148,7 +148,7 @@ export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
               tick={axisTick}
               axisLine={false}
               tickLine={false}
-              width={32}
+              width={44}
               unit="h"
             />
             <Tooltip
@@ -177,7 +177,7 @@ export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
           <ResponsiveContainer width="100%" height={240}>
             <LineChart
               data={dailySeries}
-              margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
+              margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
             >
               <CartesianGrid stroke={c.grid} vertical={false} />
               <XAxis
@@ -192,7 +192,7 @@ export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
                 tick={axisTick}
                 axisLine={false}
                 tickLine={false}
-                width={28}
+                width={36}
                 domain={[0, 10]}
                 ticks={[0, 5, 10]}
               />
@@ -247,7 +247,7 @@ export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
               data={weeklySeries}
-              margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               barCategoryGap="28%"
             >
               <CartesianGrid stroke={c.grid} vertical={false} />
@@ -261,7 +261,7 @@ export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
                 tick={axisTick}
                 axisLine={false}
                 tickLine={false}
-                width={32}
+                width={44}
                 unit="h"
               />
               <Tooltip
