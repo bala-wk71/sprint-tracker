@@ -43,7 +43,7 @@ export default async function ReviewListPage() {
       </div>
 
       {owners.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
           <p className="text-sm text-muted-foreground">
             You&apos;re not reviewing anyone yet. When someone invites you as
             their reviewer and you accept the invite, they&apos;ll appear here.
@@ -64,7 +64,7 @@ export default async function ReviewListPage() {
               <li key={o.id}>
                 <Link
                   href={`/review/${o.id}`}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary"
                 >
                   {o.avatar_url ? (
                     <Image

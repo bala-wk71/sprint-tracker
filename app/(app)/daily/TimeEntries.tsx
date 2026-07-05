@@ -243,7 +243,7 @@ export function TimeEntries({
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
         <h3 className="text-sm font-semibold text-foreground">
-          Today's entries{" "}
+          Today&apos;s entries{" "}
           <span className="ml-2 text-xs font-normal text-muted-foreground">
             {initialEntries.length} {initialEntries.length === 1 ? "entry" : "entries"}
           </span>

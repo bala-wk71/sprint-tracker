@@ -90,7 +90,7 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card">
+    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (

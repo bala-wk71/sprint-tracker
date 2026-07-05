@@ -256,7 +256,7 @@ function HeadlineCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{sub}</p>

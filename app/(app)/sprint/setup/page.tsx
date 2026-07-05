@@ -32,14 +32,14 @@ export default async function SprintSetupPage() {
         </p>
       </div>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           Create a new sprint
         </h2>
         <CreateSprintForm defaultWeekStart={defaultWeekStart} />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Your sprints</h2>
         {sprints && sprints.length > 0 ? (
           <ul className="divide-y divide-border">

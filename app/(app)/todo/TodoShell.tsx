@@ -19,7 +19,7 @@ export function TodoShell({
 
   return (
     <div className="space-y-4">
-      <div className="flex rounded-lg border border-border bg-card p-1">
+      <div className="flex rounded-xl border border-border bg-card p-1">
         <button
           onClick={() => setTab("sections")}
           className={cn(

@@ -37,7 +37,7 @@ export function PendingView({ sections }: { sections: TodoSection[] }) {
   return (
     <div className="space-y-4">
       {groups.map((group) => (
-        <div key={group.label} className="rounded-lg border border-border bg-card p-3 sm:p-4">
+        <div key={group.label} className="rounded-xl border border-border bg-card p-3 sm:p-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {group.label}
           </p>

@@ -13,7 +13,7 @@ export default function DashboardLoading() {
       {/* Streak cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-2">
+          <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2">
             <div className="h-3 w-24 rounded bg-muted" />
             <div className="h-8 w-20 rounded bg-muted" />
             <div className="h-3 w-28 rounded bg-muted" />
@@ -24,7 +24,7 @@ export default function DashboardLoading() {
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-2">
+          <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2">
             <div className="h-3 w-24 rounded bg-muted" />
             <div className="h-8 w-16 rounded bg-muted" />
             <div className="h-3 w-32 rounded bg-muted" />
@@ -33,7 +33,7 @@ export default function DashboardLoading() {
       </div>
 
       {/* Task progress */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <div className="h-5 w-32 rounded bg-muted" />
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4">
@@ -46,7 +46,7 @@ export default function DashboardLoading() {
       </div>
 
       {/* Daily metrics */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <div className="h-5 w-28 rounded bg-muted" />
         <div className="grid grid-cols-7 gap-2">
           {Array.from({ length: 7 }).map((_, i) => (

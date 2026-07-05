@@ -208,7 +208,7 @@ export async function WeekSummary({
       </div>
 
       {!sprint ? (
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
           <h2 className="mb-2 text-lg font-semibold text-foreground">
             No sprint for this week
           </h2>
@@ -236,7 +236,7 @@ export async function WeekSummary({
       ) : (
         <>
           {/* Task progress */}
-          <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+          <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
               Task progress
             </h2>
@@ -336,7 +336,7 @@ export async function WeekSummary({
 
           {/* Category breakdown */}
           {categoryRows.length > 0 && (
-            <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+            <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
               <h2 className="mb-4 text-lg font-semibold text-foreground">
                 Category breakdown
               </h2>
@@ -371,7 +371,7 @@ export async function WeekSummary({
       )}
 
       {/* 7-day metrics grid */}
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           Daily metrics
         </h2>
@@ -379,6 +379,8 @@ export async function WeekSummary({
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7 md:min-w-0">
             {dayCells.map((cell) => {
               const isFuture = new Date(`${cell.date}T00:00:00`) > new Date();
+              const isToday =
+                cell.date === new Date().toISOString().slice(0, 10);
               const hasData =
                 cell.morningMood ||
                 cell.closingMood ||
@@ -389,7 +391,9 @@ export async function WeekSummary({
               const cellClass = `rounded-md border p-3 text-xs ${
                 isFuture
                   ? "border-dashed border-border bg-background/50 opacity-60"
-                  : "border-border bg-background"
+                  : isToday
+                    ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30"
+                    : "border-border bg-background"
               }`;
               const inner = (
                 <>
@@ -452,7 +456,7 @@ export async function WeekSummary({
 
       {/* Weekly reflection */}
       {sprint && (
-        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+        <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold text-foreground">
             Weekly reflection
           </h2>
@@ -475,7 +479,7 @@ export async function WeekSummary({
 
       {/* Weekly comments thread */}
       {sprint && viewer && (
-        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+        <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold text-foreground">
             Weekly feedback
           </h2>
@@ -503,7 +507,7 @@ function SummaryCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{sub}</p>

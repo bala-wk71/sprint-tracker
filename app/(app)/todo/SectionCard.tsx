@@ -250,7 +250,7 @@ function TaskList({ section }: { section: TodoSection }) {
 
 export function SectionCard({ section }: { section: TodoSection }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+    <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
       <SectionHeader section={section} isSubsection={false} />
 
       {!section.is_collapsed && (

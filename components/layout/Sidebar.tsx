@@ -39,6 +39,8 @@ export type SidebarUser = {
   name: string;
   email: string;
   avatarUrl: string | null;
+  level: number;
+  levelTitle: string;
 };
 
 export function Sidebar({ user }: { user: SidebarUser }) {
@@ -169,6 +171,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {user.email}
+                </p>
+                <p className="mt-0.5 truncate text-xs font-semibold text-primary">
+                  Lv {user.level} · {user.levelTitle}
                 </p>
               </div>
             )}

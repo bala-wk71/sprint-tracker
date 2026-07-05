@@ -14,7 +14,6 @@ export async function gatherChatContext(
     "yyyy-MM-dd"
   );
   const lastMonday = format(subDays(new Date(monday + "T00:00:00"), 7), "yyyy-MM-dd");
-  const twoWeeksAgoMonday = format(subDays(new Date(monday + "T00:00:00"), 14), "yyyy-MM-dd");
 
   const [sprint, lastWeekSprint, dailyLog, recentLogs] = await Promise.all([
     getCurrentSprint(supabase, userId, monday),

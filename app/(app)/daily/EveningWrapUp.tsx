@@ -224,7 +224,7 @@ export function EveningWrapUp({
         </div>
         <div>
           <label htmlFor="win" className="mb-2 block text-sm font-medium text-foreground">
-            Today's win
+            Today&apos;s win
           </label>
           <textarea
             id="win"

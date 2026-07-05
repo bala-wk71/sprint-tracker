@@ -8,7 +8,7 @@ export default function DailyLoading() {
       </div>
 
       {/* Morning check-in */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <div className="h-5 w-36 rounded bg-muted" />
         <div className="flex gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -26,13 +26,13 @@ export default function DailyLoading() {
       </div>
 
       {/* Time entries */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <div className="h-5 w-28 rounded bg-muted" />
         <div className="h-24 w-full rounded-md bg-muted" />
       </div>
 
       {/* Evening wrap-up */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <div className="h-5 w-36 rounded bg-muted" />
         <div className="flex gap-2">
           {Array.from({ length: 5 }).map((_, i) => (

@@ -54,7 +54,7 @@ export default async function AccessSettingsPage() {
         </div>
       </div>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Send an invite</h2>
           <span className="text-xs text-muted-foreground">
@@ -64,7 +64,7 @@ export default async function AccessSettingsPage() {
         <InviteForm disabled={remainingInvites === 0} />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Sent invites</h2>
         <PendingInvitesList
           invites={invites.map((i) => ({
@@ -79,7 +79,7 @@ export default async function AccessSettingsPage() {
         />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           People reviewing you
         </h2>
@@ -96,7 +96,7 @@ export default async function AccessSettingsPage() {
         />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           People you review
         </h2>

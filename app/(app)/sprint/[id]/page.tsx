@@ -84,15 +84,15 @@ export default async function SprintDetailPage({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Tasks</p>
           <p className="mt-1 text-2xl font-semibold text-foreground">{tasks.length}</p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Target hours</p>
           <p className="mt-1 text-2xl font-semibold text-foreground">{totalTarget}h</p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Logged hours</p>
           <p className="mt-1 text-2xl font-semibold text-foreground">
             {totalLogged.toFixed(1)}h
@@ -105,7 +105,7 @@ export default async function SprintDetailPage({
         </div>
       </div>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Tasks</h2>
         <TasksEditor sprintId={sprint.id} initialTasks={tasks} />
       </section>

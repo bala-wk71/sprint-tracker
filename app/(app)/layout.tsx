@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { getUser } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
+import { levelFromXp } from "@/lib/gamification";
 
 export default async function AppLayout({
   children,
@@ -14,6 +15,10 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  const supabase = await createClient();
+  const { data: totalXp } = await supabase.rpc("total_xp");
+  const level = levelFromXp(Number(totalXp ?? 0));
+
   const meta = user.user_metadata ?? {};
   const sidebarUser = {
     name:
@@ -23,6 +28,8 @@ export default async function AppLayout({
       "User",
     email: user.email ?? "",
     avatarUrl: (meta.avatar_url as string | undefined) ?? null,
+    level: level.level,
+    levelTitle: level.title,
   };
 
   return (
