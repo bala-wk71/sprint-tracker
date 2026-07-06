@@ -109,6 +109,9 @@ export const NAV_ITEMS = [
   { href: "/settings", label: "Settings", icon: "Settings" },
 ] as const;
 
+// Total hours a week has to offer — hard ceiling for sprint planning
+export const WEEK_HOURS = 168;
+
 // Max invite count for regular users
 export const MAX_INVITES = 5;
 

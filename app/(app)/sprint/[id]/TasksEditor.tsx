@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
+import { TASK_CATEGORIES, WEEK_HOURS, type TaskCategory } from "@/lib/constants";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
+import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
 import { addTaskToSprint, deleteTask, updateTask } from "./actions";
 
 export type EditableTask = {
@@ -35,6 +36,18 @@ export function TasksEditor({
   });
   const [error, setError] = useState<string | null>(null);
 
+  // Live planned total, accounting for an in-progress edit or new task.
+  const baseTotal = initialTasks.reduce((sum, t) => sum + t.target_hours, 0);
+  let liveTotal = baseTotal;
+  if (editingId && draft) {
+    const original = initialTasks.find((t) => t.id === editingId);
+    liveTotal =
+      baseTotal - (original?.target_hours ?? 0) + (Number(draft.target_hours) || 0);
+  } else if (adding) {
+    liveTotal = baseTotal + (Number(newTask.target_hours) || 0);
+  }
+  const overCapacity = liveTotal > WEEK_HOURS;
+
   const beginEdit = (task: EditableTask) => {
     setEditingId(task.id);
     setDraft({ ...task });
@@ -49,6 +62,12 @@ export function TasksEditor({
 
   const saveEdit = () => {
     if (!draft) return;
+    if (overCapacity) {
+      setError(
+        `That target puts the week at ${liveTotal}h — only ${WEEK_HOURS}h available.`
+      );
+      return;
+    }
     setError(null);
     startTransition(async () => {
       const result = await updateTask({
@@ -87,6 +106,12 @@ export function TasksEditor({
       setError("Task name is required");
       return;
     }
+    if (overCapacity) {
+      setError(
+        `That task puts the week at ${liveTotal}h — only ${WEEK_HOURS}h available.`
+      );
+      return;
+    }
     setError(null);
     startTransition(async () => {
       const result = await addTaskToSprint({
@@ -110,6 +135,8 @@ export function TasksEditor({
 
   return (
     <div className="space-y-3">
+      <WeekCapacityBar plannedHours={liveTotal} />
+
       {initialTasks.length === 0 && !adding && (
         <p className="text-sm text-muted-foreground">
           No tasks yet. Add one below.

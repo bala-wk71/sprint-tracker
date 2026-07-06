@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardXp } from "@/lib/gamification";
+import { WEEK_HOURS } from "@/lib/constants";
 
 const TASK_CATEGORY = z.enum([
   "strong_signal",
@@ -21,13 +22,22 @@ const taskInputSchema = z.object({
   is_recurring: z.boolean().default(false),
 });
 
-const createSprintSchema = z.object({
-  week_start_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Week start must be a date"),
-  notes: z.string().trim().max(1000).optional().nullable(),
-  tasks: z.array(taskInputSchema).min(1, "Add at least one task").max(50),
-});
+const createSprintSchema = z
+  .object({
+    week_start_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Week start must be a date"),
+    notes: z.string().trim().max(1000).optional().nullable(),
+    tasks: z.array(taskInputSchema).min(1, "Add at least one task").max(50),
+  })
+  .refine(
+    (data) =>
+      data.tasks.reduce((sum, task) => sum + task.target_hours, 0) <= WEEK_HOURS,
+    {
+      message: `Planned hours exceed the ${WEEK_HOURS}h available in a week`,
+      path: ["tasks"],
+    }
+  );
 
 export type CreateSprintInput = z.infer<typeof createSprintSchema>;
 

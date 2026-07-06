@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
-import { TASK_CATEGORIES, type TaskCategory } from "@/lib/constants";
+import { TASK_CATEGORIES, WEEK_HOURS, type TaskCategory } from "@/lib/constants";
+import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
 import { createSprintWithTasks } from "./actions";
 
 type FormValues = {
@@ -40,7 +41,20 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
 
   const { fields, append, remove } = useFieldArray({ control, name: "tasks" });
 
+  const watchedTasks = useWatch({ control, name: "tasks" });
+  const plannedHours = (watchedTasks ?? []).reduce(
+    (sum, task) => sum + (Number(task?.target_hours) || 0),
+    0
+  );
+  const overCapacity = plannedHours > WEEK_HOURS;
+
   const onSubmit = handleSubmit((values) => {
+    if (overCapacity) {
+      setServerError(
+        `You've planned ${plannedHours}h but the week only has ${WEEK_HOURS}h. Trim some targets first.`
+      );
+      return;
+    }
     setServerError(null);
     startTransition(async () => {
       const result = await createSprintWithTasks(values);
@@ -103,6 +117,7 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
             Add task
           </button>
         </div>
+        <WeekCapacityBar plannedHours={plannedHours} className="mb-2" />
         <div className="space-y-2">
           {fields.map((field, index) => (
             <div
@@ -166,11 +181,16 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={pending || formState.isSubmitting}
+          disabled={pending || formState.isSubmitting || overCapacity}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {pending ? "Creating…" : "Create sprint"}
         </button>
+        {overCapacity && (
+          <p className="text-xs text-destructive">
+            Planned hours exceed the {WEEK_HOURS}h available in a week.
+          </p>
+        )}
       </div>
     </form>
   );

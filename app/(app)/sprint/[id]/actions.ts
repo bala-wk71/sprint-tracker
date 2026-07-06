@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { WEEK_HOURS } from "@/lib/constants";
 
 const TASK_CATEGORY = z.enum([
   "strong_signal",
@@ -41,6 +42,36 @@ export async function updateTask(input: UpdateTaskInput): Promise<ActionResult> 
 
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  // The new target must fit within the week alongside the sprint's other tasks.
+  const { data: task, error: taskError } = await ctx.supabase
+    .from("tasks")
+    .select("sprint_id")
+    .eq("id", parsed.data.taskId)
+    .eq("owner_id", ctx.user.id)
+    .maybeSingle();
+
+  if (taskError) return { ok: false, error: taskError.message };
+  if (!task) return { ok: false, error: "Task not found" };
+
+  const { data: siblings, error: siblingsError } = await ctx.supabase
+    .from("tasks")
+    .select("id, target_hours")
+    .eq("sprint_id", task.sprint_id)
+    .eq("owner_id", ctx.user.id);
+
+  if (siblingsError) return { ok: false, error: siblingsError.message };
+
+  const otherHours = (siblings ?? [])
+    .filter((t) => t.id !== parsed.data.taskId)
+    .reduce((sum, t) => sum + Number(t.target_hours || 0), 0);
+
+  if (otherHours + parsed.data.target_hours > WEEK_HOURS) {
+    return {
+      ok: false,
+      error: `That target would put the sprint at ${otherHours + parsed.data.target_hours}h — the week only has ${WEEK_HOURS}h.`,
+    };
+  }
 
   const { error } = await ctx.supabase
     .from("tasks")
@@ -80,14 +111,26 @@ export async function addTaskToSprint(
   if (!ctx) return { ok: false, error: "Not authenticated" };
 
   // Confirm the sprint belongs to the user (RLS would block otherwise, but
-  // we want a friendly error and the position calculation needs the count).
-  const { count, error: countError } = await ctx.supabase
+  // we want a friendly error), get the position, and check week capacity.
+  const { data: existing, error: existingError } = await ctx.supabase
     .from("tasks")
-    .select("id", { count: "exact", head: true })
+    .select("id, target_hours")
     .eq("sprint_id", parsed.data.sprintId)
     .eq("owner_id", ctx.user.id);
 
-  if (countError) return { ok: false, error: countError.message };
+  if (existingError) return { ok: false, error: existingError.message };
+
+  const plannedHours = (existing ?? []).reduce(
+    (sum, t) => sum + Number(t.target_hours || 0),
+    0
+  );
+
+  if (plannedHours + parsed.data.target_hours > WEEK_HOURS) {
+    return {
+      ok: false,
+      error: `That task would put the sprint at ${plannedHours + parsed.data.target_hours}h — the week only has ${WEEK_HOURS}h.`,
+    };
+  }
 
   const { error } = await ctx.supabase.from("tasks").insert({
     sprint_id: parsed.data.sprintId,
@@ -96,7 +139,7 @@ export async function addTaskToSprint(
     category: parsed.data.category,
     target_hours: parsed.data.target_hours,
     is_recurring: parsed.data.is_recurring,
-    position: count ?? 0,
+    position: existing?.length ?? 0,
   });
 
   if (error) return { ok: false, error: error.message };

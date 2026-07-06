@@ -14,7 +14,7 @@ export default async function SprintSetupPage() {
 
   const { data: sprints } = await supabase
     .from("sprints")
-    .select("id, week_start_date, notes, created_at, tasks(count)")
+    .select("id, week_start_date, notes, created_at, tasks(target_hours)")
     .eq("owner_id", user.id)
     .order("week_start_date", { ascending: false });
 
@@ -44,7 +44,11 @@ export default async function SprintSetupPage() {
         {sprints && sprints.length > 0 ? (
           <ul className="divide-y divide-border">
             {sprints.map((sprint) => {
-              const taskCount = sprint.tasks?.[0]?.count ?? 0;
+              const taskCount = sprint.tasks?.length ?? 0;
+              const plannedHours = (sprint.tasks ?? []).reduce(
+                (sum, t) => sum + Number(t.target_hours || 0),
+                0
+              );
               return (
                 <li key={sprint.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div>
@@ -56,6 +60,7 @@ export default async function SprintSetupPage() {
                     </Link>
                     <p className="text-xs text-muted-foreground">
                       {taskCount} {taskCount === 1 ? "task" : "tasks"}
+                      {plannedHours > 0 ? ` · ${plannedHours}h planned` : ""}
                       {sprint.notes ? ` · ${sprint.notes}` : ""}
                     </p>
                   </div>

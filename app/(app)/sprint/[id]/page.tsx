@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { ArrowLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
-import type { TaskCategory } from "@/lib/constants";
+import { WEEK_HOURS, type TaskCategory } from "@/lib/constants";
 import { TasksEditor, type EditableTask } from "./TasksEditor";
 import { DeleteSprintButton } from "./DeleteSprintButton";
 
@@ -92,6 +92,10 @@ export default async function SprintDetailPage({
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Target hours</p>
           <p className="mt-1 text-2xl font-semibold text-foreground">{totalTarget}h</p>
+          <p className="text-[10px] text-muted-foreground">
+            of {WEEK_HOURS}h the week offers · {Math.max(WEEK_HOURS - totalTarget, 0)}h
+            unplanned
+          </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Logged hours</p>
