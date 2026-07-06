@@ -53,6 +53,7 @@ export default async function TodoPage() {
   }
 
   const pendingCount = tasks.filter((t) => !t.is_completed).length;
+  const completedCount = tasks.length - pendingCount;
 
   return (
     <div className="space-y-4">
@@ -62,7 +63,11 @@ export default async function TodoPage() {
           Organise tasks by section and subsection.
         </p>
       </div>
-      <TodoShell sections={tree} pendingCount={pendingCount} />
+      <TodoShell
+        sections={tree}
+        pendingCount={pendingCount}
+        completedCount={completedCount}
+      />
     </div>
   );
 }

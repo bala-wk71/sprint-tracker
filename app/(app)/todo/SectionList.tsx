@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, FolderPlus } from "lucide-react";
 import { createSection } from "./actions";
 import { SectionCard } from "./SectionCard";
 import type { TodoSection } from "./types";
@@ -27,6 +27,16 @@ export function SectionList({ sections }: { sections: TodoSection[] }) {
 
   return (
     <div className="space-y-3">
+      {sections.length === 0 && !adding && (
+        <div className="rounded-xl border border-dashed border-border py-12 text-center">
+          <FolderPlus className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+          <p className="text-sm font-medium text-foreground">No sections yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Create a section below to start organising tasks.
+          </p>
+        </div>
+      )}
+
       {sections.map((section) => (
         <SectionCard key={section.id} section={section} />
       ))}

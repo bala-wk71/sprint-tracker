@@ -22,6 +22,18 @@ import { TaskItem } from "./TaskItem";
 import { TaskInput } from "./TaskInput";
 import type { TodoSection } from "./types";
 
+/** Done/total across a section's own tasks and all its subsections. */
+function countSection(section: TodoSection): { done: number; total: number } {
+  let done = section.tasks.filter((t) => t.is_completed).length;
+  let total = section.tasks.length;
+  for (const sub of section.subsections) {
+    const c = countSection(sub);
+    done += c.done;
+    total += c.total;
+  }
+  return { done, total };
+}
+
 function SectionHeader({
   section,
   isSubsection,
@@ -29,6 +41,7 @@ function SectionHeader({
   section: TodoSection;
   isSubsection: boolean;
 }) {
+  const counts = countSection(section);
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(section.name);
@@ -144,6 +157,18 @@ function SectionHeader({
             >
               {section.name}
             </span>
+            {counts.total > 0 && (
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                  counts.done === counts.total
+                    ? "bg-primary/15 text-primary"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {counts.done}/{counts.total}
+              </span>
+            )}
             <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100">
               {!isSubsection && (
                 <button
@@ -249,9 +274,20 @@ function TaskList({ section }: { section: TodoSection }) {
 }
 
 export function SectionCard({ section }: { section: TodoSection }) {
+  const counts = countSection(section);
+
   return (
     <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
       <SectionHeader section={section} isSubsection={false} />
+
+      {counts.total > 0 && (
+        <div className="ml-9 mt-1 h-1 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${(counts.done / counts.total) * 100}%` }}
+          />
+        </div>
+      )}
 
       {!section.is_collapsed && (
         <div className="mt-2 space-y-4">
