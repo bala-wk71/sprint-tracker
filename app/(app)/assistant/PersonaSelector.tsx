@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Skull, Heart, Flame, Brain, Check } from "lucide-react";
+import { Skull, Heart, Flame, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AI_PERSONAS, type AiPersona } from "@/lib/ai/prompts";
 
@@ -12,18 +12,18 @@ const PERSONA_ICONS: Record<AiPersona, typeof Skull> = {
   rational: Brain,
 };
 
-const PERSONA_COLORS: Record<AiPersona, string> = {
-  drill_sergeant: "border-red-500/50 bg-red-500/10 hover:bg-red-500/20",
-  nurturer: "border-pink-500/50 bg-pink-500/10 hover:bg-pink-500/20",
-  nietzsche: "border-orange-500/50 bg-orange-500/10 hover:bg-orange-500/20",
-  rational: "border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20",
+const PERSONA_ACTIVE: Record<AiPersona, string> = {
+  drill_sergeant: "border-red-500 bg-red-500/15 text-foreground",
+  nurturer: "border-pink-500 bg-pink-500/15 text-foreground",
+  nietzsche: "border-orange-500 bg-orange-500/15 text-foreground",
+  rational: "border-blue-500 bg-blue-500/15 text-foreground",
 };
 
-const PERSONA_ACTIVE: Record<AiPersona, string> = {
-  drill_sergeant: "border-red-500 bg-red-500/20 ring-2 ring-red-500/30",
-  nurturer: "border-pink-500 bg-pink-500/20 ring-2 ring-pink-500/30",
-  nietzsche: "border-orange-500 bg-orange-500/20 ring-2 ring-orange-500/30",
-  rational: "border-blue-500 bg-blue-500/20 ring-2 ring-blue-500/30",
+const PERSONA_ICON_COLOR: Record<AiPersona, string> = {
+  drill_sergeant: "text-red-500",
+  nurturer: "text-pink-500",
+  nietzsche: "text-orange-500",
+  rational: "text-blue-500",
 };
 
 export function PersonaSelector({ current }: { current: AiPersona }) {
@@ -32,6 +32,7 @@ export function PersonaSelector({ current }: { current: AiPersona }) {
 
   const handleSelect = async (persona: AiPersona) => {
     if (persona === selected || saving) return;
+    const previous = selected;
     setSaving(true);
     setSelected(persona);
 
@@ -42,14 +43,14 @@ export function PersonaSelector({ current }: { current: AiPersona }) {
         body: JSON.stringify({ persona }),
       });
     } catch {
-      setSelected(selected);
+      setSelected(previous);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="flex flex-wrap items-center gap-1.5">
       {(Object.keys(AI_PERSONAS) as AiPersona[]).map((key) => {
         const Icon = PERSONA_ICONS[key];
         const isActive = selected === key;
@@ -59,22 +60,22 @@ export function PersonaSelector({ current }: { current: AiPersona }) {
             key={key}
             onClick={() => handleSelect(key)}
             disabled={saving}
+            title={AI_PERSONAS[key].description}
             className={cn(
-              "relative flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-all",
-              isActive ? PERSONA_ACTIVE[key] : PERSONA_COLORS[key],
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              isActive
+                ? PERSONA_ACTIVE[key]
+                : "border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground",
               saving && "opacity-60"
             )}
           >
-            {isActive && (
-              <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-foreground" />
-            )}
-            <Icon className="h-5 w-5 text-foreground" />
-            <span className="text-xs font-medium text-foreground">
-              {AI_PERSONAS[key].label}
-            </span>
-            <span className="hidden text-[10px] leading-tight text-muted-foreground sm:block">
-              {AI_PERSONAS[key].description}
-            </span>
+            <Icon
+              className={cn(
+                "h-3.5 w-3.5",
+                isActive ? PERSONA_ICON_COLOR[key] : "text-muted-foreground"
+              )}
+            />
+            {AI_PERSONAS[key].label}
           </button>
         );
       })}

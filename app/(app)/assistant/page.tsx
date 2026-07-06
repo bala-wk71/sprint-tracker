@@ -35,12 +35,19 @@ export default async function AssistantPage() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col sm:h-[calc(100vh-7rem)]">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-foreground">Sprint Coach</h1>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Choose your coaching style — applies to chat and automated comments.
-        </p>
-        <PersonaSelector current={persona} />
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Sprint Coach</h1>
+          <p className="text-sm text-muted-foreground">
+            Knows your sprints, logs, and priorities.
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-1.5 sm:items-end">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Coaching style — applies to chat and comments
+          </p>
+          <PersonaSelector current={persona} />
+        </div>
       </div>
 
       <ChatInterface initialMessages={initialMessages} />
