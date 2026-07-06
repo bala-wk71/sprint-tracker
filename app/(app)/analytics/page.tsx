@@ -2,6 +2,7 @@ import Link from "next/link";
 import { format, startOfWeek, subDays } from "date-fns";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
+import { todayIsoLocal } from "@/lib/dates";
 import { AnalyticsCharts } from "./AnalyticsCharts";
 import { SignalMeter } from "./SignalMeter";
 import { ConsistencyHeatmap, type HeatmapDay } from "./ConsistencyHeatmap";
@@ -18,12 +19,6 @@ function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
-}
-
-function todayIsoLocal(): string {
-  const now = new Date();
-  const tz = now.getTimezoneOffset();
-  return new Date(now.getTime() - tz * 60 * 1000).toISOString().slice(0, 10);
 }
 
 type CategoryHours = Record<TaskCategory | "untagged", number>;
@@ -59,7 +54,7 @@ export default async function AnalyticsPage({
   const user = await getUser();
   if (!user) return null;
 
-  const todayIso = todayIsoLocal();
+  const todayIso = await todayIsoLocal();
   const startIso = format(
     subDays(new Date(`${todayIso}T00:00:00`), windowDays - 1),
     "yyyy-MM-dd"

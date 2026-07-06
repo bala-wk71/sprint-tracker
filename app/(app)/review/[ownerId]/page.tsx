@@ -1,9 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { format, startOfWeek } from "date-fns";
 import { ArrowLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { mondayIsoOf, todayIsoLocal } from "@/lib/dates";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { WeekNav } from "@/app/(app)/dashboard/WeekNav";
 
@@ -12,10 +12,6 @@ type RouteParams = Promise<{ ownerId: string }>;
 
 function isValidIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
-}
-
-function mondayIsoOf(date: Date): string {
-  return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
 }
 
 export default async function ReviewOwnerPage({
@@ -63,10 +59,10 @@ export default async function ReviewOwnerPage({
     .join("")
     .toUpperCase();
 
-  const currentWeekStart = mondayIsoOf(new Date());
+  const currentWeekStart = mondayIsoOf(await todayIsoLocal());
   const weekStart =
     sp.week && isValidIsoDate(sp.week)
-      ? mondayIsoOf(new Date(`${sp.week}T00:00:00`))
+      ? mondayIsoOf(sp.week)
       : currentWeekStart;
 
   const basePath = `/review/${ownerId}`;

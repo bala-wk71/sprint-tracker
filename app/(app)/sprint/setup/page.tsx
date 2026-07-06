@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { format, startOfWeek } from "date-fns";
+import { format } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { mondayIsoOf, todayIsoLocal } from "@/lib/dates";
 import { CreateSprintForm } from "./CreateSprintForm";
 import { UseAsTemplateButton } from "./UseAsTemplateButton";
 
@@ -18,10 +19,7 @@ export default async function SprintSetupPage() {
     .eq("owner_id", user.id)
     .order("week_start_date", { ascending: false });
 
-  const defaultWeekStart = format(
-    startOfWeek(new Date(), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
+  const defaultWeekStart = mondayIsoOf(await todayIsoLocal());
 
   return (
     <div className="space-y-8">

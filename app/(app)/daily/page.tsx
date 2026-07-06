@@ -2,6 +2,7 @@ import { format, startOfWeek } from "date-fns";
 import { Check, MessageSquare, Moon, Sunrise, Timer, type LucideIcon } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
+import { todayIsoLocal } from "@/lib/dates";
 import { addDaysIso, elapsedDaysInWeek, expectedByNow } from "@/lib/pace";
 import { DateNav } from "./DateNav";
 import { DayProgress } from "./DayProgress";
@@ -22,19 +23,13 @@ function isValidIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 }
 
-function todayIsoLocal(): string {
-  const now = new Date();
-  const tz = now.getTimezoneOffset();
-  return new Date(now.getTime() - tz * 60 * 1000).toISOString().slice(0, 10);
-}
-
 export default async function DailyPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const todayIso = todayIsoLocal();
+  const todayIso = await todayIsoLocal();
   const date =
     params.date && isValidIsoDate(params.date) ? params.date : todayIso;
 

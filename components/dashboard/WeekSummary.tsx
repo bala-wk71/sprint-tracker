@@ -10,6 +10,7 @@ import {
   type EveningMood,
 } from "@/lib/constants";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
+import { todayIsoLocal } from "@/lib/dates";
 import { elapsedDaysInWeek, paceStatus } from "@/lib/pace";
 import { WeeklyReflection } from "@/app/(app)/dashboard/WeeklyReflection";
 import { CommentThread } from "@/components/comments/CommentThread";
@@ -121,7 +122,7 @@ export async function WeekSummary({
 
   // Pace: how far along the week is, and whether logged hours keep up with
   // the plan. Weeks in progress get live deltas; past weeks show met/short.
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = await todayIsoLocal();
   const elapsedDays = elapsedDaysInWeek(weekStart, todayIso);
   const weekInProgress = elapsedDays > 0 && elapsedDays < 7;
   const overallPace = paceStatus(totalTarget, totalLogged, elapsedDays);
@@ -425,9 +426,8 @@ export async function WeekSummary({
         <div className="overflow-x-auto">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7 md:min-w-0">
             {dayCells.map((cell) => {
-              const isFuture = new Date(`${cell.date}T00:00:00`) > new Date();
-              const isToday =
-                cell.date === new Date().toISOString().slice(0, 10);
+              const isFuture = cell.date > todayIso;
+              const isToday = cell.date === todayIso;
               const hasData =
                 cell.morningMood ||
                 cell.closingMood ||

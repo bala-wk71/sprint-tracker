@@ -1,5 +1,5 @@
-import { format, startOfWeek } from "date-fns";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { mondayIsoOf, todayIsoLocal } from "@/lib/dates";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { GamificationHero } from "@/components/dashboard/GamificationHero";
 import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
@@ -18,27 +18,22 @@ function isValidIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 }
 
-function mondayIsoOf(date: Date): string {
-  return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
-}
-
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const currentWeekStart = mondayIsoOf(new Date());
+  const todayIso = await todayIsoLocal();
+  const currentWeekStart = mondayIsoOf(todayIso);
   const weekStart =
     params.week && isValidIsoDate(params.week)
-      ? mondayIsoOf(new Date(`${params.week}T00:00:00`))
+      ? mondayIsoOf(params.week)
       : currentWeekStart;
 
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return null;
-
-  const todayIso = new Date().toISOString().slice(0, 10);
 
   const [
     { data: totalXp },
