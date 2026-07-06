@@ -10,6 +10,7 @@ import {
   type EveningMood,
 } from "@/lib/constants";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
+import { elapsedDaysInWeek, paceStatus } from "@/lib/pace";
 import { WeeklyReflection } from "@/app/(app)/dashboard/WeeklyReflection";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { loadComments } from "@/components/comments/loadComments";
@@ -118,6 +119,13 @@ export async function WeekSummary({
     0
   );
 
+  // Pace: how far along the week is, and whether logged hours keep up with
+  // the plan. Weeks in progress get live deltas; past weeks show met/short.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const elapsedDays = elapsedDaysInWeek(weekStart, todayIso);
+  const weekInProgress = elapsedDays > 0 && elapsedDays < 7;
+  const overallPace = paceStatus(totalTarget, totalLogged, elapsedDays);
+
   // Productivity & priority completion summary.
   const productivityRatings = (dailyLogs ?? [])
     .map((l) => l.productivity_rating)
@@ -189,7 +197,15 @@ export async function WeekSummary({
           value={`${totalLogged.toFixed(1)}h`}
           sub={
             totalTarget > 0
-              ? `of ${totalTarget.toFixed(1)}h target`
+              ? `of ${totalTarget.toFixed(1)}h target${
+                  weekInProgress
+                    ? overallPace.status === "behind"
+                      ? ` · ${Math.abs(overallPace.deltaHours).toFixed(1)}h behind pace`
+                      : overallPace.status === "ahead"
+                        ? ` · ${overallPace.deltaHours.toFixed(1)}h ahead of pace`
+                        : " · on pace"
+                    : ""
+                }`
               : "no target set"
           }
         />
@@ -289,6 +305,7 @@ export async function WeekSummary({
                       <th className="pb-2 text-right font-medium">Target</th>
                       <th className="pb-2 text-right font-medium">Actual</th>
                       <th className="pb-2 pl-4 font-medium">Progress</th>
+                      <th className="pb-2 pl-4 text-right font-medium">Pace</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -334,6 +351,13 @@ export async function WeekSummary({
                               </span>
                             </div>
                           </td>
+                          <td className="py-3 pl-4 text-right">
+                            <PaceCell
+                              target={target}
+                              actual={actual}
+                              elapsedDays={elapsedDays}
+                            />
+                          </td>
                         </tr>
                       );
                     })}
@@ -347,6 +371,7 @@ export async function WeekSummary({
                         <td className="py-3 pr-4 text-right text-muted-foreground">
                           {untaggedHours.toFixed(1)}h
                         </td>
+                        <td />
                         <td />
                       </tr>
                     )}
@@ -516,6 +541,54 @@ export async function WeekSummary({
         </section>
       )}
     </>
+  );
+}
+
+function PaceCell({
+  target,
+  actual,
+  elapsedDays,
+}: {
+  target: number;
+  actual: number;
+  elapsedDays: number;
+}) {
+  if (target <= 0 || elapsedDays === 0) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  // Past weeks: the verdict is final — target met or missed.
+  if (elapsedDays === 7) {
+    return actual >= target ? (
+      <span className="rounded-full bg-[hsl(var(--strong-signal))]/10 px-2 py-0.5 text-xs font-medium text-[hsl(var(--strong-signal))]">
+        met
+      </span>
+    ) : (
+      <span className="rounded-full bg-[hsl(var(--strong-noise))]/10 px-2 py-0.5 text-xs font-medium text-[hsl(var(--strong-noise))]">
+        {(target - actual).toFixed(1)}h short
+      </span>
+    );
+  }
+
+  const { status, deltaHours } = paceStatus(target, actual, elapsedDays);
+  if (status === "behind") {
+    return (
+      <span className="rounded-full bg-[hsl(var(--strong-noise))]/10 px-2 py-0.5 text-xs font-medium text-[hsl(var(--strong-noise))]">
+        {Math.abs(deltaHours).toFixed(1)}h behind
+      </span>
+    );
+  }
+  if (status === "ahead") {
+    return (
+      <span className="rounded-full bg-[hsl(var(--strong-signal))]/10 px-2 py-0.5 text-xs font-medium text-[hsl(var(--strong-signal))]">
+        {deltaHours.toFixed(1)}h ahead
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      on pace
+    </span>
   );
 }
 

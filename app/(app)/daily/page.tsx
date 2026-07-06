@@ -2,8 +2,10 @@ import { format, startOfWeek } from "date-fns";
 import { Check, MessageSquare, Moon, Sunrise, Timer, type LucideIcon } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
+import { addDaysIso, elapsedDaysInWeek, expectedByNow } from "@/lib/pace";
 import { DateNav } from "./DateNav";
 import { DayProgress } from "./DayProgress";
+import { FocusToday, type FocusTask } from "./FocusToday";
 import { MorningCheckIn, type MorningPriority } from "./MorningCheckIn";
 import {
   TimeEntries,
@@ -58,7 +60,7 @@ export default async function DailyPage({
       .maybeSingle(),
     supabase
       .from("sprints")
-      .select("id, tasks(id, name, category, position)")
+      .select("id, tasks(id, name, category, position, target_hours)")
       .eq("owner_id", user.id)
       .eq("week_start_date", monday)
       .maybeSingle(),
@@ -129,6 +131,45 @@ export default async function DailyPage({
       category: t.category as TaskCategory,
     }));
 
+  // Sprint tasks most behind their weekly pace — shown only when viewing
+  // today, as suggestions for where the day's hours should go.
+  let focusTasks: FocusTask[] = [];
+  if (date === todayIso && sprint && (sprint.tasks ?? []).length > 0) {
+    const elapsedDays = elapsedDaysInWeek(monday, todayIso);
+    const { data: weekEntries } = await supabase
+      .from("time_entries")
+      .select("task_id, duration_hours, daily_logs!inner(log_date)")
+      .eq("owner_id", user.id)
+      .gte("daily_logs.log_date", monday)
+      .lte("daily_logs.log_date", addDaysIso(monday, 6));
+
+    const hoursByTask = new Map<string, number>();
+    for (const e of weekEntries ?? []) {
+      if (!e.task_id) continue;
+      hoursByTask.set(
+        e.task_id,
+        (hoursByTask.get(e.task_id) ?? 0) + Number(e.duration_hours || 0)
+      );
+    }
+
+    focusTasks = (sprint.tasks ?? [])
+      .map((t) => {
+        const targetHours = Number(t.target_hours || 0);
+        const actualHours = hoursByTask.get(t.id) ?? 0;
+        return {
+          id: t.id,
+          name: t.name,
+          category: t.category as TaskCategory,
+          targetHours,
+          actualHours,
+          behindHours: expectedByNow(targetHours, elapsedDays) - actualHours,
+        };
+      })
+      .filter((t) => t.targetHours > 0 && t.behindHours > 0.5)
+      .sort((a, b) => b.behindHours - a.behindHours)
+      .slice(0, 3);
+  }
+
   const steps = {
     checkin: Boolean(
       dailyLog && (dailyLog.morning_mood || dailyLog.morning_energy !== null)
@@ -162,6 +203,8 @@ export default async function DailyPage({
         hoursLogged={hoursLogged}
         isToday={date === todayIso}
       />
+
+      <FocusToday tasks={focusTasks} />
 
       <section
         id="morning"

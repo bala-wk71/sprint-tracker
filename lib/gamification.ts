@@ -9,7 +9,6 @@ type Client = SupabaseClient<Database>;
 
 export const XP = {
   morning_checkin: 10,
-  time_entry: 5,
   evening_wrapup: 15,
   priority_done: 10,
   perfect_day: 20,
@@ -18,6 +17,11 @@ export const XP = {
   weekly_target_hit: 25,
   todo_done: 5,
 } as const;
+
+// Time logging XP accrues with hours logged, capped per day — logging many
+// tiny entries earns no more than logging the same time in one entry.
+export const TIME_LOG_XP_PER_HOUR = 1;
+export const TIME_LOG_XP_DAILY_CAP = 10;
 
 export type XpReason = keyof typeof XP;
 
@@ -41,6 +45,50 @@ export async function awardXp(
       dedupe_key: `${reason}:${dedupeKey}`,
     });
     return error ? 0 : XP[reason];
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Award time-logging XP for a day, proportional to total hours logged that
+ * day (1 XP/hour) and capped at TIME_LOG_XP_DAILY_CAP. Awards only the delta
+ * over what the day has already earned, so re-saves, edits, and many small
+ * entries never over-award. The dedupe key encodes the running total, making
+ * each top-up idempotent. Returns the XP granted by this call.
+ */
+export async function awardTimeLogXp(
+  supabase: Client,
+  ownerId: string,
+  date: string,
+  dayHoursLogged: number
+): Promise<number> {
+  try {
+    const target = Math.min(
+      TIME_LOG_XP_DAILY_CAP,
+      Math.floor(Math.max(dayHoursLogged, 0) * TIME_LOG_XP_PER_HOUR)
+    );
+    if (target <= 0) return 0;
+
+    const { data: prior, error: priorError } = await supabase
+      .from("xp_events")
+      .select("amount")
+      .eq("owner_id", ownerId)
+      .like("dedupe_key", `time_entry:day:${date}:%`);
+
+    if (priorError) return 0;
+
+    const already = (prior ?? []).reduce((sum, e) => sum + (e.amount ?? 0), 0);
+    const delta = target - already;
+    if (delta <= 0) return 0;
+
+    const { error } = await supabase.from("xp_events").insert({
+      owner_id: ownerId,
+      amount: delta,
+      reason: "time_entry",
+      dedupe_key: `time_entry:day:${date}:${target}`,
+    });
+    return error ? 0 : delta;
   } catch {
     return 0;
   }

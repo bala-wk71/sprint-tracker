@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { awardXp } from "@/lib/gamification";
+import { awardTimeLogXp, awardXp } from "@/lib/gamification";
 
 export type ActionResult<T = undefined> =
   | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
@@ -221,8 +221,14 @@ export async function addTimeEntry(input: TimeEntryInput): Promise<ActionResult>
 
     if (error) return { ok: false, error: error.message };
 
+    // XP scales with the day's total logged hours (capped), not per entry.
     const xp = entry
-      ? await awardXp(ctx.supabase, ctx.user.id, "time_entry", entry.id)
+      ? await awardTimeLogXp(
+          ctx.supabase,
+          ctx.user.id,
+          parsed.data.date,
+          await sumDayHours(ctx, log.id)
+        )
       : 0;
 
     revalidatePath("/daily");
@@ -231,6 +237,17 @@ export async function addTimeEntry(input: TimeEntryInput): Promise<ActionResult>
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed" };
   }
+}
+
+async function sumDayHours(
+  ctx: NonNullable<Awaited<ReturnType<typeof getUserOrFail>>>,
+  dailyLogId: string
+): Promise<number> {
+  const { data } = await ctx.supabase
+    .from("time_entries")
+    .select("duration_hours")
+    .eq("daily_log_id", dailyLogId);
+  return (data ?? []).reduce((sum, e) => sum + Number(e.duration_hours || 0), 0);
 }
 
 const updateTimeEntrySchema = timeEntrySchema.extend({
@@ -263,9 +280,25 @@ export async function updateTimeEntry(
 
   if (error) return { ok: false, error: error.message };
 
+  // An edit can raise the day's total hours — top up the day's XP accrual.
+  const { data: log } = await ctx.supabase
+    .from("daily_logs")
+    .select("id")
+    .eq("owner_id", ctx.user.id)
+    .eq("log_date", parsed.data.date)
+    .maybeSingle();
+  const xp = log
+    ? await awardTimeLogXp(
+        ctx.supabase,
+        ctx.user.id,
+        parsed.data.date,
+        await sumDayHours(ctx, log.id)
+      )
+    : 0;
+
   revalidatePath("/daily");
   revalidatePath("/dashboard");
-  return { ok: true };
+  return { ok: true, xp };
 }
 
 export async function deleteTimeEntry(id: string): Promise<ActionResult> {
