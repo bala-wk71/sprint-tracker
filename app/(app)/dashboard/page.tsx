@@ -4,10 +4,13 @@ import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { GamificationHero } from "@/components/dashboard/GamificationHero";
 import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
 import { AchievementSync } from "@/components/dashboard/AchievementSync";
+import { WagerCard, type WagerSummary } from "@/components/dashboard/WagerCard";
+import { MascotOverlay } from "@/components/dashboard/MascotOverlay";
 import { computeWeeklyStreak } from "@/lib/streaks";
 import {
   computeShieldedStreak,
   levelFromXp,
+  wagerPlacementOpen,
   type GamificationStats,
 } from "@/lib/gamification";
 import { WeekNav } from "./WeekNav";
@@ -42,6 +45,7 @@ export default async function DashboardPage({
     { data: todayLog },
     { count: todosDoneToday },
     weeklyStreak,
+    { data: wagerRow },
   ] = await Promise.all([
     supabase.rpc("total_xp"),
     supabase.rpc("gamification_stats"),
@@ -62,6 +66,12 @@ export default async function DashboardPage({
       .eq("is_completed", true)
       .gte("completed_at", `${todayIso}T00:00:00Z`),
     computeWeeklyStreak(supabase, user.id),
+    supabase
+      .from("xp_wagers")
+      .select("stake, status")
+      .eq("owner_id", user.id)
+      .eq("week_start", currentWeekStart)
+      .maybeSingle(),
   ]);
 
   const stats = (statsRaw ?? {
@@ -74,6 +84,13 @@ export default async function DashboardPage({
 
   const level = levelFromXp(Number(totalXp ?? 0));
   const dailyStreak = computeShieldedStreak(stats.log_dates, todayIso);
+  const weekEnd = new Date(`${currentWeekStart}T00:00:00`);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndIso = weekEnd.toISOString().slice(0, 10);
+  const weekLoggedDates = stats.log_dates.filter(
+    (d) => d >= currentWeekStart && d <= weekEndIso
+  );
+  const wager = (wagerRow as WagerSummary | null) ?? null;
   const today = {
     checkin: Boolean(
       todayLog && (todayLog.morning_mood || todayLog.morning_energy !== null)
@@ -103,6 +120,14 @@ export default async function DashboardPage({
         today={today}
         todosDoneToday={todosDoneToday ?? 0}
       />
+      <WagerCard
+        weekStart={currentWeekStart}
+        todayIso={todayIso}
+        wager={wager}
+        totalXp={Number(totalXp ?? 0)}
+        placementOpen={wagerPlacementOpen(currentWeekStart, todayIso)}
+        weekLoggedDates={weekLoggedDates}
+      />
       <WeekSummary
         ownerId={user.id}
         weekStart={weekStart}
@@ -112,6 +137,7 @@ export default async function DashboardPage({
         unlockedIds={(achievementRows ?? []).map((r) => r.achievement_id)}
       />
       <AchievementSync />
+      <MascotOverlay />
     </div>
   );
 }

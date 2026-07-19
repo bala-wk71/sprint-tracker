@@ -95,6 +95,52 @@ export async function awardTimeLogXp(
 }
 
 // ----------------------------------------------------------------------
+// Weekly XP wagers
+// ----------------------------------------------------------------------
+
+/** Stake choices offered when placing a wager. */
+export const WAGER_PRESETS = [25, 50, 100] as const;
+
+/** A won wager pays the stake back plus this profit on top. */
+export function wagerProfit(stake: number): number {
+  return Math.ceil(stake / 2);
+}
+
+/** Total XP credited on a win (the escrowed stake plus profit). */
+export function wagerPayout(stake: number): number {
+  return stake + wagerProfit(stake);
+}
+
+/**
+ * Wagers can only be placed on Monday or Tuesday of the week being wagered —
+ * staking on a week that's already mostly logged would be free XP.
+ */
+export function wagerPlacementOpen(weekStart: string, todayIso: string): boolean {
+  return todayIso === weekStart || todayIso === addDays(weekStart, 1);
+}
+
+export type WagerOutcome = "pending" | "won" | "lost";
+
+/**
+ * Judge a wager week from log history. Lost as soon as any fully elapsed day
+ * of the week has no log (today stays forgivable until it's over, matching
+ * the streak rules); won once all 7 days are logged; pending otherwise.
+ */
+export function wagerOutcome(
+  loggedDates: string[],
+  weekStart: string,
+  todayIso: string
+): WagerOutcome {
+  const logged = new Set(loggedDates);
+  for (let i = 0; i < 7; i++) {
+    const day = addDays(weekStart, i);
+    if (logged.has(day)) continue;
+    return day >= todayIso ? "pending" : "lost";
+  }
+  return "won";
+}
+
+// ----------------------------------------------------------------------
 // Levels
 // ----------------------------------------------------------------------
 

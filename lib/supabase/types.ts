@@ -605,6 +605,44 @@ export type Database = {
           },
         ]
       }
+      xp_wagers: {
+        Row: {
+          id: string
+          owner_id: string
+          week_start: string
+          stake: number
+          status: string
+          created_at: string
+          resolved_at: string | null
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          week_start: string
+          stake: number
+          status?: string
+          created_at?: string
+          resolved_at?: string | null
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          week_start?: string
+          stake?: number
+          status?: string
+          created_at?: string
+          resolved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_wagers_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_achievements: {
         Row: {
           id: string

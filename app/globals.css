@@ -228,6 +228,50 @@ textarea {
   background: hsl(215 14% 35%);
 }
 
+/* Mascot overlay (XP gain/loss visit greeting) */
+@keyframes mascot-pop {
+  0% { transform: translateY(130%) scale(0.6); opacity: 0; }
+  60% { transform: translateY(-8%) scale(1.05); opacity: 1; }
+  80% { transform: translateY(4%) scale(0.98); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes mascot-bob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-6px) rotate(1.5deg); }
+}
+
+@keyframes mascot-sulk {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(2px) rotate(-2deg); }
+}
+
+@keyframes mascot-bubble-in {
+  0% { transform: translateY(8px) scale(0.85); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes mascot-confetti {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(140px) rotate(540deg); opacity: 0; }
+}
+
+.mascot-enter { animation: mascot-pop 0.6s cubic-bezier(0.22, 1.2, 0.36, 1) both; }
+.mascot-happy { animation: mascot-bob 1.6s ease-in-out 0.6s infinite; }
+.mascot-sad { animation: mascot-sulk 2.4s ease-in-out 0.6s infinite; }
+.mascot-bubble { animation: mascot-bubble-in 0.35s ease-out 0.45s both; }
+.mascot-confetti-piece { animation: mascot-confetti 1.4s ease-in both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-enter,
+  .mascot-happy,
+  .mascot-sad,
+  .mascot-bubble {
+    animation: none;
+  }
+  .mascot-confetti-piece { display: none; }
+}
+
 .colourful ::-webkit-scrollbar-track  { background: hsl(345 100% 98%); }
 .colourful ::-webkit-scrollbar-thumb  { background: hsl(335 100% 85%); border-radius: 4px; }
 .colourful ::-webkit-scrollbar-thumb:hover { background: hsl(335 100% 78%); }
