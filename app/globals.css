@@ -182,6 +182,15 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Form controls sit inside grid/flex tracks throughout the app; without
+   this their intrinsic width (min-width: auto) can force a track wider
+   than a phone viewport and give the whole page horizontal scroll. */
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
 /* Mobile: form controls must render at ≥16px or iOS Safari zooms the whole
    page on focus and leaves it zoomed/offset. Unlayered, so it wins over
    text-sm/text-xs utilities on small screens only. */
