@@ -297,7 +297,72 @@ export async function WeekSummary({
                 )}
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* Mobile: stacked cards — a 6-column table forces sideways scrolling on phones */}
+              <ul className="space-y-3 md:hidden">
+                {tasks.map((t) => {
+                  const target = Number(t.target_hours || 0);
+                  const actual = hoursByTask.get(t.id) ?? 0;
+                  const pct =
+                    target > 0 ? Math.min(100, (actual / target) * 100) : 0;
+                  const overTarget = target > 0 && actual > target;
+                  return (
+                    <li
+                      key={t.id}
+                      className="rounded-md border border-border bg-background p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="min-w-0 flex-1 text-sm font-medium text-foreground">
+                          {t.name}
+                        </p>
+                        <PaceCell
+                          target={target}
+                          actual={actual}
+                          elapsedDays={elapsedDays}
+                        />
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <CategoryBadge category={t.category as TaskCategory} />
+                        <span className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            {actual.toFixed(1)}h
+                          </span>{" "}
+                          of {target.toFixed(1)}h
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className={`h-full transition-all ${
+                              overTarget
+                                ? "bg-[hsl(var(--weak-signal))]"
+                                : pct >= 100
+                                  ? "bg-[hsl(var(--strong-signal))]"
+                                  : "bg-primary"
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="w-10 text-right text-xs text-muted-foreground">
+                          {target > 0 ? `${Math.round(pct)}%` : "—"}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+                {untaggedHours > 0 && (
+                  <li className="flex items-center justify-between rounded-md border border-dashed border-border bg-background p-3 text-sm">
+                    <span className="italic text-muted-foreground">
+                      (untagged time)
+                    </span>
+                    <span className="text-muted-foreground">
+                      {untaggedHours.toFixed(1)}h
+                    </span>
+                  </li>
+                )}
+              </ul>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -379,6 +444,7 @@ export async function WeekSummary({
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </section>
 
