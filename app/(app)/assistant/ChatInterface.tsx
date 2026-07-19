@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useSyncExternalStore,
+} from "react";
 import { format } from "date-fns";
 import { Bot, Send, User, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -191,8 +197,17 @@ export function ChatInterface({
   );
 }
 
+const emptySubscribe = () => () => {};
+
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+  // Timestamps are timezone-dependent, so the server-rendered text can
+  // differ from the client's and trip hydration. Render them client-only.
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   return (
     <div
@@ -227,8 +242,8 @@ function MessageBubble({ message }: { message: Message }) {
             <Markdown content={message.content} />
           )}
         </div>
-        <p className="mt-1 px-1 text-[10px] text-muted-foreground/70">
-          {format(new Date(message.created_at), "MMM d, HH:mm")}
+        <p className="mt-1 min-h-[15px] px-1 text-[10px] text-muted-foreground/70">
+          {mounted ? format(new Date(message.created_at), "MMM d, HH:mm") : null}
         </p>
       </div>
     </div>

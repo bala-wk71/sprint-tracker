@@ -30,9 +30,15 @@ export function Header() {
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm md:px-6">
       {/* Spacer that reserves room for the mobile hamburger button */}
       <div className="w-10 md:hidden" />
+      {/* Date text depends on the viewer's timezone, so render it
+          client-only to avoid a hydration mismatch near midnight. */}
       <p className="text-sm font-medium text-muted-foreground">
-        <span className="sm:hidden">{todayShort}</span>
-        <span className="hidden sm:inline">{today}</span>
+        {mounted && (
+          <>
+            <span className="sm:hidden">{todayShort}</span>
+            <span className="hidden sm:inline">{today}</span>
+          </>
+        )}
       </p>
       <div className="flex items-center gap-4">
         {mounted && (() => {
