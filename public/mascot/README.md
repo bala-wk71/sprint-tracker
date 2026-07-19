@@ -1,13 +1,12 @@
 # Mascot art
 
-The dashboard visit greeter looks for two images in this folder:
+GIFs shown by the dashboard visit greeter. The pools live in
+`lib/mascotArt.ts` — the overlay picks one at random from the matching mood
+each time it appears, so multiple files rotate naturally:
 
-- `happy.gif` — shown for XP gains and won wagers
-- `sad.gif` — shown for XP losses and lost wagers
+- `happy-*.gif` — XP gains and won wagers (currently Chopper celebrating)
+- `sad-*.gif` — XP losses and lost wagers (currently Luffy crying)
 
-PNG/WebP work too if named `happy.gif`/`sad.gif` is kept (the extension is
-what the component requests), but simplest is to save actual GIFs. Roughly
-square images around 200–400px look best; they render at 96×96.
-
-Drop in whatever character you like (Luffy, Asta, …). Until both files exist
-the app falls back to the built-in signal-blob mascot.
+To add art: drop a GIF in this folder and add its filename to the right pool
+in `lib/mascotArt.ts`. Roughly square images look best; they render at 96×96.
+If a pool is empty or a file fails to load, a built-in SVG mascot fills in.

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { resolveWagers } from "@/app/(app)/dashboard/wager-actions";
 import { getLastSeenXp, setLastSeenXp } from "@/lib/xpVisit";
-
-type Mood = "happy" | "sad";
+import { pickMascotArt, type MascotMood as Mood } from "@/lib/mascotArt";
 
 type Scene = {
   mood: Mood;
   headline: string;
   detail: string;
+  /** Chosen art for this appearance; null renders the built-in SVG mascot. */
+  art: string | null;
 };
 
 const CONFETTI_COLORS = [
@@ -24,19 +25,21 @@ const CONFETTI_COLORS = [
 /**
  * Visit greeter: on dashboard mount it settles any decidable wagers, then has
  * the mascot report the verdict — or, with no wager news, the XP gained or
- * lost since the last visit. Drop your own character art (Luffy, Asta, …)
- * into public/mascot/ as happy.gif and sad.gif; a built-in mascot renders
- * until you do.
+ * lost since the last visit. Character art rotates randomly from the pools
+ * in lib/mascotArt.ts (files live in public/mascot/); a built-in SVG mascot
+ * renders when a pool is empty or a file fails to load.
  */
 export function MascotOverlay() {
   const router = useRouter();
   const ran = useRef(false);
   const [scene, setScene] = useState<Scene | null>(null);
-  const [imageOk, setImageOk] = useState(true);
 
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
+    const show = (mood: Mood, headline: string, detail: string) =>
+      setScene({ mood, headline, detail, art: pickMascotArt(mood) });
+
     resolveWagers()
       .then(({ resolutions, totalXp }) => {
         const lastSeen = getLastSeenXp();
@@ -48,29 +51,29 @@ export function MascotOverlay() {
         const lost = resolutions.find((r) => r.outcome === "lost");
         const won = resolutions.find((r) => r.outcome === "won");
         if (lost) {
-          setScene({
-            mood: "sad",
-            headline: "Wager lost…",
-            detail: `Your ${lost.stake} XP stake is gone — the week had a missed day. Win it back next time.`,
-          });
+          show(
+            "sad",
+            "Wager lost…",
+            `Your ${lost.stake} XP stake is gone — the week had a missed day. Win it back next time.`
+          );
         } else if (won) {
-          setScene({
-            mood: "happy",
-            headline: "Wager won!",
-            detail: `All 7 days logged — +${won.payout} XP paid out. That's how it's done!`,
-          });
+          show(
+            "happy",
+            "Wager won!",
+            `All 7 days logged — +${won.payout} XP paid out. That's how it's done!`
+          );
         } else if (lastSeen !== null && totalXp > lastSeen) {
-          setScene({
-            mood: "happy",
-            headline: `+${totalXp - lastSeen} XP since your last visit`,
-            detail: "Keep stacking. The streak feeds the level.",
-          });
+          show(
+            "happy",
+            `+${totalXp - lastSeen} XP since your last visit`,
+            "Keep stacking. The streak feeds the level."
+          );
         } else if (lastSeen !== null && totalXp < lastSeen) {
-          setScene({
-            mood: "sad",
-            headline: `${totalXp - lastSeen} XP since your last visit`,
-            detail: "Down, not out — log today and climb back.",
-          });
+          show(
+            "sad",
+            `${totalXp - lastSeen} XP since your last visit`,
+            "Down, not out — log today and climb back."
+          );
         }
       })
       .catch(() => {
@@ -121,16 +124,16 @@ export function MascotOverlay() {
         <span className="absolute -bottom-1.5 right-10 h-3 w-3 rotate-45 border-b border-r border-border bg-card" />
       </div>
       <div className={`mascot-enter mr-6 ${scene.mood === "happy" ? "mascot-happy" : "mascot-sad"}`}>
-        {imageOk ? (
+        {scene.art ? (
           // user-supplied local file that may not exist; next/image would
           // log 404 errors instead of falling back cleanly
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/mascot/${scene.mood}.gif`}
+            src={scene.art}
             alt=""
             aria-hidden
-            className="h-24 w-24 object-contain drop-shadow-lg"
-            onError={() => setImageOk(false)}
+            className="h-24 w-24 rounded-lg object-contain drop-shadow-lg"
+            onError={() => setScene({ ...scene, art: null })}
           />
         ) : (
           <FallbackMascot mood={scene.mood} />
