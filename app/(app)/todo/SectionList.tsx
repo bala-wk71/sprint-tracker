@@ -7,7 +7,13 @@ import { createSection } from "./actions";
 import { SectionCard } from "./SectionCard";
 import type { TodoSection } from "./types";
 
-export function SectionList({ sections }: { sections: TodoSection[] }) {
+export function SectionList({
+  sections,
+  showCompleted,
+}: {
+  sections: TodoSection[];
+  showCompleted: boolean;
+}) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -38,7 +44,11 @@ export function SectionList({ sections }: { sections: TodoSection[] }) {
       )}
 
       {sections.map((section) => (
-        <SectionCard key={section.id} section={section} />
+        <SectionCard
+          key={section.id}
+          section={section}
+          showCompleted={showCompleted}
+        />
       ))}
 
       {adding ? (

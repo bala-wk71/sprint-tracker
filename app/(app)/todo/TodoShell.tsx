@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Layers, CircleDashed } from "lucide-react";
+import { Layers, CircleDashed, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionList } from "./SectionList";
 import { PendingView } from "./PendingView";
@@ -19,6 +19,7 @@ export function TodoShell({
   completedCount: number;
 }) {
   const [tab, setTab] = useState<Tab>("sections");
+  const [showCompleted, setShowCompleted] = useState(false);
   const total = pendingCount + completedCount;
   const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
@@ -62,25 +63,40 @@ export function TodoShell({
           </button>
         </div>
 
-        {total > 0 && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>
-              <span className="font-semibold text-foreground">{completedCount}</span>{" "}
-              of {total} done
-            </span>
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${pct}%` }}
-              />
+        <div className="flex flex-wrap items-center gap-3">
+          {total > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>
+                <span className="font-semibold text-foreground">{completedCount}</span>{" "}
+                of {total} done
+              </span>
+              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="tabular-nums">{pct}%</span>
             </div>
-            <span className="tabular-nums">{pct}%</span>
-          </div>
-        )}
+          )}
+          {completedCount > 0 && tab === "sections" && (
+            <button
+              onClick={() => setShowCompleted((s) => !s)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {showCompleted ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
+              {showCompleted ? "Hide completed" : "Show completed"}
+            </button>
+          )}
+        </div>
       </div>
 
       {tab === "sections" ? (
-        <SectionList sections={sections} />
+        <SectionList sections={sections} showCompleted={showCompleted} />
       ) : (
         <PendingView sections={sections} />
       )}
