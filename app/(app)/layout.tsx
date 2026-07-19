@@ -37,7 +37,7 @@ export default async function AppLayout({
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <Sidebar user={sidebarUser} />
       <div className="flex flex-1 flex-col md:ml-60">
         <Header />

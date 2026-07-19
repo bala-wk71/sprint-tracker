@@ -182,6 +182,24 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Mobile: form controls must render at ≥16px or iOS Safari zooms the whole
+   page on focus and leaves it zoomed/offset. Unlayered, so it wins over
+   text-sm/text-xs utilities on small screens only. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}
+
+/* Mobile: remove the grey flash on tap; keep focus rings intact. */
+@media (hover: none) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 /* Scrollbar styling for dark theme */
 .dark ::-webkit-scrollbar {
   width: 8px;

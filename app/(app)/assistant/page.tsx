@@ -34,7 +34,7 @@ export default async function AssistantPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col sm:h-[calc(100vh-7rem)]">
+    <div className="flex h-[calc(100dvh-8rem)] flex-col sm:h-[calc(100dvh-7rem)]">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Sprint Coach</h1>
