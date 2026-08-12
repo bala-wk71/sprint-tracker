@@ -468,6 +468,75 @@ export type Database = {
           },
         ]
       }
+      note_pages: {
+        Row: {
+          id: string
+          owner_id: string
+          parent_id: string | null
+          title: string
+          icon: string | null
+          kind: string
+          body: string
+          enhanced_body: string | null
+          transcript: string | null
+          meeting_date: string | null
+          attendees: string | null
+          position: number
+          is_archived: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          parent_id?: string | null
+          title?: string
+          icon?: string | null
+          kind?: string
+          body?: string
+          enhanced_body?: string | null
+          transcript?: string | null
+          meeting_date?: string | null
+          attendees?: string | null
+          position?: number
+          is_archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          parent_id?: string | null
+          title?: string
+          icon?: string | null
+          kind?: string
+          body?: string
+          enhanced_body?: string | null
+          transcript?: string | null
+          meeting_date?: string | null
+          attendees?: string | null
+          position?: number
+          is_archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_pages_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_pages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "note_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       todo_sections: {
         Row: {
           id: string
@@ -476,6 +545,7 @@ export type Database = {
           name: string
           position: number
           is_collapsed: boolean
+          source_page_id: string | null
           created_at: string
           updated_at: string
         }
@@ -486,6 +556,7 @@ export type Database = {
           name: string
           position?: number
           is_collapsed?: boolean
+          source_page_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -496,6 +567,7 @@ export type Database = {
           name?: string
           position?: number
           is_collapsed?: boolean
+          source_page_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -514,6 +586,13 @@ export type Database = {
             referencedRelation: "todo_sections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "todo_sections_source_page_id_fkey"
+            columns: ["source_page_id"]
+            isOneToOne: false
+            referencedRelation: "note_pages"
+            referencedColumns: ["id"]
+          },
         ]
       }
       todo_tasks: {
@@ -526,6 +605,8 @@ export type Database = {
           is_completed: boolean
           completed_at: string | null
           position: number
+          source_page_id: string | null
+          due_date: string | null
           created_at: string
           updated_at: string
         }
@@ -538,6 +619,8 @@ export type Database = {
           is_completed?: boolean
           completed_at?: string | null
           position?: number
+          source_page_id?: string | null
+          due_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -550,6 +633,8 @@ export type Database = {
           is_completed?: boolean
           completed_at?: string | null
           position?: number
+          source_page_id?: string | null
+          due_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -566,6 +651,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "todo_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_tasks_source_page_id_fkey"
+            columns: ["source_page_id"]
+            isOneToOne: false
+            referencedRelation: "note_pages"
             referencedColumns: ["id"]
           },
         ]
