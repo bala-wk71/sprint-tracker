@@ -6,6 +6,10 @@ export type TodoTask = {
   is_completed: boolean;
   completed_at: string | null;
   position: number;
+  due_date: string | null;
+  /** Set when the task came from a note page — see app/(app)/notes. */
+  source_page_id: string | null;
+  source_page_title: string | null;
 };
 
 export type TodoSection = {

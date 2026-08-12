@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   Pencil,
   Trash2,
@@ -8,6 +9,7 @@ import {
   X,
   ChevronUp,
   ChevronDown,
+  NotebookPen,
   StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -109,6 +111,11 @@ export function TaskItem({
   const canMoveUp = canReorder && tree.canMoveTask(siblings!, task.id, -1);
   const canMoveDown = canReorder && tree.canMoveTask(siblings!, task.id, 1);
   const hasNotes = Boolean(task.description?.trim());
+  // UTC on both sides of the render, so this cannot desync during hydration.
+  const overdue =
+    !task.is_completed &&
+    task.due_date !== null &&
+    task.due_date < new Date().toISOString().slice(0, 10);
 
   return (
     <div className="rounded-md transition-colors hover:bg-accent/50">
@@ -172,6 +179,30 @@ export function TaskItem({
             >
               {task.title}
             </button>
+
+            {task.due_date && (
+              <span
+                className={cn(
+                  "shrink-0 text-xs tabular-nums",
+                  overdue ? "text-destructive" : "text-muted-foreground"
+                )}
+              >
+                {task.due_date}
+              </span>
+            )}
+
+            {task.source_page_id && (
+              <Link
+                href={`/notes/${task.source_page_id}`}
+                title={`From ${task.source_page_title ?? "a note page"}`}
+                className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <NotebookPen className="h-3.5 w-3.5" />
+                <span className="hidden max-w-[10rem] truncate sm:inline">
+                  {task.source_page_title ?? "Note"}
+                </span>
+              </Link>
+            )}
 
             {hasNotes && !notesOpen && (
               <StickyNote

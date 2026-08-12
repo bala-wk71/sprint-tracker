@@ -15,13 +15,19 @@ export default async function TodoPage() {
       .order("position"),
     supabase
       .from("todo_tasks")
-      .select("id, section_id, title, description, is_completed, completed_at, position")
+      .select(
+        "id, section_id, title, description, is_completed, completed_at, position, due_date, source_page_id, note_pages(title)"
+      )
       .eq("owner_id", user.id)
       .order("position"),
   ]);
 
   const sections = sectionsRaw ?? [];
-  const tasks = (tasksRaw ?? []) as TodoTask[];
+  const tasks: TodoTask[] = (tasksRaw ?? []).map((row) => {
+    const { note_pages, ...task } = row;
+    const page = Array.isArray(note_pages) ? note_pages[0] : note_pages;
+    return { ...task, source_page_title: page?.title ?? null };
+  });
 
   // Group tasks by section
   const tasksBySection = new Map<string, TodoTask[]>();

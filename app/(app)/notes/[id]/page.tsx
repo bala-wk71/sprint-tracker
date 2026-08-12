@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarClock, FileText } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { ActionItemsPanel } from "../ActionItemsPanel";
 import { NoteEditor } from "../NoteEditor";
 import { NewPageButtons } from "../NewPageButtons";
 import { PageHeader } from "../PageHeader";
@@ -19,27 +20,37 @@ export default async function NoteDetailPage({
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: page }, { data: allRows }, { data: childRows }] =
-    await Promise.all([
-      supabase
-        .from("note_pages")
-        .select(
-          "id, parent_id, title, kind, body, enhanced_body, transcript, meeting_date, attendees"
-        )
-        .eq("id", id)
-        .eq("owner_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("note_pages")
-        .select("id, parent_id, title, kind, position, updated_at")
-        .eq("owner_id", user.id),
-      supabase
-        .from("note_pages")
-        .select("id, title, kind")
-        .eq("owner_id", user.id)
-        .eq("parent_id", id)
-        .order("position"),
-    ]);
+  const [
+    { data: page },
+    { data: allRows },
+    { data: childRows },
+    { data: itemRows },
+  ] = await Promise.all([
+    supabase
+      .from("note_pages")
+      .select(
+        "id, parent_id, title, kind, body, enhanced_body, transcript, meeting_date, attendees"
+      )
+      .eq("id", id)
+      .eq("owner_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("note_pages")
+      .select("id, parent_id, title, kind, position, updated_at")
+      .eq("owner_id", user.id),
+    supabase
+      .from("note_pages")
+      .select("id, title, kind")
+      .eq("owner_id", user.id)
+      .eq("parent_id", id)
+      .order("position"),
+    supabase
+      .from("todo_tasks")
+      .select("id, title, is_completed, due_date, position")
+      .eq("owner_id", user.id)
+      .eq("source_page_id", id)
+      .order("position"),
+  ]);
 
   if (!page) notFound();
 
@@ -72,6 +83,8 @@ export default async function NoteDetailPage({
       />
 
       <TranscriptPanel pageId={page.id} transcript={page.transcript} />
+
+      <ActionItemsPanel pageId={page.id} items={itemRows ?? []} />
 
       <section className="space-y-3 rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold text-foreground">Subpages</h2>

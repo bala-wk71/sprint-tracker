@@ -31,6 +31,9 @@ export function TaskInput({ sectionId }: { sectionId: string }) {
       // Render order comes from array position; this is only a placeholder
       // until the server's real row arrives.
       position: 0,
+      due_date: null,
+      source_page_id: null,
+      source_page_title: null,
     };
 
     const result = await run(
