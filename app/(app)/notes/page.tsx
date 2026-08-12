@@ -2,11 +2,30 @@ import Link from "next/link";
 import { CalendarClock, FileText, ListChecks } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { NewPageButtons } from "./NewPageButtons";
+import { NotesSearch } from "./NotesSearch";
 
-export default async function NotesIndexPage() {
+export default async function NotesIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const query = q?.trim() ?? "";
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return null;
+
+  // Hits the GIN index on search_vector, so this stays one query as the
+  // workspace grows rather than a LIKE scan over every body.
+  const { data: matches } = query
+    ? await supabase
+        .from("note_pages")
+        .select("id, title, kind, updated_at")
+        .eq("owner_id", user.id)
+        .eq("is_archived", false)
+        .textSearch("search_vector", query, { type: "websearch" })
+        .limit(30)
+    : { data: null };
 
   const [{ data: recent }, { data: openItems }] = await Promise.all([
     supabase
@@ -40,6 +59,39 @@ export default async function NotesIndexPage() {
       </div>
 
       <NewPageButtons />
+
+      <NotesSearch initialQuery={query} />
+
+      {matches !== null && (
+        <section className="rounded-lg border border-border bg-card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">
+            {matches.length} result{matches.length === 1 ? "" : "s"} for
+            &ldquo;{query}&rdquo;
+          </h2>
+          {matches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing matched. Full-text search matches whole words.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {matches.map((page) => {
+                const Icon = page.kind === "meeting" ? CalendarClock : FileText;
+                return (
+                  <li key={page.id}>
+                    <Link
+                      href={`/notes/${page.id}`}
+                      className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{page.title}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-lg border border-border bg-card p-4">
