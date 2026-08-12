@@ -10,7 +10,7 @@ import {
 import { format } from "date-fns";
 import { Bot, Send, User, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Markdown } from "./Markdown";
+import { Markdown } from "@/components/shared/Markdown";
 
 type Message = {
   id: string;

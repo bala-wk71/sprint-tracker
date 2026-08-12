@@ -25,9 +25,6 @@ function TodoBody() {
   const visible = useMemo(() => tree.filterTree(sections, query), [sections, query]);
   const counts = useMemo(() => tree.countTasks(sections), [sections]);
 
-  const total = counts.pending + counts.completed;
-  const pct = total > 0 ? Math.round((counts.completed / total) * 100) : 0;
-
   const tabCounts: Record<Tab, number> = {
     sections: counts.pending,
     completed: counts.completed,

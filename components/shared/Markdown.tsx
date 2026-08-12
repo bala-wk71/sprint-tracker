@@ -3,8 +3,8 @@
 import type { ReactNode } from "react";
 
 /**
- * Minimal markdown renderer for coach replies — bold, italic, inline code,
- * bullet/numbered lists, and headings. No external deps, no raw HTML.
+ * Minimal markdown renderer for coach replies and note pages — bold, italic,
+ * inline code, bullet/numbered lists, and headings. No external deps, no raw HTML.
  */
 
 function renderInline(text: string, keyPrefix: string): ReactNode[] {

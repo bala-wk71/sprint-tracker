@@ -15,6 +15,7 @@ import {
   ListTodo,
   LogOut,
   Menu,
+  NotebookPen,
   Settings,
   Users,
   X,
@@ -32,6 +33,7 @@ const icons: Record<string, LucideIcon> = {
   Users,
   CheckSquare,
   Bot,
+  NotebookPen,
   Settings,
 };
 
