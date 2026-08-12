@@ -240,6 +240,13 @@ export function ActionItemsPanel({
                       )}
                       {proposal.confidence === "low" && <span>Unsure</span>}
                     </div>
+                    {/* The line the item was read from — the evidence you
+                        accept or reject on. */}
+                    {proposal.source_quote && (
+                      <p className="text-xs italic text-muted-foreground">
+                        “{proposal.source_quote}”
+                      </p>
+                    )}
                   </div>
                 </li>
               );
