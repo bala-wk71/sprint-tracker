@@ -20,9 +20,14 @@ type GenerationConfig = {
   responseSchema?: ResponseSchema;
 };
 
+// gemini-2.5-flash thinks before it writes, and those tokens come out of this
+// same budget. At 2048 a chat answer to anything open-ended got maybe a hundred
+// tokens of prose after the model finished thinking and stopped mid-sentence —
+// asking the coach for a 20-item checklist returned one and a half items. The
+// ceiling has to leave room for both halves.
 const DEFAULT_CONFIG: GenerationConfig = {
   temperature: 0.7,
-  maxOutputTokens: 2048,
+  maxOutputTokens: 8192,
 };
 
 type GeminiResponse = {

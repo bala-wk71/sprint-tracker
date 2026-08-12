@@ -138,13 +138,12 @@ export async function enhanceNotes(
   const today = new Date().toISOString().slice(0, 10);
 
   try {
-    // A clean-up rewrites the whole note, and gemini-2.5-flash spends part of
-    // the budget on thinking tokens, so the 2048 default cut long notes off
-    // mid-sentence — and a truncated note must not be saved as the good copy.
+    // Unlike a chat reply, this gets written to the page as the tidy copy, so
+    // a run that hits the ceiling has to fail rather than persist half a note.
     const enhanced = await generateResponse(
       getEnhancePrompt(today),
       [{ role: "user", parts: [{ text: loaded.context }] }],
-      { maxOutputTokens: 8192, failOnTruncation: true }
+      { failOnTruncation: true }
     );
 
     if (!enhanced.trim())
