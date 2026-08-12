@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CalendarClock, FileText } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { ActionItemsPanel } from "../ActionItemsPanel";
+import { AiPanel } from "../AiPanel";
 import { NoteEditor } from "../NoteEditor";
 import { NewPageButtons } from "../NewPageButtons";
 import { PageHeader } from "../PageHeader";
@@ -83,6 +84,8 @@ export default async function NoteDetailPage({
       />
 
       <TranscriptPanel pageId={page.id} transcript={page.transcript} />
+
+      <AiPanel pageId={page.id} />
 
       <ActionItemsPanel pageId={page.id} items={itemRows ?? []} />
 
