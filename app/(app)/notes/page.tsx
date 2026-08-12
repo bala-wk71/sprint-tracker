@@ -65,8 +65,7 @@ export default async function NotesIndexPage({
       {matches !== null && (
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold text-foreground">
-            {matches.length} result{matches.length === 1 ? "" : "s"} for
-            &ldquo;{query}&rdquo;
+            {`${matches.length} result${matches.length === 1 ? "" : "s"} for “${query}”`}
           </h2>
           {matches.length === 0 ? (
             <p className="text-sm text-muted-foreground">
