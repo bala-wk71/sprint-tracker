@@ -36,9 +36,14 @@ export function NoteEditor({
   // Only take a fresh server body when there is nothing unsaved locally —
   // a router.refresh() triggered by some other control must not wipe out
   // characters typed in the last few hundred milliseconds.
-  const [serverBody, setServerBody] = useState(body);
-  if (body !== serverBody) {
-    setServerBody(body);
+  //
+  // This tracks the last *prop* we saw, so it must never be written from a
+  // locally saved snapshot: the route does not revalidate after an autosave,
+  // so doing that would leave prop !== seenBody forever and reset the editor
+  // to the stale prop on the very next render.
+  const [seenBody, setSeenBody] = useState(body);
+  if (body !== seenBody) {
+    setSeenBody(body);
     if (!dirty) setValue(body);
   }
 
@@ -69,7 +74,6 @@ export function NoteEditor({
     // Anything typed while the request was in flight is still unsaved.
     if (latest.current === snapshot) {
       setDirty(false);
-      setServerBody(snapshot);
       setStatus("saved");
     }
   }, [pageId]);
