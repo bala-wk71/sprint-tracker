@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Eye, Loader2, Pencil, Sparkles } from "lucide-react";
+import { Check, Eye, Loader2, Pencil, Sparkles, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/shared/Markdown";
 import { updatePage } from "./actions";
@@ -15,10 +15,18 @@ export function NoteEditor({
   pageId,
   body,
   enhancedBody,
+  onExtract,
+  onEnhance,
+  extracting,
+  enhancing,
 }: {
   pageId: string;
   body: string;
   enhancedBody: string | null;
+  onExtract: () => void;
+  onEnhance: () => void;
+  extracting: boolean;
+  enhancing: boolean;
 }) {
   const [value, setValue] = useState(body);
   const [dirty, setDirty] = useState(false);
@@ -94,7 +102,7 @@ export function NoteEditor({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-border bg-card p-1">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
@@ -114,9 +122,42 @@ export function NoteEditor({
           ))}
         </div>
 
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onExtract}
+            disabled={extracting || enhancing}
+            title="Pull the commitments out of these notes"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            {extracting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Wand2 className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {extracting ? "Reading…" : "Extract"}
+            </span>
+          </button>
+          <button
+            onClick={onEnhance}
+            disabled={extracting || enhancing}
+            title="Rewrite these notes into a clean structure"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            {enhancing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {enhancing ? "Cleaning…" : "Clean up"}
+            </span>
+          </button>
+        </div>
+
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 text-xs",
+            "ml-auto inline-flex items-center gap-1.5 text-xs",
             status === "error" ? "text-destructive" : "text-muted-foreground"
           )}
         >

@@ -92,3 +92,39 @@ export function filterTree(
   }
   return out;
 }
+
+/** Move the item at `from` to `to`, returning a new array. */
+export function moveItem<T>(list: T[], from: number, to: number): T[] {
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+/**
+ * Reorder `id` one slot in `direction` among its siblings, anywhere in the
+ * tree. Returns null when it is already at that end — the caller uses that to
+ * disable the control rather than firing a no-op write.
+ */
+export function moveNode(
+  nodes: NotePageNode[],
+  id: string,
+  direction: -1 | 1
+): { nodes: NotePageNode[]; orderedIds: string[] } | null {
+  const index = nodes.findIndex((n) => n.id === id);
+  if (index !== -1) {
+    const to = index + direction;
+    if (to < 0 || to >= nodes.length) return null;
+    const reordered = moveItem(nodes, index, to);
+    return { nodes: reordered, orderedIds: reordered.map((n) => n.id) };
+  }
+
+  for (let i = 0; i < nodes.length; i++) {
+    const result = moveNode(nodes[i].children, id, direction);
+    if (!result) continue;
+    const next = [...nodes];
+    next[i] = { ...nodes[i], children: result.nodes };
+    return { nodes: next, orderedIds: result.orderedIds };
+  }
+  return null;
+}

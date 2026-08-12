@@ -35,13 +35,3 @@ export type PageActionItem = {
   due_date: string | null;
   position: number;
 };
-
-/** One AI proposal, before the user accepts it. */
-export type ActionItemProposal = {
-  title: string;
-  owner: "me" | "other";
-  owner_name: string | null;
-  due_date: string | null;
-  source_quote: string;
-  confidence: "high" | "low";
-};

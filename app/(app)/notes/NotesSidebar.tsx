@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   FileText,
   FolderTree,
   Plus,
@@ -15,8 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createPage, deletePage } from "./actions";
-import { filterTree } from "./tree";
+import { createPage, deletePage, reorderPages } from "./actions";
+import { filterTree, moveNode } from "./tree";
 import type { NotePageNode } from "./types";
 
 export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
@@ -26,9 +27,18 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
   const [pending, startTransition] = useTransition();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Reordering is applied locally first so the row moves under the cursor;
+  // the server tree replaces this whenever the route re-renders.
+  const [local, setLocal] = useState(tree);
+  const [serverTree, setServerTree] = useState(tree);
+  if (tree !== serverTree) {
+    setServerTree(tree);
+    setLocal(tree);
+  }
+
   const activeId = params?.id ?? null;
   const searching = query.trim().length > 0;
-  const visible = useMemo(() => filterTree(tree, query), [tree, query]);
+  const visible = useMemo(() => filterTree(local, query), [local, query]);
 
   // Branches are open by default and the user folds the ones they don't want,
   // so a freshly created subpage is never hidden behind a closed parent.
@@ -74,11 +84,25 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
     });
   };
 
+  const reorder = (id: string, direction: -1 | 1) => {
+    const result = moveNode(local, id, direction);
+    if (!result) return;
+    setLocal(result.nodes);
+    startTransition(async () => {
+      const saved = await reorderPages({ orderedIds: result.orderedIds });
+      if (!saved.ok) router.refresh();
+    });
+  };
+
   const renderNode = (node: NotePageNode, depth: number) => {
     const hasChildren = node.children.length > 0;
     const isOpen = searching || !collapsed.has(node.id);
     const isActive = node.id === activeId;
     const Icon = node.kind === "meeting" ? CalendarClock : FileText;
+    // Neighbours are hidden while filtering, so a move would look inert.
+    const canReorder = !searching;
+    const canMoveUp = canReorder && moveNode(local, node.id, -1) !== null;
+    const canMoveDown = canReorder && moveNode(local, node.id, 1) !== null;
 
     return (
       <li key={node.id}>
@@ -121,24 +145,48 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
             <span className="truncate">{node.title}</span>
           </Link>
 
-          <button
-            onClick={() => addPage(node.id)}
-            disabled={pending}
-            className="shrink-0 rounded p-1 opacity-0 hover:text-foreground focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
-            aria-label={`Add a page inside ${node.title}`}
-            title="Add subpage"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => removePage(node)}
-            disabled={pending}
-            className="shrink-0 rounded p-1 opacity-0 hover:text-destructive focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
-            aria-label={`Delete ${node.title}`}
-            title="Delete page"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+            {canReorder && (
+              <>
+                <button
+                  onClick={() => reorder(node.id, -1)}
+                  disabled={!canMoveUp || pending}
+                  className="rounded p-1 hover:text-foreground disabled:opacity-30"
+                  aria-label={`Move ${node.title} up`}
+                  title="Move up"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => reorder(node.id, 1)}
+                  disabled={!canMoveDown || pending}
+                  className="rounded p-1 hover:text-foreground disabled:opacity-30"
+                  aria-label={`Move ${node.title} down`}
+                  title="Move down"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => addPage(node.id)}
+              disabled={pending}
+              className="rounded p-1 hover:text-foreground disabled:opacity-50"
+              aria-label={`Add a page inside ${node.title}`}
+              title="Add subpage"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => removePage(node)}
+              disabled={pending}
+              className="rounded p-1 hover:text-destructive disabled:opacity-50"
+              aria-label={`Delete ${node.title}`}
+              title="Delete page"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {hasChildren && isOpen && (
