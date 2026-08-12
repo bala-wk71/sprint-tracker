@@ -1,35 +1,71 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, FolderPlus } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, FolderPlus, SearchX } from "lucide-react";
 import { createSection } from "./actions";
 import { SectionCard } from "./SectionCard";
+import { useTodoStore } from "./store";
+import * as tree from "./tree";
 import type { TodoSection } from "./types";
 
 export function SectionList({
   sections,
+  /** Sections as stored, before search filtering — reordering needs true order. */
+  allSections,
+  searching,
   onViewCompleted,
 }: {
   sections: TodoSection[];
+  allSections: TodoSection[];
+  searching: boolean;
   onViewCompleted?: () => void;
 }) {
-  const router = useRouter();
+  const { run, patch } = useTodoStore();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
-  const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    startTransition(async () => {
-      await createSection({ name: trimmed });
-      setName("");
-      setAdding(false);
-      router.refresh();
-    });
+    setName("");
+    setAdding(false);
+
+    const tempId = crypto.randomUUID();
+    const optimistic: TodoSection = {
+      id: tempId,
+      parent_id: null,
+      name: trimmed,
+      position: 0,
+      is_collapsed: false,
+      tasks: [],
+      subsections: [],
+    };
+
+    const result = await run(
+      (current) => tree.addSection(current, null, optimistic),
+      () => createSection({ name: trimmed })
+    );
+
+    if (result.ok) {
+      const realId = result.data.id;
+      patch((current) =>
+        tree.mapSection(current, tempId, (s) => ({ ...s, id: realId }))
+      );
+    }
   };
+
+  if (searching && sections.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <SearchX className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+        <p className="text-sm font-medium text-foreground">No matches</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Nothing open matches that search. Completed tasks live in their own tab.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -47,6 +83,8 @@ export function SectionList({
         <SectionCard
           key={section.id}
           section={section}
+          siblings={allSections}
+          forceExpanded={searching}
           onViewCompleted={onViewCompleted}
         />
       ))}
@@ -67,11 +105,10 @@ export function SectionList({
             }}
             placeholder="Section name…"
             className="h-11 flex-1 rounded-md border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            disabled={isPending}
           />
           <button
             onClick={handleAdd}
-            disabled={isPending || !name.trim()}
+            disabled={!name.trim()}
             className="h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             Add

@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { format, isToday, isYesterday, isThisWeek } from "date-fns";
-import { Check, Undo2, Trash2, Inbox } from "lucide-react";
+import { Check, Undo2, Trash2, Inbox, SearchX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toggleTaskComplete, deleteTask, clearCompletedTasks } from "./actions";
+import { useTodoStore } from "./store";
+import * as tree from "./tree";
 import type { TodoSection, TodoTask } from "./types";
 
 type DoneTask = TodoTask & { path: string };
@@ -64,15 +65,19 @@ function groupCompleted(tasks: DoneTask[]): DoneGroup[] {
 }
 
 function CompletedRow({ task }: { task: DoneTask }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { run } = useTodoStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleRestore = () => {
-    startTransition(async () => {
-      await toggleTaskComplete({ taskId: task.id, isCompleted: false });
-      router.refresh();
-    });
+    run(
+      (sections) =>
+        tree.updateTask(sections, task.id, (t) => ({
+          ...t,
+          is_completed: false,
+          completed_at: null,
+        })),
+      () => toggleTaskComplete({ taskId: task.id, isCompleted: false })
+    );
   };
 
   const handleDelete = () => {
@@ -81,22 +86,16 @@ function CompletedRow({ task }: { task: DoneTask }) {
       window.setTimeout(() => setConfirmDelete(false), 3000);
       return;
     }
-    startTransition(async () => {
-      await deleteTask(task.id);
-      router.refresh();
-    });
+    run(
+      (sections) => tree.removeTask(sections, task.id),
+      () => deleteTask(task.id)
+    );
   };
 
   return (
-    <div
-      className={cn(
-        "group flex min-h-[44px] items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-accent/50",
-        isPending && "opacity-50"
-      )}
-    >
+    <div className="group flex min-h-[44px] items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-accent/50">
       <button
         onClick={handleRestore}
-        disabled={isPending}
         className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary bg-primary text-primary-foreground transition-colors hover:border-muted-foreground/50 hover:bg-transparent hover:text-transparent"
         aria-label="Mark incomplete"
         title="Mark incomplete"
@@ -119,7 +118,6 @@ function CompletedRow({ task }: { task: DoneTask }) {
       <div className="flex shrink-0 gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
         <button
           onClick={handleRestore}
-          disabled={isPending}
           className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label="Restore task"
           title="Restore to its section"
@@ -128,7 +126,6 @@ function CompletedRow({ task }: { task: DoneTask }) {
         </button>
         <button
           onClick={handleDelete}
-          disabled={isPending}
           className={cn(
             "flex h-8 items-center justify-center gap-1 rounded px-2 text-[11px] font-medium transition-colors",
             confirmDelete
@@ -145,9 +142,14 @@ function CompletedRow({ task }: { task: DoneTask }) {
   );
 }
 
-export function CompletedView({ sections }: { sections: TodoSection[] }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+export function CompletedView({
+  sections,
+  searching,
+}: {
+  sections: TodoSection[];
+  searching: boolean;
+}) {
+  const { run } = useTodoStore();
   const [confirmClear, setConfirmClear] = useState(false);
 
   const groups = useMemo(
@@ -162,45 +164,65 @@ export function CompletedView({ sections }: { sections: TodoSection[] }) {
       window.setTimeout(() => setConfirmClear(false), 4000);
       return;
     }
-    startTransition(async () => {
-      await clearCompletedTasks();
-      setConfirmClear(false);
-      router.refresh();
-    });
+    setConfirmClear(false);
+    run(
+      (current) => tree.mapTasks(current, (tasks) => tasks.filter((t) => !t.is_completed)),
+      () => clearCompletedTasks()
+    );
   };
 
   if (total === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border py-16 text-center">
-        <Inbox className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-        <p className="text-sm font-medium text-foreground">Nothing completed yet</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Tasks you tick off move here, grouped by the day you finished them.
-        </p>
+        {searching ? (
+          <>
+            <SearchX className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm font-medium text-foreground">No matches</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              No completed task matches that search.
+            </p>
+          </>
+        ) : (
+          <>
+            <Inbox className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm font-medium text-foreground">
+              Nothing completed yet
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Tasks you tick off move here, grouped by the day you finished them.
+            </p>
+          </>
+        )}
       </div>
     );
   }
 
   return (
-    <div className={cn("space-y-3", isPending && "opacity-50")}>
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">{total}</span> completed
+          <span className="font-semibold text-foreground">{total}</span>{" "}
+          {searching ? "matching" : "completed"}
           {total === 1 ? " task" : " tasks"}
         </p>
-        <button
-          onClick={handleClear}
-          disabled={isPending}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
-            confirmClear
-              ? "border-destructive/50 bg-destructive/10 text-destructive"
-              : "border-border text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          {confirmClear ? `Delete all ${total}? Click to confirm` : "Clear completed"}
-        </button>
+        {/* Clearing always removes every completed task, so it stays out of the
+            way while a search is narrowing the list. */}
+        {!searching && (
+          <button
+            onClick={handleClear}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+              confirmClear
+                ? "border-destructive/50 bg-destructive/10 text-destructive"
+                : "border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {confirmClear
+              ? `Delete all ${total}? Click to confirm`
+              : "Clear completed"}
+          </button>
+        )}
       </div>
 
       {groups.map((group) => (

@@ -1,28 +1,49 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef } from "react";
 import { Plus } from "lucide-react";
 import { createTask } from "./actions";
+import { useTodoStore } from "./store";
+import * as tree from "./tree";
+import type { TodoTask } from "./types";
 
 export function TaskInput({ sectionId }: { sectionId: string }) {
-  const router = useRouter();
+  const { run, patch } = useTodoStore();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
-  const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Stay open and focused after each add so a list can be typed in one go —
   // Escape or Cancel is the way out.
-  const submit = () => {
+  const submit = async () => {
     const title = value.trim();
     if (!title) return;
     setValue("");
-    startTransition(async () => {
-      await createTask({ sectionId, title });
-      router.refresh();
-      inputRef.current?.focus();
-    });
+
+    const tempId = crypto.randomUUID();
+    const optimistic: TodoTask = {
+      id: tempId,
+      section_id: sectionId,
+      title,
+      description: null,
+      is_completed: false,
+      completed_at: null,
+      // Render order comes from array position; this is only a placeholder
+      // until the server's real row arrives.
+      position: 0,
+    };
+
+    const result = await run(
+      (sections) => tree.addTask(sections, sectionId, optimistic),
+      () => createTask({ sectionId, title })
+    );
+
+    if (result.ok) {
+      const realId = result.data.id;
+      patch((sections) =>
+        tree.updateTask(sections, tempId, (t) => ({ ...t, id: realId }))
+      );
+    }
   };
 
   if (!open) {
@@ -58,7 +79,7 @@ export function TaskInput({ sectionId }: { sectionId: string }) {
       />
       <button
         onClick={submit}
-        disabled={isPending || !value.trim()}
+        disabled={!value.trim()}
         className="h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
         Add

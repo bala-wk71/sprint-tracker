@@ -1,9 +1,15 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardXp } from "@/lib/gamification";
+
+// These actions deliberately do not call revalidatePath: the page keeps an
+// optimistic client-side copy of the tree (see store.tsx), and any revalidation
+// in a Server Action makes the response carry a fresh RSC payload, re-rendering
+// the whole page after every keystroke-level edit. /todo and /dashboard are both
+// dynamic routes reading Supabase directly, so navigating to either still
+// renders fresh data.
 
 export type ActionResult<T = undefined> =
   | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
@@ -65,7 +71,6 @@ export async function createSection(
 
   if (error || !data) return { ok: false, error: error?.message ?? "Failed to create section" };
 
-  revalidatePath("/todo");
   return { ok: true, data: { id: data.id } };
 }
 
@@ -92,7 +97,6 @@ export async function updateSection(
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/todo");
   return { ok: true };
 }
 
@@ -108,32 +112,68 @@ export async function deleteSection(sectionId: string): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/todo");
   return { ok: true };
 }
 
-export async function toggleSectionCollapse(sectionId: string): Promise<ActionResult> {
+const setCollapsedSchema = z.object({
+  sectionId: z.string().uuid(),
+  isCollapsed: z.boolean(),
+});
+
+/**
+ * Persist a fold/unfold. The client already knows the target state, so this is
+ * a single write — and it is fired without awaiting, since collapsing is UI
+ * state and a failure costs nothing but a stale preference.
+ */
+export async function setSectionCollapsed(
+  input: z.infer<typeof setCollapsedSchema>
+): Promise<ActionResult> {
+  const parsed = setCollapsedSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
 
-  const { data: section, error: fetchError } = await ctx.supabase
-    .from("todo_sections")
-    .select("is_collapsed")
-    .eq("id", sectionId)
-    .eq("owner_id", ctx.user.id)
-    .single();
-
-  if (fetchError || !section) return { ok: false, error: fetchError?.message ?? "Section not found" };
-
   const { error } = await ctx.supabase
     .from("todo_sections")
-    .update({ is_collapsed: !section.is_collapsed })
-    .eq("id", sectionId)
+    .update({ is_collapsed: parsed.data.isCollapsed })
+    .eq("id", parsed.data.sectionId)
     .eq("owner_id", ctx.user.id);
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/todo");
+  return { ok: true };
+}
+
+const reorderSchema = z.object({
+  orderedIds: z.array(z.string().uuid()).min(1).max(500),
+});
+
+/** Rewrite `position` for a set of sibling sections, in the given order. */
+export async function reorderSections(
+  input: z.infer<typeof reorderSchema>
+): Promise<ActionResult> {
+  const parsed = reorderSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const ctx = await getUserOrFail();
+  if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  const results = await Promise.all(
+    parsed.data.orderedIds.map((id, position) =>
+      ctx.supabase
+        .from("todo_sections")
+        .update({ position })
+        .eq("id", id)
+        .eq("owner_id", ctx.user.id)
+    )
+  );
+
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { ok: false, error: failed.error.message };
+
   return { ok: true };
 }
 
@@ -175,7 +215,6 @@ export async function createTask(
 
   if (error || !data) return { ok: false, error: error?.message ?? "Failed to create task" };
 
-  revalidatePath("/todo");
   return { ok: true, data: { id: data.id } };
 }
 
@@ -208,7 +247,6 @@ export async function updateTask(
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/todo");
   return { ok: true };
 }
 
@@ -224,7 +262,33 @@ export async function deleteTask(taskId: string): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/todo");
+  return { ok: true };
+}
+
+/** Rewrite `position` for the tasks of one section, in the given order. */
+export async function reorderTasks(
+  input: z.infer<typeof reorderSchema>
+): Promise<ActionResult> {
+  const parsed = reorderSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const ctx = await getUserOrFail();
+  if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  const results = await Promise.all(
+    parsed.data.orderedIds.map((id, position) =>
+      ctx.supabase
+        .from("todo_tasks")
+        .update({ position })
+        .eq("id", id)
+        .eq("owner_id", ctx.user.id)
+    )
+  );
+
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { ok: false, error: failed.error.message };
+
   return { ok: true };
 }
 
@@ -242,7 +306,6 @@ export async function clearCompletedTasks(): Promise<ActionResult<{ deleted: num
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/todo");
   return { ok: true, data: { deleted: data?.length ?? 0 } };
 }
 
@@ -279,7 +342,5 @@ export async function toggleTaskComplete(
     xp = await awardXp(ctx.supabase, ctx.user.id, "todo_done", parsed.data.taskId);
   }
 
-  revalidatePath("/todo");
-  revalidatePath("/dashboard");
   return { ok: true, xp };
 }

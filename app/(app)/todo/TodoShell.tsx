@@ -1,38 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { Layers, CircleDashed, CheckCheck } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Layers, CheckCheck, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionList } from "./SectionList";
-import { PendingView } from "./PendingView";
 import { CompletedView } from "./CompletedView";
+import { TodoProvider, useTodoStore } from "./store";
+import * as tree from "./tree";
 import type { TodoSection } from "./types";
 
-type Tab = "sections" | "pending" | "completed";
+type Tab = "sections" | "completed";
 
 const TABS: { id: Tab; label: string; icon: typeof Layers }[] = [
-  { id: "sections", label: "Sections", icon: Layers },
-  { id: "pending", label: "Pending", icon: CircleDashed },
+  { id: "sections", label: "Tasks", icon: Layers },
   { id: "completed", label: "Completed", icon: CheckCheck },
 ];
 
-export function TodoShell({
-  sections,
-  pendingCount,
-  completedCount,
-}: {
-  sections: TodoSection[];
-  pendingCount: number;
-  completedCount: number;
-}) {
+function TodoBody() {
+  const { sections } = useTodoStore();
   const [tab, setTab] = useState<Tab>("sections");
-  const total = pendingCount + completedCount;
-  const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+  const [query, setQuery] = useState("");
 
-  const counts: Record<Tab, number> = {
-    sections: 0,
-    pending: pendingCount,
-    completed: completedCount,
+  const searching = query.trim().length > 0;
+  const visible = useMemo(() => tree.filterTree(sections, query), [sections, query]);
+  const counts = useMemo(() => tree.countTasks(sections), [sections]);
+
+  const total = counts.pending + counts.completed;
+  const pct = total > 0 ? Math.round((counts.completed / total) * 100) : 0;
+  const tabCounts: Record<Tab, number> = {
+    sections: counts.pending,
+    completed: counts.completed,
   };
 
   return (
@@ -41,7 +38,7 @@ export function TodoShell({
         <div className="inline-flex rounded-lg border border-border bg-card p-1">
           {TABS.map(({ id, label, icon: Icon }) => {
             const active = tab === id;
-            const count = counts[id];
+            const count = tabCounts[id];
             return (
               <button
                 key={id}
@@ -74,7 +71,9 @@ export function TodoShell({
         {total > 0 && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>
-              <span className="font-semibold text-foreground">{completedCount}</span>{" "}
+              <span className="font-semibold text-foreground">
+                {counts.completed}
+              </span>{" "}
               of {total} done
             </span>
             <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
@@ -88,14 +87,47 @@ export function TodoShell({
         )}
       </div>
 
-      {tab === "sections" && (
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setQuery("");
+          }}
+          placeholder="Search tasks, notes and sections…"
+          aria-label="Search tasks"
+          className="h-11 w-full rounded-lg border border-border bg-card pl-9 pr-10 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        {searching && (
+          <button
+            onClick={() => setQuery("")}
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {tab === "sections" ? (
         <SectionList
-          sections={sections}
+          sections={visible}
+          allSections={sections}
+          searching={searching}
           onViewCompleted={() => setTab("completed")}
         />
+      ) : (
+        <CompletedView sections={visible} searching={searching} />
       )}
-      {tab === "pending" && <PendingView sections={sections} />}
-      {tab === "completed" && <CompletedView sections={sections} />}
     </div>
+  );
+}
+
+export function TodoShell({ sections }: { sections: TodoSection[] }) {
+  return (
+    <TodoProvider initialSections={sections}>
+      <TodoBody />
+    </TodoProvider>
   );
 }
