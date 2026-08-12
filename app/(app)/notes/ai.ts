@@ -138,9 +138,14 @@ export async function enhanceNotes(
   const today = new Date().toISOString().slice(0, 10);
 
   try {
-    const enhanced = await generateResponse(getEnhancePrompt(today), [
-      { role: "user", parts: [{ text: loaded.context }] },
-    ]);
+    // A clean-up rewrites the whole note, and gemini-2.5-flash spends part of
+    // the budget on thinking tokens, so the 2048 default cut long notes off
+    // mid-sentence — and a truncated note must not be saved as the good copy.
+    const enhanced = await generateResponse(
+      getEnhancePrompt(today),
+      [{ role: "user", parts: [{ text: loaded.context }] }],
+      { maxOutputTokens: 8192, failOnTruncation: true }
+    );
 
     if (!enhanced.trim())
       return { ok: false, error: "The AI returned nothing. Try again." };
