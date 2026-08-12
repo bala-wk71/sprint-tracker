@@ -204,16 +204,9 @@ export function SectionHeader({
             >
               {section.name}
             </span>
-            {total > 0 && (
-              <span
-                className={cn(
-                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
-                  counts.completed === total
-                    ? "bg-primary/15 text-primary"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                {counts.completed}/{total}
+            {counts.pending > 0 && (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                {counts.pending}
               </span>
             )}
             <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">

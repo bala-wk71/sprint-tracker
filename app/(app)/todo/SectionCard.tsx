@@ -44,7 +44,6 @@ export function SectionCard({
   onViewCompleted?: () => void;
 }) {
   const counts = tree.countTasks([section]);
-  const total = counts.pending + counts.completed;
   const expanded = forceExpanded || !section.is_collapsed;
 
   return (
@@ -57,15 +56,6 @@ export function SectionCard({
         forceExpanded={forceExpanded}
         reorderable={!forceExpanded}
       />
-
-      {total > 0 && (
-        <div className="ml-9 mt-1 h-1 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${(counts.completed / total) * 100}%` }}
-          />
-        </div>
-      )}
 
       {expanded && (
         <div className="mt-2 space-y-4">

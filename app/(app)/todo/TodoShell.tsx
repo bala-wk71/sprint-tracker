@@ -25,8 +25,6 @@ function TodoBody() {
   const visible = useMemo(() => tree.filterTree(sections, query), [sections, query]);
   const counts = useMemo(() => tree.countTasks(sections), [sections]);
 
-  const total = counts.pending + counts.completed;
-  const pct = total > 0 ? Math.round((counts.completed / total) * 100) : 0;
   const tabCounts: Record<Tab, number> = {
     sections: counts.pending,
     completed: counts.completed,
@@ -34,7 +32,7 @@ function TodoBody() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-lg border border-border bg-card p-1">
           {TABS.map(({ id, label, icon: Icon }) => {
             const active = tab === id;
@@ -67,24 +65,6 @@ function TodoBody() {
             );
           })}
         </div>
-
-        {total > 0 && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>
-              <span className="font-semibold text-foreground">
-                {counts.completed}
-              </span>{" "}
-              of {total} done
-            </span>
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <span className="tabular-nums">{pct}%</span>
-          </div>
-        )}
       </div>
 
       <div className="relative">
