@@ -9,10 +9,10 @@ import type { TodoSection } from "./types";
 
 export function SectionList({
   sections,
-  showCompleted,
+  onViewCompleted,
 }: {
   sections: TodoSection[];
-  showCompleted: boolean;
+  onViewCompleted?: () => void;
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -47,7 +47,7 @@ export function SectionList({
         <SectionCard
           key={section.id}
           section={section}
-          showCompleted={showCompleted}
+          onViewCompleted={onViewCompleted}
         />
       ))}
 

@@ -228,6 +228,24 @@ export async function deleteTask(taskId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** Delete every completed task the user owns. Used by the Completed tab. */
+export async function clearCompletedTasks(): Promise<ActionResult<{ deleted: number }>> {
+  const ctx = await getUserOrFail();
+  if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  const { data, error } = await ctx.supabase
+    .from("todo_tasks")
+    .delete()
+    .eq("owner_id", ctx.user.id)
+    .eq("is_completed", true)
+    .select("id");
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/todo");
+  return { ok: true, data: { deleted: data?.length ?? 0 } };
+}
+
 const toggleTaskSchema = z.object({
   taskId: z.string().uuid(),
   isCompleted: z.boolean(),

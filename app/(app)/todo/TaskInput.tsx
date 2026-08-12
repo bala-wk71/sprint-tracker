@@ -12,14 +12,16 @@ export function TaskInput({ sectionId }: { sectionId: string }) {
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Stay open and focused after each add so a list can be typed in one go —
+  // Escape or Cancel is the way out.
   const submit = () => {
     const title = value.trim();
     if (!title) return;
+    setValue("");
     startTransition(async () => {
       await createTask({ sectionId, title });
-      setValue("");
-      setOpen(false);
       router.refresh();
+      inputRef.current?.focus();
     });
   };
 
@@ -51,9 +53,8 @@ export function TaskInput({ sectionId }: { sectionId: string }) {
             setOpen(false);
           }
         }}
-        placeholder="Task title…"
+        placeholder="Task title… (Enter to add, Esc to close)"
         className="h-11 flex-1 rounded-md border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        disabled={isPending}
       />
       <button
         onClick={submit}

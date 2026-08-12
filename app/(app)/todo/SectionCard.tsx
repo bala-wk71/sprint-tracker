@@ -9,6 +9,7 @@ import {
   Trash2,
   Plus,
   Check,
+  CheckCheck,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -239,14 +240,8 @@ function SectionHeader({
   );
 }
 
-function TaskList({
-  section,
-  showCompleted,
-}: {
-  section: TodoSection;
-  showCompleted: boolean;
-}) {
-  const completedTasks = section.tasks.filter((t) => t.is_completed);
+/** Only open tasks live here now — completed ones belong to the Completed tab. */
+function TaskList({ section }: { section: TodoSection }) {
   const pendingTasks = section.tasks.filter((t) => !t.is_completed);
 
   return (
@@ -255,18 +250,16 @@ function TaskList({
         <TaskItem key={task.id} task={task} />
       ))}
       <TaskInput sectionId={section.id} />
-      {showCompleted &&
-        completedTasks.map((task) => <TaskItem key={task.id} task={task} />)}
     </div>
   );
 }
 
 export function SectionCard({
   section,
-  showCompleted,
+  onViewCompleted,
 }: {
   section: TodoSection;
-  showCompleted: boolean;
+  onViewCompleted?: () => void;
 }) {
   const counts = countSection(section);
 
@@ -285,18 +278,28 @@ export function SectionCard({
 
       {!section.is_collapsed && (
         <div className="mt-2 space-y-4">
-          <TaskList section={section} showCompleted={showCompleted} />
+          <TaskList section={section} />
 
           {section.subsections.map((sub) => (
             <div key={sub.id} className="ml-2 border-l border-border pl-3">
               <SectionHeader section={sub} isSubsection={true} />
               {!sub.is_collapsed && (
                 <div className="mt-1">
-                  <TaskList section={sub} showCompleted={showCompleted} />
+                  <TaskList section={sub} />
                 </div>
               )}
             </div>
           ))}
+
+          {counts.done > 0 && (
+            <button
+              onClick={onViewCompleted}
+              className="ml-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              {counts.done} completed — view
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import {
+  useState,
+  useTransition,
+  useOptimistic,
+  useRef,
+  useEffect,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,7 +17,11 @@ export function TaskItem({ task }: { task: TodoTask }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.title);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Ticking a box shouldn't wait on a round trip — flip it locally and let the
+  // refresh confirm it. React reverts this automatically if the action fails.
+  const [optimisticDone, setOptimisticDone] = useOptimistic(task.is_completed);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -20,6 +30,7 @@ export function TaskItem({ task }: { task: TodoTask }) {
 
   const handleToggle = () => {
     startTransition(async () => {
+      setOptimisticDone(!task.is_completed);
       await toggleTaskComplete({ taskId: task.id, isCompleted: !task.is_completed });
       router.refresh();
     });
@@ -39,7 +50,13 @@ export function TaskItem({ task }: { task: TodoTask }) {
     });
   };
 
+  // Two-step delete: there is no undo, so a stray click shouldn't destroy a task.
   const handleDelete = () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      window.setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
     startTransition(async () => {
       await deleteTask(task.id);
       router.refresh();
@@ -50,21 +67,20 @@ export function TaskItem({ task }: { task: TodoTask }) {
     <div
       className={cn(
         "group flex min-h-[44px] items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-accent/50",
-        isPending && "opacity-50"
+        isPending && !optimisticDone && "opacity-50"
       )}
     >
       <button
         onClick={handleToggle}
-        disabled={isPending}
         className={cn(
           "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors",
-          task.is_completed
+          optimisticDone
             ? "border-primary bg-primary text-primary-foreground"
             : "border-muted-foreground/50 hover:border-primary"
         )}
-        aria-label={task.is_completed ? "Mark incomplete" : "Mark complete"}
+        aria-label={optimisticDone ? "Mark incomplete" : "Mark complete"}
       >
-        {task.is_completed && <Check className="h-3 w-3" />}
+        {optimisticDone && <Check className="h-3 w-3" />}
       </button>
 
       {editing ? (
@@ -103,16 +119,18 @@ export function TaskItem({ task }: { task: TodoTask }) {
       ) : (
         <>
           <span
+            onDoubleClick={() => setEditing(true)}
+            title="Double-click to edit"
             className={cn(
-              "flex-1 text-sm",
-              task.is_completed
+              "flex-1 cursor-text text-sm",
+              optimisticDone
                 ? "text-muted-foreground line-through"
                 : "text-foreground"
             )}
           >
             {task.title}
           </span>
-          <div className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100">
+          <div className="flex shrink-0 gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
             <button
               onClick={() => setEditing(true)}
               className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -123,10 +141,16 @@ export function TaskItem({ task }: { task: TodoTask }) {
             <button
               onClick={handleDelete}
               disabled={isPending}
-              className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              aria-label="Delete task"
+              className={cn(
+                "flex h-8 items-center justify-center gap-1 rounded text-[11px] font-medium transition-colors",
+                confirmDelete
+                  ? "bg-destructive/10 px-2 text-destructive opacity-100"
+                  : "w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              )}
+              aria-label={confirmDelete ? "Confirm delete" : "Delete task"}
             >
               <Trash2 className="h-3.5 w-3.5" />
+              {confirmDelete && "Sure?"}
             </button>
           </div>
         </>
