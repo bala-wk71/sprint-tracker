@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, FileInput, Loader2 } from "lucide-react";
 import { updatePage } from "./actions";
+
+// Long, because a transcript arrives in one paste rather than keystroke by
+// keystroke and can run to tens of kilobytes. This is a safety net under the
+// blur save, not the main path.
+const IDLE_SAVE_MS = 3000;
 
 export function TranscriptPanel({
   pageId,
@@ -16,15 +21,51 @@ export function TranscriptPanel({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(transcript ?? "");
 
-  // A transcript is pasted in one go rather than typed, so it saves on blur
-  // instead of on a debounce — no need to round-trip 50KB every 800ms.
+  // Mirrors of what the idle timer and the unmount flush need to read from
+  // outside render.
+  const latest = useRef(value);
+  const savedRef = useRef(saved);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    latest.current = value;
+    savedRef.current = saved;
+  }, [value, saved]);
+
+  // A transcript is pasted in one go rather than typed, so the main save is on
+  // blur — no need to round-trip 50KB every 800ms. But blur alone meant the one
+  // field in this feature that could lose work: paste, then navigate away
+  // without clicking anything else, and it was gone. So an idle timer and an
+  // unmount flush sit underneath it, the same pair the note body uses.
   const commit = async () => {
-    if (value === saved) return;
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    if (latest.current === savedRef.current) return;
+    const snapshot = latest.current;
     setSaving(true);
-    const result = await updatePage({ pageId, transcript: value });
-    if (result.ok) setSaved(value);
+    const result = await updatePage({ pageId, transcript: snapshot });
+    if (result.ok) {
+      savedRef.current = snapshot;
+      setSaved(snapshot);
+    }
     setSaving(false);
   };
+
+  const onChange = (next: string) => {
+    setValue(next);
+    latest.current = next;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => void commit(), IDLE_SAVE_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      if (latest.current !== savedRef.current)
+        void updatePage({ pageId, transcript: latest.current });
+    };
+  }, [pageId]);
 
   return (
     <div className="rounded-lg border border-border bg-card">
@@ -55,7 +96,7 @@ export function TranscriptPanel({
           </p>
           <textarea
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
             onBlur={() => void commit()}
             placeholder="Paste a transcript…"
             className="min-h-[200px] w-full resize-y rounded-lg border border-border bg-background p-3 font-mono text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
