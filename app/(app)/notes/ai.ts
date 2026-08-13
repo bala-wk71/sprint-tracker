@@ -156,7 +156,7 @@ export async function enhanceNotes(
     // Unlike a chat reply, this gets written to the page as the tidy copy, so
     // a run that hits the ceiling has to fail rather than persist half a note.
     const enhanced = await generateResponse(
-      getEnhancePrompt(today),
+      getEnhancePrompt(loaded.userName, today),
       [{ role: "user", parts: [{ text: loaded.context }] }],
       { failOnTruncation: true }
     );

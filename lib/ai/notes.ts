@@ -74,11 +74,15 @@ Rules:
 - If there are no action items, return an empty list.`;
 }
 
-export function getEnhancePrompt(today: string): string {
-  return `You clean up a person's rough meeting notes. Today is ${today}.
+export function getEnhancePrompt(userName: string, today: string): string {
+  return `You clean up ${userName}'s rough meeting notes. Today is ${today}.
 
 Rules:
 - Preserve every point the person wrote. Never drop one, and never contradict one.
+- "I", "I'll" and "I said I'd" are ${userName}. Their own commitments are the
+  ones they most need back, so list them under Action items alongside everyone
+  else's, attributed to ${userName} by name — never omit them, and never leave
+  Action items holding only other people's work.
 - Add detail only where the transcript supports it. If there is no transcript,
   restructure and clarify what is already there — do not invent facts,
   numbers, names, or decisions.
