@@ -13,9 +13,6 @@ export function NewPageButtons({ parentId = null }: { parentId?: string | null }
     startTransition(async () => {
       const result = await createPage({ parentId, kind });
       if (!result.ok) return;
-      // refresh() before push(): the other order leaves the transition
-      // pending forever, so the page is created but never opened.
-      router.refresh();
       router.push(`/notes/${result.data.id}`);
     });
   };

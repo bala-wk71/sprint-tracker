@@ -1,13 +1,34 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
-// Like the todo actions, these deliberately skip revalidatePath: the editor
-// autosaves while you type and the sidebar keeps a local copy of the tree, so
-// revalidating here would re-render the whole route on every keystroke. The
-// callers that change tree *shape* (create, move, delete, rename) call
-// router.refresh() themselves, which is cheap because it happens once.
+// `updatePage` deliberately skips revalidatePath: the editor autosaves while
+// you type, and revalidating there would re-render the whole route on every
+// keystroke.
+//
+// The actions that change the shape of the tree do revalidate, because the
+// tree is rendered by the notes *layout*. Pairing a client-side
+// router.refresh() with the navigation these also need fails three different
+// ways, all of which this feature has shipped at some point:
+//
+//   push() then refresh()  — the refresh refetches the route being torn down
+//     while the push is in flight and the transition never settles, so the
+//     page is created or deleted, the URL never changes, and every control
+//     driven by isPending stays disabled forever.
+//   refresh() then push()  — settles, but refreshes the route being left. The
+//     layout is not refetched when moving between sibling pages, so the
+//     destination renders a stale sidebar: a new page missing from it, a
+//     deleted one lingering as a ghost row.
+//   push() then a deferred refresh — cancels the navigation.
+//
+// Revalidating the layout path here sidesteps all of it, and leaves the
+// callers with an ordinary router.push().
+const NOTES_PATH = "/notes";
+function revalidateTree() {
+  revalidatePath(NOTES_PATH, "layout");
+}
 
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? object : { data: T }))
@@ -68,6 +89,7 @@ export async function createPage(
   if (error || !data)
     return { ok: false, error: error?.message ?? "Failed to create page" };
 
+  revalidateTree();
   return { ok: true, data: { id: data.id } };
 }
 
@@ -180,6 +202,7 @@ export async function movePage(
 
   if (error) return { ok: false, error: error.message };
 
+  revalidateTree();
   return { ok: true };
 }
 
@@ -211,6 +234,7 @@ export async function reorderPages(
   const failed = results.find((r) => r.error);
   if (failed?.error) return { ok: false, error: failed.error.message };
 
+  revalidateTree();
   return { ok: true };
 }
 
@@ -227,6 +251,7 @@ export async function deletePage(pageId: string): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
+  revalidateTree();
   return { ok: true };
 }
 

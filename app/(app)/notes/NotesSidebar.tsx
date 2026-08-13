@@ -64,9 +64,6 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
           return next;
         });
       }
-      // refresh() before push(): the other order leaves the transition
-      // pending forever, so the page is created but never opened.
-      router.refresh();
       router.push(`/notes/${result.data.id}`);
     });
   };
@@ -81,8 +78,8 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
     startTransition(async () => {
       const result = await deletePage(node.id);
       if (!result.ok) return;
-      router.refresh();
       if (activeId === node.id) router.push("/notes");
+      else router.refresh();
     });
   };
 
