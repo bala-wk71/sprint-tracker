@@ -20,6 +20,21 @@ const MAX_TRANSCRIPT_CHARS = 80_000;
 
 const pageIdSchema = z.string().uuid();
 
+/**
+ * "Thursday, 2026-08-13" rather than the bare date. Working the weekday out
+ * from an ISO date is exactly the arithmetic these models get wrong, and they
+ * do it silently: given only "2026-08-13" the extractor decided it was a
+ * Wednesday and filed every "by Friday" a day late.
+ */
+function todayLabel(): string {
+  const iso = new Date().toISOString().slice(0, 10);
+  const weekday = new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+    weekday: "long",
+    timeZone: "UTC",
+  });
+  return `${weekday}, ${iso}`;
+}
+
 async function loadPageForAi(pageId: string) {
   const supabase = await createClient();
   const {
@@ -102,7 +117,7 @@ export async function extractActionItems(
   if (!loaded.hasContent)
     return { ok: false, error: "Write some notes first — there is nothing to read." };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLabel();
 
   try {
     const raw = await generateJson(
@@ -135,7 +150,7 @@ export async function enhanceNotes(
   if (!loaded.hasContent)
     return { ok: false, error: "Write some notes first — there is nothing to clean up." };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLabel();
 
   try {
     // Unlike a chat reply, this gets written to the page as the tidy copy, so
