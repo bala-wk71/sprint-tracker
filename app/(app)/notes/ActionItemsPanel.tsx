@@ -12,6 +12,9 @@ import type { PageActionItem } from "./types";
 
 export type Proposal = ExtractedActionItem & { accepted: boolean };
 
+/** Matches the server action's own limit, so the message beats the rejection. */
+const MAX_ITEM_LENGTH = 500;
+
 export function ActionItemsPanel({
   pageId,
   items,
@@ -37,6 +40,7 @@ export function ActionItemsPanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
 
   // Toggling and deleting are applied locally first so the checkbox responds
   // instantly; the server list replaces this whenever the route re-renders.
@@ -75,12 +79,32 @@ export function ActionItemsPanel({
     });
   };
 
+  // The input is cleared as if the item was added, so anything the server
+  // refuses has to be said out loud — silently dropping it leaves the user
+  // believing a commitment is tracked when it is not.
   const add = () => {
     const title = draft.trim();
     if (!title) return;
+    if (title.length > MAX_ITEM_LENGTH) {
+      setAddError(
+        `That is ${title.length} characters. Action items have to be ${MAX_ITEM_LENGTH} or fewer.`
+      );
+      return;
+    }
+    setAddError(null);
     setDraft("");
     startTransition(async () => {
-      await addActionItems({ pageId, items: [{ title }] });
+      const result = await addActionItems({ pageId, items: [{ title }] });
+      if (!result.ok) {
+        setAddError(result.error);
+        setDraft(title);
+        return;
+      }
+      if (result.data.added === 0) {
+        setAddError("That is already on this page's list.");
+        setDraft(title);
+        return;
+      }
       router.refresh();
     });
   };
@@ -304,6 +328,12 @@ export function ActionItemsPanel({
           Add
         </button>
       </div>
+
+      {addError && (
+        <p role="alert" className="text-xs text-destructive">
+          {addError}
+        </p>
+      )}
     </section>
   );
 }
