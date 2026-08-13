@@ -1,4 +1,11 @@
-const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"] as const;
+// The second entry is what runs when the first is rate limited, which on the
+// free tier is routine — so it has to be a model that still exists. This list
+// had gemini-2.0-flash in it long after Google retired it, which meant every
+// fallback answered 404: a request that hit the quota died with a raw "Gemini
+// gemini-2.0-flash 404" naming a model the user has never heard of, instead of
+// quietly succeeding on the second model. Check both still respond before
+// changing this.
+const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
@@ -78,6 +85,20 @@ async function callModel(
   };
 }
 
+/**
+ * These errors reach the user verbatim, and the upstream text is written for
+ * whoever holds the API key: it names models and quota buckets that mean
+ * nothing to someone who just clicked "Extract". Anything we cannot explain is
+ * passed through unchanged rather than flattened into a vague apology.
+ */
+function readableFailure(msg: string, err: unknown): Error {
+  if (msg.includes("429"))
+    return new Error("The AI is over its rate limit. Try again in a minute.");
+  if (msg.includes("503"))
+    return new Error("The AI is briefly unavailable. Try again in a moment.");
+  return err instanceof Error ? err : new Error(msg);
+}
+
 async function callWithFallback(
   systemInstruction: string,
   messages: GeminiMessage[],
@@ -105,7 +126,7 @@ async function callWithFallback(
 
         if (!isRetryable || model === MODELS[MODELS.length - 1]) {
           if (model !== MODELS[MODELS.length - 1]) break;
-          throw err;
+          throw readableFailure(msg, err);
         }
       }
     }
