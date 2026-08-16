@@ -139,7 +139,9 @@ export function ActionItemsPanel({
 
         <span
           className={cn(
-            "min-w-0 flex-1 text-sm",
+            // A pasted URL is one unbroken word; without this it paints past
+            // its box and drags the whole page sideways on a phone.
+            "min-w-0 flex-1 break-words text-sm",
             item.is_completed
               ? "text-muted-foreground line-through"
               : "text-foreground"
@@ -247,7 +249,7 @@ export function ActionItemsPanel({
                     {proposal.accepted && <Check className="h-3 w-3" />}
                   </button>
 
-                  <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="min-w-0 flex-1 space-y-0.5 break-words">
                     <p className="text-sm text-foreground">{proposal.title}</p>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {!mine && (

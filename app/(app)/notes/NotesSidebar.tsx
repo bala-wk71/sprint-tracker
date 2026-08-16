@@ -141,7 +141,7 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
             )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{node.title}</span>
+            <span className="min-w-0 truncate">{node.title}</span>
           </Link>
 
           <div className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">

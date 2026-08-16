@@ -82,7 +82,7 @@ export default async function NotesIndexPage({
                       className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                     >
                       <Icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{page.title}</span>
+                      <span className="min-w-0 truncate">{page.title}</span>
                     </Link>
                   </li>
                 );
@@ -92,7 +92,7 @@ export default async function NotesIndexPage({
         </section>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold text-foreground">
             Recently edited
@@ -151,7 +151,10 @@ export default async function NotesIndexPage({
                         </span>
                       )}
                       {page?.title && (
-                        <span className="shrink-0 text-xs opacity-70">
+                        // The page a task came from is context, not the point:
+                        // let a long note title give way rather than push the
+                        // row past the screen.
+                        <span className="min-w-0 max-w-[45%] shrink truncate text-xs opacity-70">
                           {page.title}
                         </span>
                       )}
