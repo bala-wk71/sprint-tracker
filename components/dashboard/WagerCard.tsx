@@ -6,6 +6,12 @@ import { Dices, TrendingUp, TrendingDown } from "lucide-react";
 import { WAGER_PRESETS, wagerProfit, wagerPayout } from "@/lib/gamification";
 import { placeWager } from "@/app/(app)/dashboard/wager-actions";
 import { setLastSeenXp } from "@/lib/xpVisit";
+import {
+  DEFAULT_WEEK_START_DAY,
+  addDaysIso,
+  weekStartDayName,
+  type WeekStartDay,
+} from "@/lib/week";
 
 export type WagerSummary = {
   stake: number;
@@ -18,18 +24,22 @@ type Props = {
   /** This week's wager, if one was placed. */
   wager: WagerSummary | null;
   totalXp: number;
-  /** Whether today is still inside the Mon–Tue placement window. */
+  /** Whether today is still inside the two-day placement window. */
   placementOpen: boolean;
   /** Dates logged within this week. */
   weekLoggedDates: string[];
+  /** The user's first day of the week — the day labels and the copy follow it. */
+  weekStartDay?: WeekStartDay;
 };
 
-const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
 
-function addDays(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+/** Seven single-letter labels starting from the user's first day. */
+function dayInitialsFrom(weekStartDay: WeekStartDay): string[] {
+  return Array.from(
+    { length: 7 },
+    (_, i) => DAY_INITIALS[(weekStartDay + i) % 7]
+  );
 }
 
 export function WagerCard({
@@ -39,7 +49,10 @@ export function WagerCard({
   totalXp,
   placementOpen,
   weekLoggedDates,
+  weekStartDay = DEFAULT_WEEK_START_DAY,
 }: Props) {
+  const firstDay = weekStartDayName(weekStartDay);
+  const secondDay = weekStartDayName(((weekStartDay + 1) % 7) as WeekStartDay);
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-2 flex items-center gap-2">
@@ -54,13 +67,16 @@ export function WagerCard({
           weekStart={weekStart}
           todayIso={todayIso}
           weekLoggedDates={weekLoggedDates}
+          weekStartDay={weekStartDay}
+          firstDay={firstDay}
         />
       ) : placementOpen ? (
         <PlaceForm totalXp={totalXp} />
       ) : (
         <p className="text-sm text-muted-foreground">
-          Wagers open Monday and Tuesday: stake XP that you&apos;ll log all 7
-          days of the week. Win it back with +50% profit — or lose the stake.
+          Wagers open {firstDay} and {secondDay}: stake XP that you&apos;ll log
+          all 7 days of the week. Win it back with +50% profit — or lose the
+          stake.
         </p>
       )}
     </div>
@@ -127,11 +143,15 @@ function ActiveOrSettled({
   weekStart,
   todayIso,
   weekLoggedDates,
+  weekStartDay,
+  firstDay,
 }: {
   wager: WagerSummary;
   weekStart: string;
   todayIso: string;
   weekLoggedDates: string[];
+  weekStartDay: WeekStartDay;
+  firstDay: string;
 }) {
   if (wager.status === "won") {
     return (
@@ -147,7 +167,7 @@ function ActiveOrSettled({
       <p className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--progress-danger))]">
         <TrendingDown className="h-4 w-4 shrink-0" />
         Lost this week — the {wager.stake} XP stake is gone. Next week&apos;s
-        table is open Monday.
+        table opens {firstDay}.
       </p>
     );
   }
@@ -156,8 +176,8 @@ function ActiveOrSettled({
   return (
     <div>
       <div className="flex items-center gap-1.5">
-        {DAY_LABELS.map((label, i) => {
-          const day = addDays(weekStart, i);
+        {dayInitialsFrom(weekStartDay).map((label, i) => {
+          const day = addDaysIso(weekStart, i);
           const isLogged = logged.has(day);
           const missed = !isLogged && day < todayIso;
           return (

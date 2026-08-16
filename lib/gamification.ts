@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { DEFAULT_WEEK_START_DAY, type WeekStartDay } from "@/lib/week";
 
 type Client = SupabaseClient<Database>;
 
@@ -506,13 +507,15 @@ export function longestRun(sortedDates: string[]): number {
   return best;
 }
 
-/** True if any Mon–Sun week has all 7 days logged. */
-export function hasPerfectWeek(sortedDates: string[]): boolean {
+/** True if any full sprint week, on the user's calendar, has all 7 days logged. */
+export function hasPerfectWeek(
+  sortedDates: string[],
+  weekStartDay: WeekStartDay = DEFAULT_WEEK_START_DAY
+): boolean {
   const logged = new Set(sortedDates);
   for (const d of sortedDates) {
     const date = new Date(`${d}T00:00:00`);
-    const day = date.getDay(); // 0=Sun .. 6=Sat
-    if ((day === 0 ? 7 : day) !== 1) continue; // only check from Mondays
+    if (date.getDay() !== weekStartDay) continue; // only check from week starts
     let full = true;
     for (let i = 1; i < 7; i++) {
       if (!logged.has(addDays(d, i))) {
@@ -538,7 +541,8 @@ export function hasComeback(sortedDates: string[]): boolean {
 /** Which achievement ids the given stats qualify for. */
 export function earnedAchievementIds(
   stats: GamificationStats,
-  totalXp = 0
+  totalXp = 0,
+  weekStartDay: WeekStartDay = DEFAULT_WEEK_START_DAY
 ): string[] {
   const dates = [...stats.log_dates].sort();
   const run = longestRun(dates);
@@ -558,7 +562,7 @@ export function earnedAchievementIds(
   if (run >= 30) ids.push("streak-30");
   if (run >= 60) ids.push("streak-60");
   if (run >= 100) ids.push("streak-100");
-  if (hasPerfectWeek(dates)) ids.push("perfect-week");
+  if (hasPerfectWeek(dates, weekStartDay)) ids.push("perfect-week");
 
   if (stats.total_hours >= 10) ids.push("hours-10");
   if (stats.total_hours >= 50) ids.push("hours-50");

@@ -1,10 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 import { TASK_CATEGORIES, WEEK_HOURS, type TaskCategory } from "@/lib/constants";
+import {
+  weekEndIsoOf,
+  weekStartDayName,
+  weekStartIsoOf,
+  type WeekStartDay,
+} from "@/lib/week";
 import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
 import { createSprintWithTasks } from "./actions";
 
@@ -19,6 +26,14 @@ type FormValues = {
   }[];
 };
 
+function formatDay(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 const EMPTY_TASK: FormValues["tasks"][number] = {
   name: "",
   category: "strong_signal",
@@ -26,21 +41,31 @@ const EMPTY_TASK: FormValues["tasks"][number] = {
   is_recurring: false,
 };
 
-export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: string }) {
+export function CreateSprintForm({
+  defaultWeekStart,
+  weekStartDay,
+}: {
+  defaultWeekStart: string;
+  /** The day the user's sprint week begins — the picker snaps to it. */
+  weekStartDay: WeekStartDay;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { register, control, handleSubmit, formState, reset } = useForm<FormValues>({
-    defaultValues: {
-      week_start_date: defaultWeekStart,
-      notes: "",
-      tasks: [{ ...EMPTY_TASK }],
-    },
-  });
+  const { register, control, handleSubmit, formState, reset, setValue } =
+    useForm<FormValues>({
+      defaultValues: {
+        week_start_date: defaultWeekStart,
+        notes: "",
+        tasks: [{ ...EMPTY_TASK }],
+      },
+    });
 
   const { fields, append, remove } = useFieldArray({ control, name: "tasks" });
 
+  const weekStart =
+    useWatch({ control, name: "week_start_date" }) || defaultWeekStart;
   const watchedTasks = useWatch({ control, name: "tasks" });
   const plannedHours = (watchedTasks ?? []).reduce(
     (sum, task) => sum + (Number(task?.target_hours) || 0),
@@ -79,14 +104,39 @@ export function CreateSprintForm({ defaultWeekStart }: { defaultWeekStart: strin
             htmlFor="week_start_date"
             className="mb-1 block text-sm font-medium text-foreground"
           >
-            Week starting (Monday)
+            Week starting ({weekStartDayName(weekStartDay)})
           </label>
+          {/* Sprints are keyed by the first day of the week, so any date the
+              user picks snaps back to that day rather than being rejected. */}
           <input
             id="week_start_date"
             type="date"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            {...register("week_start_date", { required: true })}
+            {...register("week_start_date", {
+              required: true,
+              onChange: (e) => {
+                const value = e.target.value;
+                if (!value) return;
+                setValue("week_start_date", weekStartIsoOf(value, weekStartDay), {
+                  shouldValidate: true,
+                });
+              },
+            })}
           />
+          <p className="mt-1 text-xs text-muted-foreground">
+            {weekStart ? (
+              <>
+                Covers {formatDay(weekStart)} – {formatDay(weekEndIsoOf(weekStart))}.
+              </>
+            ) : (
+              <>Pick any day in the week you want to plan.</>
+            )}{" "}
+            Change the first day in{" "}
+            <Link href="/settings" className="text-primary hover:underline">
+              Settings
+            </Link>
+            .
+          </p>
         </div>
         <div>
           <label

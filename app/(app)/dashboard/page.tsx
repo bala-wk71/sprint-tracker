@@ -1,5 +1,6 @@
 import { createClient, getUser } from "@/lib/supabase/server";
-import { mondayIsoOf, todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { weekEndIsoOf, weekStartIsoOf } from "@/lib/week";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { GamificationHero } from "@/components/dashboard/GamificationHero";
 import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
@@ -28,10 +29,11 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const todayIso = await todayIsoLocal();
-  const currentWeekStart = mondayIsoOf(todayIso);
+  const weekStartDay = await getWeekStartDay();
+  const currentWeekStart = weekStartIsoOf(todayIso, weekStartDay);
   const weekStart =
     params.week && isValidIsoDate(params.week)
-      ? mondayIsoOf(params.week)
+      ? weekStartIsoOf(params.week, weekStartDay)
       : currentWeekStart;
 
   const supabase = await createClient();
@@ -65,7 +67,7 @@ export default async function DashboardPage({
       .eq("owner_id", user.id)
       .eq("is_completed", true)
       .gte("completed_at", `${todayIso}T00:00:00Z`),
-    computeWeeklyStreak(supabase, user.id),
+    computeWeeklyStreak(supabase, user.id, weekStartDay),
     supabase
       .from("xp_wagers")
       .select("stake, status")
@@ -84,9 +86,7 @@ export default async function DashboardPage({
 
   const level = levelFromXp(Number(totalXp ?? 0));
   const dailyStreak = computeShieldedStreak(stats.log_dates, todayIso);
-  const weekEnd = new Date(`${currentWeekStart}T00:00:00`);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-  const weekEndIso = weekEnd.toISOString().slice(0, 10);
+  const weekEndIso = weekEndIsoOf(currentWeekStart);
   const weekLoggedDates = stats.log_dates.filter(
     (d) => d >= currentWeekStart && d <= weekEndIso
   );
@@ -126,6 +126,7 @@ export default async function DashboardPage({
         wager={wager}
         totalXp={Number(totalXp ?? 0)}
         placementOpen={wagerPlacementOpen(currentWeekStart, todayIso)}
+        weekStartDay={weekStartDay}
         weekLoggedDates={weekLoggedDates}
       />
       <WeekSummary

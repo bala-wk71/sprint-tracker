@@ -5,6 +5,7 @@ import { generateResponse } from "@/lib/ai/gemini";
 import { gatherDailyContext } from "@/lib/ai/context";
 import { getDailyCommentPrompt, type AiPersona } from "@/lib/ai/prompts";
 import { AI_USER_ID } from "@/lib/constants";
+import { toWeekStartDay } from "@/lib/week";
 
 async function handleDailyComment(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -51,7 +52,7 @@ async function handleDailyComment(req: NextRequest) {
 
       const { data: userProfile } = await supabase
         .from("users")
-        .select("ai_persona")
+        .select("ai_persona, week_start_day")
         .eq("id", log.owner_id)
         .single();
       const persona: AiPersona = userProfile?.ai_persona ?? "rational";
@@ -59,7 +60,8 @@ async function handleDailyComment(req: NextRequest) {
       const { context } = await gatherDailyContext(
         supabase,
         log.owner_id,
-        today
+        today,
+        toWeekStartDay(userProfile?.week_start_day)
       );
 
       if (!context) {

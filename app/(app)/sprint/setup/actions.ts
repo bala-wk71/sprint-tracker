@@ -6,6 +6,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardXp } from "@/lib/gamification";
 import { WEEK_HOURS } from "@/lib/constants";
+import { getWeekStartDay } from "@/lib/dates";
+import { weekStartIsoOf } from "@/lib/week";
 
 const TASK_CATEGORY = z.enum([
   "strong_signal",
@@ -61,11 +63,19 @@ export async function createSprintWithTasks(
     return { ok: false, error: "Not authenticated" };
   }
 
+  // Sprints are keyed by the first day of the week. A date from anywhere
+  // inside the week means that week, so snap it — a sprint filed on the wrong
+  // day is invisible to every screen that looks weeks up by their start.
+  const weekStart = weekStartIsoOf(
+    parsed.data.week_start_date,
+    await getWeekStartDay()
+  );
+
   const { data: sprint, error: sprintError } = await supabase
     .from("sprints")
     .insert({
       owner_id: user.id,
-      week_start_date: parsed.data.week_start_date,
+      week_start_date: weekStart,
       notes: parsed.data.notes ?? null,
     })
     .select("id")
@@ -148,6 +158,8 @@ export async function rolloverSprint(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
 
+  const weekStart = weekStartIsoOf(newWeekStart, await getWeekStartDay());
+
   // Load template tasks (must belong to this user).
   const { data: templateTasks, error: taskLoadErr } = await supabase
     .from("tasks")
@@ -164,7 +176,7 @@ export async function rolloverSprint(
   // Create the new sprint.
   const { data: newSprint, error: sprintErr } = await supabase
     .from("sprints")
-    .insert({ owner_id: user.id, week_start_date: newWeekStart })
+    .insert({ owner_id: user.id, week_start_date: weekStart })
     .select("id")
     .single();
 
@@ -172,7 +184,7 @@ export async function rolloverSprint(
     if (sprintErr?.code === "23505") {
       return {
         ok: false,
-        error: `A sprint already exists for the week of ${newWeekStart}.`,
+        error: `A sprint already exists for the week of ${weekStart}.`,
       };
     }
     return { ok: false, error: sprintErr?.message ?? "Failed to create sprint" };

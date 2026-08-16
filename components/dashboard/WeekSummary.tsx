@@ -150,7 +150,7 @@ export async function WeekSummary({
       ? Math.round((donePriorities / totalPriorities) * 100)
       : null;
 
-  // Daily metrics grid: 7 cells (Mon..Sun).
+  // Daily metrics grid: 7 cells, from the first day of the sprint week.
   const dayCells = Array.from({ length: 7 }, (_, i) => {
     const date = addDaysIso(weekStart, i);
     const log = (dailyLogs ?? []).find((l) => l.log_date === date) ?? null;

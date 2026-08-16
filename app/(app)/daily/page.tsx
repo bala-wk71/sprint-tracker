@@ -1,8 +1,9 @@
-import { format, startOfWeek } from "date-fns";
+import { format } from "date-fns";
 import { Check, MessageSquare, Moon, Sunrise, Timer, type LucideIcon } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
-import { todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { weekStartIsoOf } from "@/lib/week";
 import { addDaysIso, elapsedDaysInWeek, expectedByNow } from "@/lib/pace";
 import { DateNav } from "./DateNav";
 import { DayProgress } from "./DayProgress";
@@ -38,10 +39,7 @@ export default async function DailyPage({
   if (!user) return null;
 
   // Sprint for this week — used to populate the time entry task dropdown.
-  const monday = format(
-    startOfWeek(new Date(`${date}T00:00:00`), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
+  const weekStart = weekStartIsoOf(date, await getWeekStartDay());
 
   // Daily log (may not exist yet) and this week's sprint, fetched in parallel.
   const [{ data: dailyLog }, { data: sprint }] = await Promise.all([
@@ -57,7 +55,7 @@ export default async function DailyPage({
       .from("sprints")
       .select("id, tasks(id, name, category, position, target_hours)")
       .eq("owner_id", user.id)
-      .eq("week_start_date", monday)
+      .eq("week_start_date", weekStart)
       .maybeSingle(),
   ]);
 
@@ -130,13 +128,13 @@ export default async function DailyPage({
   // today, as suggestions for where the day's hours should go.
   let focusTasks: FocusTask[] = [];
   if (date === todayIso && sprint && (sprint.tasks ?? []).length > 0) {
-    const elapsedDays = elapsedDaysInWeek(monday, todayIso);
+    const elapsedDays = elapsedDaysInWeek(weekStart, todayIso);
     const { data: weekEntries } = await supabase
       .from("time_entries")
       .select("task_id, duration_hours, daily_logs!inner(log_date)")
       .eq("owner_id", user.id)
-      .gte("daily_logs.log_date", monday)
-      .lte("daily_logs.log_date", addDaysIso(monday, 6));
+      .gte("daily_logs.log_date", weekStart)
+      .lte("daily_logs.log_date", addDaysIso(weekStart, 6));
 
     const hoursByTask = new Map<string, number>();
     for (const e of weekEntries ?? []) {

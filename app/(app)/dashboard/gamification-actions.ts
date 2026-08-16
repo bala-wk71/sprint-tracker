@@ -5,6 +5,7 @@ import {
   earnedAchievementIds,
   type GamificationStats,
 } from "@/lib/gamification";
+import { getWeekStartDay } from "@/lib/dates";
 
 /**
  * Recomputes achievements from history and persists any new unlocks.
@@ -28,9 +29,11 @@ export async function syncAchievements(): Promise<{ newlyUnlocked: string[] }> {
   const existing = new Set(
     (existingRows ?? []).map((r) => r.achievement_id)
   );
-  const newlyUnlocked = earnedAchievementIds(stats, Number(totalXp ?? 0)).filter(
-    (id) => !existing.has(id)
-  );
+  const newlyUnlocked = earnedAchievementIds(
+    stats,
+    Number(totalXp ?? 0),
+    await getWeekStartDay()
+  ).filter((id) => !existing.has(id));
 
   if (newlyUnlocked.length > 0) {
     await supabase.from("user_achievements").insert(

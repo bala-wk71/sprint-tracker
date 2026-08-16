@@ -1,7 +1,8 @@
 "use server";
 
 import { createClient, getUser } from "@/lib/supabase/server";
-import { mondayIsoOf, todayIsoLocal } from "@/lib/dates";
+import { currentWeekStart, getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { weekStartDayName } from "@/lib/week";
 import {
   WAGER_PRESETS,
   wagerOutcome,
@@ -25,9 +26,15 @@ export async function placeWager(stake: number): Promise<PlaceWagerResult> {
   }
 
   const todayIso = await todayIsoLocal();
-  const weekStart = mondayIsoOf(todayIso);
+  const weekStart = await currentWeekStart();
   if (!wagerPlacementOpen(weekStart, todayIso)) {
-    return { ok: false, error: "Wagers can only be placed on Monday or Tuesday." };
+    const weekStartDay = await getWeekStartDay();
+    const first = weekStartDayName(weekStartDay);
+    const second = weekStartDayName(((weekStartDay + 1) % 7) as 0 | 1 | 2 | 3 | 4 | 5 | 6);
+    return {
+      ok: false,
+      error: `Wagers can only be placed on ${first} or ${second}.`,
+    };
   }
 
   const supabase = await createClient();

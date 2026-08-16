@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { format, isToday, isYesterday, isThisWeek } from "date-fns";
+import { DEFAULT_WEEK_START_DAY, type WeekStartDay } from "@/lib/week";
 import { Check, Undo2, Trash2, Inbox, SearchX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toggleTaskComplete, deleteTask, clearCompletedTasks } from "./actions";
@@ -34,20 +35,26 @@ function collectCompleted(sections: TodoSection[], prefix = ""): DoneTask[] {
  * Bucket by completion day. Ordering is by bucket rank so a task with no
  * completed_at (pre-dating that column) still lands in a sensible place.
  */
-function bucketOf(task: DoneTask): { key: string; label: string; rank: number } {
+function bucketOf(
+  task: DoneTask,
+  weekStartDay: WeekStartDay
+): { key: string; label: string; rank: number } {
   if (!task.completed_at) return { key: "unknown", label: "No date", rank: 4 };
   const date = new Date(task.completed_at);
   if (isToday(date)) return { key: "today", label: "Today", rank: 0 };
   if (isYesterday(date)) return { key: "yesterday", label: "Yesterday", rank: 1 };
-  if (isThisWeek(date, { weekStartsOn: 1 }))
+  if (isThisWeek(date, { weekStartsOn: weekStartDay }))
     return { key: "week", label: "Earlier this week", rank: 2 };
   return { key: "older", label: "Older", rank: 3 };
 }
 
-function groupCompleted(tasks: DoneTask[]): DoneGroup[] {
+function groupCompleted(
+  tasks: DoneTask[],
+  weekStartDay: WeekStartDay
+): DoneGroup[] {
   const buckets = new Map<string, DoneGroup & { rank: number }>();
   for (const task of tasks) {
-    const { key, label, rank } = bucketOf(task);
+    const { key, label, rank } = bucketOf(task, weekStartDay);
     const existing = buckets.get(key);
     if (existing) existing.tasks.push(task);
     else buckets.set(key, { key, label, rank, tasks: [task] });
@@ -148,16 +155,18 @@ function CompletedRow({ task }: { task: DoneTask }) {
 export function CompletedView({
   sections,
   searching,
+  weekStartDay = DEFAULT_WEEK_START_DAY,
 }: {
   sections: TodoSection[];
   searching: boolean;
+  weekStartDay?: WeekStartDay;
 }) {
   const { run } = useTodoStore();
   const [confirmClear, setConfirmClear] = useState(false);
 
   const groups = useMemo(
-    () => groupCompleted(collectCompleted(sections)),
-    [sections]
+    () => groupCompleted(collectCompleted(sections), weekStartDay),
+    [sections, weekStartDay]
   );
   const total = groups.reduce((sum, g) => sum + g.tasks.length, 0);
 

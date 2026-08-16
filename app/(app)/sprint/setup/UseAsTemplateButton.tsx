@@ -3,14 +3,20 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Copy } from "lucide-react";
+import { weekStartIsoOf, type WeekStartDay } from "@/lib/week";
 import { rolloverSprint } from "./actions";
 
 type Props = {
   templateSprintId: string;
   defaultWeekStart: string;
+  weekStartDay: WeekStartDay;
 };
 
-export function UseAsTemplateButton({ templateSprintId, defaultWeekStart }: Props) {
+export function UseAsTemplateButton({
+  templateSprintId,
+  defaultWeekStart,
+  weekStartDay,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -45,10 +51,18 @@ export function UseAsTemplateButton({ templateSprintId, defaultWeekStart }: Prop
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {/* Any day inside the week picks that week — sprints are keyed by their
+          first day, so snap to it rather than reject the input. */}
       <input
         type="date"
         value={weekStart}
-        onChange={(e) => setWeekStart(e.target.value)}
+        onChange={(e) =>
+          setWeekStart(
+            e.target.value
+              ? weekStartIsoOf(e.target.value, weekStartDay)
+              : e.target.value
+          )
+        }
         className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
       <button

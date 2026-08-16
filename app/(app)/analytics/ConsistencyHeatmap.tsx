@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { DEFAULT_WEEK_START_DAY, type WeekStartDay } from "@/lib/week";
 
 export type HeatmapDay = {
   date: string;
@@ -17,14 +18,27 @@ function heatVar(hours: number): string | null {
   return "--viz-heat-4";
 }
 
-const WEEKDAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", "Sun"];
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export function ConsistencyHeatmap({ days }: { days: HeatmapDay[] }) {
-  // Column-per-week grid, Monday-first.
+/** Label every other row, starting with the user's first day of the week. */
+function weekdayLabels(weekStartDay: WeekStartDay): string[] {
+  return Array.from({ length: 7 }, (_, i) =>
+    i % 2 === 0 ? WEEKDAY_SHORT[(weekStartDay + i) % 7] : ""
+  );
+}
+
+export function ConsistencyHeatmap({
+  days,
+  weekStartDay = DEFAULT_WEEK_START_DAY,
+}: {
+  days: HeatmapDay[];
+  weekStartDay?: WeekStartDay;
+}) {
+  // Column-per-week grid, first row is the user's first day of the week.
   const weeks: HeatmapDay[][] = [];
   for (const day of days) {
     const wd = new Date(`${day.date}T00:00:00`).getDay();
-    const row = wd === 0 ? 6 : wd - 1;
+    const row = (wd - weekStartDay + 7) % 7;
     if (row === 0 || weeks.length === 0) weeks.push([]);
     weeks[weeks.length - 1][row] = day;
   }
@@ -50,7 +64,7 @@ export function ConsistencyHeatmap({ days }: { days: HeatmapDay[] }) {
         <div className="flex gap-1">
           {/* Weekday gutter */}
           <div className="mr-1 grid shrink-0 grid-rows-7 gap-1">
-            {WEEKDAY_LABELS.map((label, i) => (
+            {weekdayLabels(weekStartDay).map((label, i) => (
               <span
                 key={i}
                 className="flex h-5 items-center text-[10px] leading-none text-muted-foreground"

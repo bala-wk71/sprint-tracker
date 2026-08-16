@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { format, startOfWeek, subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
-import { todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { weekStartIsoOf } from "@/lib/week";
 import { AnalyticsCharts } from "./AnalyticsCharts";
 import { SignalMeter } from "./SignalMeter";
 import { ConsistencyHeatmap, type HeatmapDay } from "./ConsistencyHeatmap";
@@ -55,6 +56,7 @@ export default async function AnalyticsPage({
   if (!user) return null;
 
   const todayIso = await todayIsoLocal();
+  const weekStartDay = await getWeekStartDay();
   const startIso = format(
     subDays(new Date(`${todayIso}T00:00:00`), windowDays - 1),
     "yyyy-MM-dd"
@@ -135,19 +137,16 @@ export default async function AnalyticsPage({
   type WeekAgg = CategoryHours & { weekStart: string; label: string; total: number };
   const weekMap = new Map<string, WeekAgg>();
   for (const row of dailySeries) {
-    const monday = format(
-      startOfWeek(new Date(`${row.date}T00:00:00`), { weekStartsOn: 1 }),
-      "yyyy-MM-dd"
-    );
-    let week = weekMap.get(monday);
+    const bucket = weekStartIsoOf(row.date, weekStartDay);
+    let week = weekMap.get(bucket);
     if (!week) {
       week = {
         ...emptyByCategory(),
-        weekStart: monday,
-        label: format(new Date(`${monday}T00:00:00`), "MMM d"),
+        weekStart: bucket,
+        label: format(new Date(`${bucket}T00:00:00`), "MMM d"),
         total: 0,
       };
-      weekMap.set(monday, week);
+      weekMap.set(bucket, week);
     }
     const agg = dayMap.get(row.date);
     if (agg) {
@@ -161,11 +160,9 @@ export default async function AnalyticsPage({
     a.weekStart.localeCompare(b.weekStart)
   );
 
-  // Heatmap: pad back to the Monday before startIso so columns are full weeks.
-  const heatmapStart = format(
-    startOfWeek(new Date(`${startIso}T00:00:00`), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
+  // Heatmap: pad back to the first day of the week containing startIso, so
+  // every column is a full week on the user's own calendar.
+  const heatmapStart = weekStartIsoOf(startIso, weekStartDay);
   const heatmapDays: HeatmapDay[] = [];
   for (let d = heatmapStart; d <= todayIso; d = addDaysIso(d, 1)) {
     heatmapDays.push({
@@ -337,7 +334,7 @@ export default async function AnalyticsPage({
             <InsightsPanel insights={insights} />
           </div>
 
-          <ConsistencyHeatmap days={heatmapDays} />
+          <ConsistencyHeatmap days={heatmapDays} weekStartDay={weekStartDay} />
 
           <AnalyticsCharts
             dailySeries={dailySeries}

@@ -1,23 +1,28 @@
-import { format, startOfWeek, subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import {
+  DEFAULT_WEEK_START_DAY,
+  addDaysIso,
+  weekEndIsoOf,
+  weekStartIsoOf,
+  type WeekStartDay,
+} from "@/lib/week";
 
 type Client = SupabaseClient<Database>;
 
 export async function gatherChatContext(
   supabase: Client,
-  userId: string
+  userId: string,
+  weekStartDay: WeekStartDay = DEFAULT_WEEK_START_DAY
 ): Promise<string> {
   const today = format(new Date(), "yyyy-MM-dd");
-  const monday = format(
-    startOfWeek(new Date(), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
-  const lastMonday = format(subDays(new Date(monday + "T00:00:00"), 7), "yyyy-MM-dd");
+  const weekStart = weekStartIsoOf(today, weekStartDay);
+  const lastWeekStart = addDaysIso(weekStart, -7);
 
   const [sprint, lastWeekSprint, dailyLog, recentLogs] = await Promise.all([
-    getCurrentSprint(supabase, userId, monday),
-    getCurrentSprint(supabase, userId, lastMonday),
+    getCurrentSprint(supabase, userId, weekStart),
+    getCurrentSprint(supabase, userId, lastWeekStart),
     getDailyLog(supabase, userId, today),
     getRecentDailyLogs(supabase, userId, 14),
   ]);
@@ -26,7 +31,7 @@ export async function gatherChatContext(
   sections.push(`Today: ${today}`);
 
   if (sprint) {
-    sections.push(`\n## Current Sprint (week of ${monday})`);
+    sections.push(`\n## Current Sprint (week of ${weekStart})`);
     sections.push(`Tasks: ${sprint.tasks.length}`);
     for (const t of sprint.tasks) {
       const hours = t.logged_hours ?? 0;
@@ -41,7 +46,7 @@ export async function gatherChatContext(
     const totalTarget = lastWeekSprint.tasks.reduce((s, t) => s + t.target_hours, 0);
     const totalLogged = lastWeekSprint.tasks.reduce((s, t) => s + (t.logged_hours ?? 0), 0);
     const pct = totalTarget > 0 ? Math.round((totalLogged / totalTarget) * 100) : 0;
-    sections.push(`\n## Last Week Sprint (week of ${lastMonday})`);
+    sections.push(`\n## Last Week Sprint (week of ${lastWeekStart})`);
     sections.push(`Overall: ${totalLogged.toFixed(1)}h / ${totalTarget}h (${pct}%)`);
     for (const t of lastWeekSprint.tasks) {
       const hours = t.logged_hours ?? 0;
@@ -105,17 +110,15 @@ export async function gatherChatContext(
 export async function gatherDailyContext(
   supabase: Client,
   userId: string,
-  date: string
+  date: string,
+  weekStartDay: WeekStartDay = DEFAULT_WEEK_START_DAY
 ): Promise<{ context: string; dailyLogId: string | null }> {
-  const monday = format(
-    startOfWeek(new Date(`${date}T00:00:00`), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
+  const weekStart = weekStartIsoOf(date, weekStartDay);
 
   const [sprint, dailyLog, weekLogs] = await Promise.all([
-    getCurrentSprint(supabase, userId, monday),
+    getCurrentSprint(supabase, userId, weekStart),
     getDailyLog(supabase, userId, date),
-    getWeekDailyLogs(supabase, userId, monday),
+    getWeekDailyLogs(supabase, userId, weekStart),
   ]);
 
   if (!dailyLog) return { context: "", dailyLogId: null };
@@ -382,12 +385,7 @@ async function getWeekDailyLogs(
   userId: string,
   weekStart: string
 ) {
-  const weekEnd = format(
-    new Date(
-      new Date(`${weekStart}T00:00:00`).getTime() + 6 * 24 * 60 * 60 * 1000
-    ),
-    "yyyy-MM-dd"
-  );
+  const weekEnd = weekEndIsoOf(weekStart);
 
   const { data: logs } = await supabase
     .from("daily_logs")

@@ -3,7 +3,8 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
-import { mondayIsoOf, todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { weekStartIsoOf } from "@/lib/week";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { WeekNav } from "@/app/(app)/dashboard/WeekNav";
 
@@ -59,10 +60,13 @@ export default async function ReviewOwnerPage({
     .join("")
     .toUpperCase();
 
-  const currentWeekStart = mondayIsoOf(await todayIsoLocal());
+  // Reviewers read the owner's weeks, so the owner's calendar decides where a
+  // week starts — not the reviewer's own setting.
+  const weekStartDay = await getWeekStartDay(ownerId);
+  const currentWeekStart = weekStartIsoOf(await todayIsoLocal(), weekStartDay);
   const weekStart =
     sp.week && isValidIsoDate(sp.week)
-      ? mondayIsoOf(sp.week)
+      ? weekStartIsoOf(sp.week, weekStartDay)
       : currentWeekStart;
 
   const basePath = `/review/${ownerId}`;

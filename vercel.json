@@ -7,7 +7,7 @@
     },
     {
       "path": "/api/ai/weekly-comment",
-      "schedule": "25 18 * * 0"
+      "schedule": "25 18 * * *"
     }
   ]
 }

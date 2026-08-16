@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { createClient, getUser } from "@/lib/supabase/server";
+import { currentWeekStart } from "@/lib/dates";
+import { toWeekStartDay } from "@/lib/week";
 import { ExportForm } from "./ExportForm";
+import { PreferencesForm } from "./PreferencesForm";
 
 const SECTIONS = [
   {
@@ -10,7 +14,18 @@ const SECTIONS = [
   },
 ];
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await getUser();
+  const supabase = await createClient();
+
+  const { data: profile } = user
+    ? await supabase
+        .from("users")
+        .select("week_start_day, todo_auto_archive")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
   return (
     <div className="space-y-6">
       <div>
@@ -38,12 +53,25 @@ export default function SettingsPage() {
 
       <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-1 text-lg font-semibold text-foreground">
+          Preferences
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          How your weeks are cut, and what happens to finished todo sections.
+        </p>
+        <PreferencesForm
+          weekStartDay={toWeekStartDay(profile?.week_start_day)}
+          todoAutoArchive={profile?.todo_auto_archive ?? true}
+        />
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
+        <h2 className="mb-1 text-lg font-semibold text-foreground">
           Export data
         </h2>
         <p className="mb-4 text-sm text-muted-foreground">
           Download your sprint logs and time entries as a CSV file.
         </p>
-        <ExportForm />
+        <ExportForm defaultFrom={await currentWeekStart()} />
       </section>
     </div>
   );

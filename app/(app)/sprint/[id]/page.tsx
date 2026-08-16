@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ArrowLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { WEEK_HOURS, type TaskCategory } from "@/lib/constants";
+import { weekEndIsoOf } from "@/lib/week";
 import { TasksEditor, type EditableTask } from "./TasksEditor";
 import { DeleteSprintButton } from "./DeleteSprintButton";
 
@@ -75,7 +76,11 @@ export default async function SprintDetailPage({
             All sprints
           </Link>
           <h1 className="mt-1 text-2xl font-bold text-foreground">
-            Week of {format(new Date(sprint.week_start_date), "MMMM d, yyyy")}
+            {format(new Date(`${sprint.week_start_date}T00:00:00`), "MMM d")} –{" "}
+            {format(
+              new Date(`${weekEndIsoOf(sprint.week_start_date)}T00:00:00`),
+              "MMM d, yyyy"
+            )}
           </h1>
           {sprint.notes && (
             <p className="text-sm text-muted-foreground">{sprint.notes}</p>

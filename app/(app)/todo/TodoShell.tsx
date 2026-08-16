@@ -8,6 +8,7 @@ import { CompletedView } from "./CompletedView";
 import { ArchivedView } from "./ArchivedView";
 import { TodoProvider, useTodoStore } from "./store";
 import * as tree from "./tree";
+import { DEFAULT_WEEK_START_DAY, type WeekStartDay } from "@/lib/week";
 import type { TodoSection } from "./types";
 
 type Tab = "sections" | "completed" | "archived";
@@ -18,7 +19,7 @@ const TABS: { id: Tab; label: string; icon: typeof Layers }[] = [
   { id: "archived", label: "Archived", icon: Archive },
 ];
 
-function TodoBody() {
+function TodoBody({ weekStartDay }: { weekStartDay: WeekStartDay }) {
   const { sections } = useTodoStore();
   const [tab, setTab] = useState<Tab>("sections");
   const [query, setQuery] = useState("");
@@ -112,7 +113,11 @@ function TodoBody() {
         />
       )}
       {tab === "completed" && (
-        <CompletedView sections={live} searching={searching} />
+        <CompletedView
+          sections={live}
+          searching={searching}
+          weekStartDay={weekStartDay}
+        />
       )}
       {tab === "archived" && (
         <ArchivedView sections={visible} searching={searching} />
@@ -121,10 +126,16 @@ function TodoBody() {
   );
 }
 
-export function TodoShell({ sections }: { sections: TodoSection[] }) {
+export function TodoShell({
+  sections,
+  weekStartDay = DEFAULT_WEEK_START_DAY,
+}: {
+  sections: TodoSection[];
+  weekStartDay?: WeekStartDay;
+}) {
   return (
     <TodoProvider initialSections={sections}>
-      <TodoBody />
+      <TodoBody weekStartDay={weekStartDay} />
     </TodoProvider>
   );
 }

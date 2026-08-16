@@ -1,5 +1,12 @@
 import { headers } from "next/headers";
-import { format, startOfWeek } from "date-fns";
+import { cache } from "react";
+import { createClient, getUser } from "@/lib/supabase/server";
+import {
+  DEFAULT_WEEK_START_DAY,
+  toWeekStartDay,
+  weekStartIsoOf,
+  type WeekStartDay,
+} from "@/lib/week";
 
 /**
  * Today's date (YYYY-MM-DD) in the viewer's timezone.
@@ -33,10 +40,36 @@ export async function todayIsoLocal(): Promise<string> {
     .slice(0, 10);
 }
 
-/** Monday (YYYY-MM-DD) of the week containing the given ISO date. */
-export function mondayIsoOf(iso: string): string {
-  return format(
-    startOfWeek(new Date(`${iso}T00:00:00`), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
+/**
+ * The day a user's sprint week starts on, straight from their profile.
+ *
+ * Memoized per request, so the handful of helpers that need it on one page
+ * render share a single read. Pass `userId` to read someone else's setting —
+ * reviewer pages render an owner's weeks, and those must follow the owner's
+ * calendar, not the reviewer's.
+ */
+export const getWeekStartDay = cache(
+  async (userId?: string): Promise<WeekStartDay> => {
+    const id = userId ?? (await getUser())?.id;
+    if (!id) return DEFAULT_WEEK_START_DAY;
+
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("users")
+      .select("week_start_day")
+      .eq("id", id)
+      .maybeSingle();
+
+    return toWeekStartDay(data?.week_start_day);
+  }
+);
+
+/** Start of the week containing `iso`, on the viewer's own calendar. */
+export async function weekStartOf(iso: string): Promise<string> {
+  return weekStartIsoOf(iso, await getWeekStartDay());
+}
+
+/** Start of the current week, on the viewer's own calendar. */
+export async function currentWeekStart(): Promise<string> {
+  return weekStartOf(await todayIsoLocal());
 }

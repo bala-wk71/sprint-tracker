@@ -2,18 +2,14 @@
 
 import { useState } from "react";
 import { Download } from "lucide-react";
-import { format, subDays, startOfWeek } from "date-fns";
+import { format, subDays } from "date-fns";
 
 function todayIso() {
   return format(new Date(), "yyyy-MM-dd");
 }
 
-function defaultFrom() {
-  // Start of the current week (Monday)
-  return format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
-}
-
-export function ExportForm() {
+/** `defaultFrom` is the start of the current week on the user's calendar. */
+export function ExportForm({ defaultFrom }: { defaultFrom: string }) {
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(todayIso);
   const [loading, setLoading] = useState(false);

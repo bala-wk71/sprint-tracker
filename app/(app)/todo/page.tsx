@@ -1,4 +1,5 @@
 import { createClient, getUser } from "@/lib/supabase/server";
+import { getWeekStartDay } from "@/lib/dates";
 import { TodoShell } from "./TodoShell";
 import type { TodoSection, TodoTask } from "./types";
 
@@ -66,7 +67,7 @@ export default async function TodoPage() {
           Organise tasks by section and subsection.
         </p>
       </div>
-      <TodoShell sections={tree} />
+      <TodoShell sections={tree} weekStartDay={await getWeekStartDay()} />
     </div>
   );
 }

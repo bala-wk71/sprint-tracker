@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { format, startOfWeek } from "date-fns";
+import { format } from "date-fns";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateResponse } from "@/lib/ai/gemini";
 import { gatherWeeklyContext } from "@/lib/ai/context";
 import { getWeeklyCommentPrompt, type AiPersona } from "@/lib/ai/prompts";
 import { AI_USER_ID } from "@/lib/constants";
+import { addDaysIso, isWeekStart, toWeekStartDay } from "@/lib/week";
 
 async function handleWeeklyComment(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -19,23 +20,33 @@ async function handleWeeklyComment(req: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const monday = format(
-    startOfWeek(new Date(), { weekStartsOn: 1 }),
-    "yyyy-MM-dd"
-  );
+
+  // The week being wrapped up is the one ending today, whichever day that is:
+  // sprints are keyed by their first day, so that week started six days ago.
+  // Running daily means every user gets their summary on their own last day —
+  // for a Monday-start week that is still Sunday, exactly as before.
+  const today = format(new Date(), "yyyy-MM-dd");
+  const weekStart = addDaysIso(today, -6);
 
   const { data: sprints } = await supabase
     .from("sprints")
-    .select("id, owner_id")
-    .eq("week_start_date", monday);
+    .select("id, owner_id, users(week_start_day)")
+    .eq("week_start_date", weekStart);
 
-  if (!sprints || sprints.length === 0) {
+  // Skip sprints that don't sit on their owner's first day — those are weeks
+  // filed before the setting existed, and today is not their last day.
+  const dueSprints = (sprints ?? []).filter((sprint) => {
+    const profile = Array.isArray(sprint.users) ? sprint.users[0] : sprint.users;
+    return isWeekStart(weekStart, toWeekStartDay(profile?.week_start_day));
+  });
+
+  if (dueSprints.length === 0) {
     return NextResponse.json({ message: "No sprints to process" });
   }
 
   const results: { userId: string; ok: boolean; error?: string }[] = [];
 
-  for (const sprint of sprints) {
+  for (const sprint of dueSprints) {
     try {
       // Check if AI already commented on this sprint
       const { data: existing } = await supabase
@@ -62,7 +73,7 @@ async function handleWeeklyComment(req: NextRequest) {
       const { context } = await gatherWeeklyContext(
         supabase,
         sprint.owner_id,
-        monday
+        weekStart
       );
 
       if (!context) {
@@ -94,7 +105,7 @@ async function handleWeeklyComment(req: NextRequest) {
 
       results.push({ userId: sprint.owner_id, ok: true });
 
-      if (sprints.indexOf(sprint) < sprints.length - 1) {
+      if (dueSprints.indexOf(sprint) < dueSprints.length - 1) {
         await new Promise((r) => setTimeout(r, 15000));
       }
     } catch (err) {

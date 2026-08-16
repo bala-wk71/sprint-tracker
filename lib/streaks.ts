@@ -1,18 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { format, startOfWeek } from "date-fns";
+import {
+  DEFAULT_WEEK_START_DAY,
+  addDaysIso,
+  weekStartIsoOf,
+  type WeekStartDay,
+} from "@/lib/week";
 
 type Client = SupabaseClient<Database>;
 
 export type StreakResult = { current: number; lastActiveDate: string | null };
 
-function mondayIsoOf(date: Date): string {
-  return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
+function todayIso(): string {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 export async function computeWeeklyStreak(
   supabase: Client,
-  userId: string
+  userId: string,
+  weekStartDay: WeekStartDay = DEFAULT_WEEK_START_DAY
 ): Promise<StreakResult> {
   // Fetch last 20 sprints with their tasks and time entries
   const { data: sprints } = await supabase
@@ -34,11 +43,11 @@ export async function computeWeeklyStreak(
 
   if (!sprints || sprints.length === 0) return { current: 0, lastActiveDate: null };
 
-  const currentWeekMonday = mondayIsoOf(new Date());
+  const currentWeekStart = weekStartIsoOf(todayIso(), weekStartDay);
 
   // Exclude the current week sprint (in progress)
   const completedSprints = sprints.filter(
-    (s) => s.week_start_date < currentWeekMonday
+    (s) => s.week_start_date < currentWeekStart
   );
 
   if (completedSprints.length === 0) return { current: 0, lastActiveDate: null };
@@ -62,8 +71,7 @@ export async function computeWeeklyStreak(
   }
 
   // Walk backward week-by-week from the most recent completed sprint
-  const mostRecentMonday = completedSprints[0].week_start_date;
-  let cursor = mostRecentMonday;
+  let cursor = completedSprints[0].week_start_date;
   let streak = 0;
   let lastActive: string | null = null;
 
@@ -72,10 +80,7 @@ export async function computeWeeklyStreak(
     if (qualified === undefined || qualified === false) break;
     streak++;
     if (lastActive === null) lastActive = cursor;
-    // Move to the previous Monday
-    const prev = new Date(`${cursor}T00:00:00`);
-    prev.setDate(prev.getDate() - 7);
-    cursor = prev.toISOString().slice(0, 10);
+    cursor = addDaysIso(cursor, -7);
   }
 
   return { current: streak, lastActiveDate: lastActive };

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardTimeLogXp, awardXp } from "@/lib/gamification";
+import { getWeekStartDay } from "@/lib/dates";
+import { weekStartIsoOf } from "@/lib/week";
 
 export type ActionResult<T = undefined> =
   | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
@@ -55,12 +57,12 @@ async function ensureDailyLog(
   if (existing) return existing;
 
   // Find the sprint for this week so the daily log can be linked.
-  const monday = mondayOf(date);
+  const weekStart = weekStartIsoOf(date, await getWeekStartDay());
   const { data: sprint } = await ctx.supabase
     .from("sprints")
     .select("id")
     .eq("owner_id", ctx.user.id)
-    .eq("week_start_date", monday)
+    .eq("week_start_date", weekStart)
     .maybeSingle();
 
   const { data: created, error } = await ctx.supabase
@@ -75,14 +77,6 @@ async function ensureDailyLog(
 
   if (error || !created) throw new Error(error?.message ?? "Failed to create log");
   return created;
-}
-
-function mondayOf(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  const day = d.getDay(); // 0=Sun .. 6=Sat
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
 }
 
 // ----------------------------------------------------------------------

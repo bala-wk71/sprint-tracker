@@ -2,7 +2,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
-import { mondayIsoOf, todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { weekEndIsoOf, weekStartIsoOf } from "@/lib/week";
 import { CreateSprintForm } from "./CreateSprintForm";
 import { UseAsTemplateButton } from "./UseAsTemplateButton";
 
@@ -19,7 +20,8 @@ export default async function SprintSetupPage() {
     .eq("owner_id", user.id)
     .order("week_start_date", { ascending: false });
 
-  const defaultWeekStart = mondayIsoOf(await todayIsoLocal());
+  const weekStartDay = await getWeekStartDay();
+  const defaultWeekStart = weekStartIsoOf(await todayIsoLocal(), weekStartDay);
 
   return (
     <div className="space-y-8">
@@ -34,7 +36,10 @@ export default async function SprintSetupPage() {
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           Create a new sprint
         </h2>
-        <CreateSprintForm defaultWeekStart={defaultWeekStart} />
+        <CreateSprintForm
+          defaultWeekStart={defaultWeekStart}
+          weekStartDay={weekStartDay}
+        />
       </section>
 
       <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
@@ -54,7 +59,15 @@ export default async function SprintSetupPage() {
                       href={`/sprint/${sprint.id}`}
                       className="text-sm font-medium text-foreground hover:text-primary"
                     >
-                      Week of {format(new Date(sprint.week_start_date), "MMM d, yyyy")}
+                      {format(
+                        new Date(`${sprint.week_start_date}T00:00:00`),
+                        "MMM d"
+                      )}{" "}
+                      –{" "}
+                      {format(
+                        new Date(`${weekEndIsoOf(sprint.week_start_date)}T00:00:00`),
+                        "MMM d, yyyy"
+                      )}
                     </Link>
                     <p className="text-xs text-muted-foreground">
                       {taskCount} {taskCount === 1 ? "task" : "tasks"}
@@ -66,6 +79,7 @@ export default async function SprintSetupPage() {
                     <UseAsTemplateButton
                       templateSprintId={sprint.id}
                       defaultWeekStart={defaultWeekStart}
+                      weekStartDay={weekStartDay}
                     />
                     <Link
                       href={`/sprint/${sprint.id}`}
