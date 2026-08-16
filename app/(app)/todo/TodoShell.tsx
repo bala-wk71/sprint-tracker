@@ -46,7 +46,9 @@ function TodoBody({ weekStartDay }: { weekStartDay: WeekStartDay }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg border border-border bg-card p-1">
+        {/* Three tabs no longer shrink to fit a 375px screen, so on mobile they
+            share the row as equal thirds and only go inline from sm up. */}
+        <div className="grid w-full grid-cols-3 rounded-lg border border-border bg-card p-1 sm:inline-flex sm:w-auto">
           {TABS.map(({ id, label, icon: Icon }) => {
             const active = tab === id;
             const count = tabCounts[id];
@@ -56,7 +58,7 @@ function TodoBody({ weekStartDay }: { weekStartDay: WeekStartDay }) {
                 onClick={() => setTab(id)}
                 aria-pressed={active}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors sm:px-4",
+                  "inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium transition-colors sm:gap-2 sm:px-4",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
