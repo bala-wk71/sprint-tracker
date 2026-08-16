@@ -21,6 +21,7 @@ import {
 } from "./actions";
 import { useTodoStore } from "./store";
 import * as tree from "./tree";
+import { RowActions } from "./RowActions";
 import { TaskNotes } from "./TaskNotes";
 import type { TodoTask } from "./types";
 
@@ -124,7 +125,7 @@ export function TaskItem({
 
   return (
     <div className="rounded-md transition-colors hover:bg-accent/50">
-      <div className="group flex min-h-[44px] items-center gap-3 px-2 py-1">
+      <div className="group flex min-h-[44px] flex-wrap items-center gap-3 px-2 py-1">
         <button
           onClick={handleToggle}
           className={cn(
@@ -176,7 +177,7 @@ export function TaskItem({
               onDoubleClick={() => setEditing(true)}
               title={hasNotes ? "Show notes" : "Double-click to rename"}
               className={cn(
-                "flex-1 truncate text-left text-sm",
+                "min-w-0 flex-1 truncate text-left text-sm",
                 task.is_completed
                   ? "text-muted-foreground line-through"
                   : "text-foreground"
@@ -216,7 +217,7 @@ export function TaskItem({
               />
             )}
 
-            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+            <RowActions label="task actions">
               {canReorder && (
                 <>
                   <button
@@ -267,7 +268,7 @@ export function TaskItem({
                 <Trash2 className="h-3.5 w-3.5" />
                 {confirmDelete && "Sure?"}
               </button>
-            </div>
+            </RowActions>
           </>
         )}
       </div>

@@ -79,13 +79,13 @@ export function PageHeader({
           ))}
         </nav>
 
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           Move to
           <select
             value={parentId ?? ""}
             onChange={(e) => move(e.target.value)}
             disabled={moving}
-            className="max-w-[16rem] rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            className="min-w-0 max-w-[16rem] rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           >
             <option value="">Top level</option>
             {moveTargets.map((target) => (
@@ -118,7 +118,7 @@ export function PageHeader({
 
       {kind === "meeting" && (
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <label className="flex w-full items-center gap-2 text-xs text-muted-foreground sm:w-auto">
             Date
             <input
               type="date"
@@ -127,10 +127,10 @@ export function PageHeader({
               onBlur={() =>
                 void updatePage({ pageId, meetingDate: dateValue || null })
               }
-              className="rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary sm:flex-none"
             />
           </label>
-          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted-foreground">
+          <label className="flex w-full min-w-0 items-center gap-2 text-xs text-muted-foreground sm:flex-1">
             With
             <input
               value={attendeesValue}

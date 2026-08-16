@@ -12,7 +12,9 @@ import type { PageActionItem } from "./types";
 /**
  * Two-column workspace: the notes take the width, and everything the notes
  * produce — proposals, action items, the transcript they were read from —
- * lives in a rail beside them. The AI state is owned here because the buttons
+ * lives in a rail beside them. The single mobile column is spelled out as
+ * minmax(0,1fr) because an implicit `auto` track is sized by its content —
+ * left alone it pushed the page wider than a phone instead of wrapping. The AI state is owned here because the buttons
  * that start it sit on the editor while its results land in the rail.
  */
 export function PageWorkspace({
@@ -92,7 +94,7 @@ export function PageWorkspace({
   };
 
   return (
-    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0 space-y-4">
         <NoteEditor
           pageId={pageId}

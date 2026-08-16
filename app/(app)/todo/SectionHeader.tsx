@@ -23,6 +23,7 @@ import {
 } from "./actions";
 import { useTodoStore } from "./store";
 import * as tree from "./tree";
+import { RowActions } from "./RowActions";
 import type { TodoSection } from "./types";
 
 export function SectionHeader({
@@ -163,7 +164,7 @@ export function SectionHeader({
 
   return (
     <div className="space-y-1">
-      <div className="group flex min-h-[44px] items-center gap-2">
+      <div className="group flex min-h-[44px] flex-wrap items-center gap-2">
         {forceExpanded ? (
           <span className="h-7 w-7 shrink-0" aria-hidden />
         ) : (
@@ -215,7 +216,7 @@ export function SectionHeader({
           <>
             <span
               className={cn(
-                "flex-1 font-semibold text-foreground",
+                "min-w-0 flex-1 truncate font-semibold text-foreground",
                 isSubsection ? "text-sm" : "text-base"
               )}
             >
@@ -226,7 +227,7 @@ export function SectionHeader({
                 {counts.pending}
               </span>
             )}
-            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+            <RowActions label="section actions">
               {reorderable && (
                 <>
                   <button
@@ -279,7 +280,7 @@ export function SectionHeader({
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
-            </div>
+            </RowActions>
           </>
         )}
       </div>

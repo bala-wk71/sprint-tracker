@@ -39,7 +39,10 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-dvh">
       <Sidebar user={sidebarUser} />
-      <div className="flex flex-1 flex-col md:ml-60">
+      {/* min-w-0: without it this flex child cannot shrink below the widest
+          row inside it, so one wide table or button cluster drags the entire
+          page sideways on a phone instead of wrapping. */}
+      <div className="flex min-w-0 flex-1 flex-col md:ml-60">
         <Header />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>
