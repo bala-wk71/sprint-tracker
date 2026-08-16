@@ -11,16 +11,11 @@ import {
 } from "@/lib/constants";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
 import { todayIsoLocal } from "@/lib/dates";
+import { addDaysIso } from "@/lib/week";
 import { elapsedDaysInWeek, paceStatus } from "@/lib/pace";
 import { WeeklyReflection } from "@/app/(app)/dashboard/WeeklyReflection";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { loadComments } from "@/components/comments/loadComments";
-
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 const MORNING_EMOJI: Record<MorningMood, string> = Object.fromEntries(
   MORNING_MOODS.map((m) => [m.value, m.emoji])

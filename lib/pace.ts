@@ -1,11 +1,9 @@
 // Pace math for plan-vs-execution: how many hours a task "should" have by
 // a given day of the week, assuming targets spread evenly across 7 days.
 
-export function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+import { addDaysIso } from "@/lib/week";
+
+export { addDaysIso } from "@/lib/week";
 
 /**
  * Days of the week considered elapsed as of `todayIso`, counting today as a

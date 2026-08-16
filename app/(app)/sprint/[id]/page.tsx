@@ -48,11 +48,7 @@ export default async function SprintDetailPage({
 
   // Sum of logged hours across all daily logs in this sprint's week.
   const weekStart = sprint.week_start_date;
-  const weekEnd = (() => {
-    const d = new Date(`${weekStart}T00:00:00`);
-    d.setDate(d.getDate() + 6);
-    return d.toISOString().slice(0, 10);
-  })();
+  const weekEnd = weekEndIsoOf(weekStart);
   const { data: entries } = await supabase
     .from("time_entries")
     .select("duration_hours, daily_logs!inner(log_date)")

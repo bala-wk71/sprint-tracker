@@ -3,7 +3,7 @@ import { format, subDays } from "date-fns";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
-import { weekStartIsoOf } from "@/lib/week";
+import { addDaysIso, weekStartIsoOf } from "@/lib/week";
 import { AnalyticsCharts } from "./AnalyticsCharts";
 import { SignalMeter } from "./SignalMeter";
 import { ConsistencyHeatmap, type HeatmapDay } from "./ConsistencyHeatmap";
@@ -15,12 +15,6 @@ const RANGES = [7, 28, 84] as const;
 type RangeDays = (typeof RANGES)[number];
 
 type SearchParams = Promise<{ days?: string }>;
-
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 type CategoryHours = Record<TaskCategory | "untagged", number>;
 

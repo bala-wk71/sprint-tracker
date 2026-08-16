@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { DEFAULT_WEEK_START_DAY, type WeekStartDay } from "@/lib/week";
+import {
+  DEFAULT_WEEK_START_DAY,
+  addDaysIso,
+  type WeekStartDay,
+} from "@/lib/week";
 
 type Client = SupabaseClient<Database>;
 
@@ -224,11 +228,10 @@ export type ShieldedStreak = {
 
 const MAX_SHIELDS = 3;
 
-function addDays(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+// Day stepping must format the way it parses (local, not UTC): a helper that
+// parsed local midnight and formatted with toISOString() stood still on +1 in
+// any timezone ahead of UTC, which spun the streak walk below forever.
+const addDays = addDaysIso;
 
 /**
  * Streak with protection: every 7 consecutive logged days banks a shield
