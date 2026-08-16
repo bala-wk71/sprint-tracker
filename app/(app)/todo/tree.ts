@@ -160,3 +160,75 @@ export function countTasks(sections: TodoSection[]): {
   }
   return { pending, completed };
 }
+
+/**
+ * The tree with archived branches pruned out — what the Tasks and Completed
+ * tabs work from. Archiving a parent takes its subsections with it, so a
+ * pruned branch never leaves orphans behind.
+ */
+export function activeTree(sections: TodoSection[]): TodoSection[] {
+  return sections
+    .filter((s) => !s.archived_at)
+    .map((s) => ({ ...s, subsections: activeTree(s.subsections) }));
+}
+
+export type ArchivedEntry = {
+  section: TodoSection;
+  /** Breadcrumb of live ancestors, empty for an archived top-level section. */
+  path: string;
+};
+
+/**
+ * Everything the user has retired: archived top-level sections (carrying all
+ * of their contents) and archived subsections still sitting under a live
+ * parent. Newest first, so a just-archived section is at the top.
+ */
+export function collectArchived(
+  sections: TodoSection[],
+  prefix = ""
+): ArchivedEntry[] {
+  const out: ArchivedEntry[] = [];
+  for (const section of sections) {
+    if (section.archived_at) {
+      out.push({ section, path: prefix });
+      continue;
+    }
+    const next = prefix ? `${prefix} › ${section.name}` : section.name;
+    out.push(...collectArchived(section.subsections, next));
+  }
+  return out.sort((a, b) =>
+    (b.section.archived_at ?? "").localeCompare(a.section.archived_at ?? "")
+  );
+}
+
+/**
+ * Live sections whose work is finished — every task in them (and in their
+ * subsections) is ticked off. These are the ones "Archive cleared" retires,
+ * and a section with no tasks at all is not one of them: an empty section is
+ * usually a list the user is about to fill.
+ */
+export function clearedSections(sections: TodoSection[]): TodoSection[] {
+  const out: TodoSection[] = [];
+  for (const section of sections) {
+    const counts = countTasks([section]);
+    if (counts.pending === 0 && counts.completed > 0) {
+      out.push(section);
+      continue;
+    }
+    out.push(...clearedSections(section.subsections));
+  }
+  return out;
+}
+
+/** Find a section anywhere in the tree. */
+export function findSection(
+  sections: TodoSection[],
+  id: string
+): TodoSection | null {
+  for (const section of sections) {
+    if (section.id === id) return section;
+    const found = findSection(section.subsections, id);
+    if (found) return found;
+  }
+  return null;
+}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Plus, FolderPlus, SearchX } from "lucide-react";
-import { createSection } from "./actions";
+import { Plus, FolderPlus, SearchX, Archive } from "lucide-react";
+import { archiveClearedSections, createSection } from "./actions";
 import { SectionCard } from "./SectionCard";
 import { useTodoStore } from "./store";
 import * as tree from "./tree";
@@ -14,16 +14,40 @@ export function SectionList({
   allSections,
   searching,
   onViewCompleted,
+  onViewArchived,
 }: {
   sections: TodoSection[];
   allSections: TodoSection[];
   searching: boolean;
   onViewCompleted?: () => void;
+  onViewArchived?: () => void;
 }) {
   const { run, patch } = useTodoStore();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sections whose every task is ticked off. Auto-archiving already retires
+  // note-created ones; this is the manual offer for the rest.
+  const cleared = tree.clearedSections(allSections);
+
+  const handleArchiveCleared = () => {
+    const ids = new Set(cleared.map((s) => s.id));
+    const archivedAt = new Date().toISOString();
+    run(
+      (current) => {
+        let next = current;
+        for (const id of ids) {
+          next = tree.mapSection(next, id, (s) => ({
+            ...s,
+            archived_at: archivedAt,
+          }));
+        }
+        return next;
+      },
+      () => archiveClearedSections()
+    );
+  };
 
   const handleAdd = async () => {
     const trimmed = name.trim();
@@ -38,6 +62,8 @@ export function SectionList({
       name: trimmed,
       position: 0,
       is_collapsed: false,
+      archived_at: null,
+      source_page_id: null,
       tasks: [],
       subsections: [],
     };
@@ -69,6 +95,35 @@ export function SectionList({
 
   return (
     <div className="space-y-3">
+      {!searching && cleared.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {cleared.length}
+            </span>{" "}
+            {cleared.length === 1 ? "section has" : "sections have"} nothing open
+            left.
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleArchiveCleared}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              <Archive className="h-3.5 w-3.5" />
+              Archive {cleared.length === 1 ? "it" : "them"}
+            </button>
+            {onViewArchived && (
+              <button
+                onClick={onViewArchived}
+                className="rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                View archive
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {sections.length === 0 && !adding && (
         <div className="rounded-xl border border-dashed border-border py-12 text-center">
           <FolderPlus className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />

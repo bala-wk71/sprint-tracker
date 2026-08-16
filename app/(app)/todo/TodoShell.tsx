@@ -1,19 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Layers, CheckCheck, Search, X } from "lucide-react";
+import { Layers, CheckCheck, Search, X, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionList } from "./SectionList";
 import { CompletedView } from "./CompletedView";
+import { ArchivedView } from "./ArchivedView";
 import { TodoProvider, useTodoStore } from "./store";
 import * as tree from "./tree";
 import type { TodoSection } from "./types";
 
-type Tab = "sections" | "completed";
+type Tab = "sections" | "completed" | "archived";
 
 const TABS: { id: Tab; label: string; icon: typeof Layers }[] = [
   { id: "sections", label: "Tasks", icon: Layers },
   { id: "completed", label: "Completed", icon: CheckCheck },
+  { id: "archived", label: "Archived", icon: Archive },
 ];
 
 function TodoBody() {
@@ -23,11 +25,21 @@ function TodoBody() {
 
   const searching = query.trim().length > 0;
   const visible = useMemo(() => tree.filterTree(sections, query), [sections, query]);
-  const counts = useMemo(() => tree.countTasks(sections), [sections]);
+
+  // Archived sections are a separate shelf: the Tasks and Completed tabs only
+  // ever see the live tree, and the Archived tab only the retired branches.
+  const live = useMemo(() => tree.activeTree(visible), [visible]);
+  const liveAll = useMemo(() => tree.activeTree(sections), [sections]);
+  const counts = useMemo(() => tree.countTasks(liveAll), [liveAll]);
+  const archivedCount = useMemo(
+    () => tree.collectArchived(sections).length,
+    [sections]
+  );
 
   const tabCounts: Record<Tab, number> = {
     sections: counts.pending,
     completed: counts.completed,
+    archived: archivedCount,
   };
 
   return (
@@ -90,15 +102,20 @@ function TodoBody() {
         )}
       </div>
 
-      {tab === "sections" ? (
+      {tab === "sections" && (
         <SectionList
-          sections={visible}
-          allSections={sections}
+          sections={live}
+          allSections={liveAll}
           searching={searching}
           onViewCompleted={() => setTab("completed")}
+          onViewArchived={() => setTab("archived")}
         />
-      ) : (
-        <CompletedView sections={visible} searching={searching} />
+      )}
+      {tab === "completed" && (
+        <CompletedView sections={live} searching={searching} />
+      )}
+      {tab === "archived" && (
+        <ArchivedView sections={visible} searching={searching} />
       )}
     </div>
   );

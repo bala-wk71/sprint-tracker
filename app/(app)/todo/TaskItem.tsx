@@ -35,7 +35,7 @@ export function TaskItem({
   /** The section's full task list, in position order. Omit to hide reordering. */
   siblings?: TodoTask[];
 }) {
-  const { run } = useTodoStore();
+  const { run, applyArchiveEffect } = useTodoStore();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.title);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -46,9 +46,9 @@ export function TaskItem({
     if (editing) inputRef.current?.focus();
   }, [editing]);
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
     const isCompleted = !task.is_completed;
-    run(
+    const result = await run(
       (sections) =>
         tree.updateTask(sections, task.id, (t) => ({
           ...t,
@@ -57,6 +57,11 @@ export function TaskItem({
         })),
       () => toggleTaskComplete({ taskId: task.id, isCompleted })
     );
+    if (!result.ok) return;
+
+    // Finishing the last item in a note section retires it; the store says so
+    // and offers the way back, so the section never just vanishes.
+    applyArchiveEffect(result.data);
   };
 
   const handleSaveEdit = () => {

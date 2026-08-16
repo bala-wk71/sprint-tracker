@@ -10,7 +10,7 @@ export default async function TodoPage() {
   const [{ data: sectionsRaw }, { data: tasksRaw }] = await Promise.all([
     supabase
       .from("todo_sections")
-      .select("id, parent_id, name, position, is_collapsed")
+      .select("id, parent_id, name, position, is_collapsed, archived_at, source_page_id")
       .eq("owner_id", user.id)
       .order("position"),
     supabase

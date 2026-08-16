@@ -315,12 +315,24 @@ export async function addActionItems(
   ): Promise<{ id: string } | { error: string }> => {
     const { data: existing } = await ctx.supabase
       .from("todo_sections")
-      .select("id")
+      .select("id, archived_at")
       .eq("owner_id", ownerId)
       .eq("source_page_id", sourcePageId)
       .maybeSingle();
 
-    if (existing) return { id: existing.id };
+    if (existing) {
+      // Filing new items into a section that was archived once its last item
+      // was ticked off brings it back — otherwise the items would land
+      // somewhere the user can't see.
+      if (existing.archived_at) {
+        await ctx.supabase
+          .from("todo_sections")
+          .update({ archived_at: null })
+          .eq("id", existing.id)
+          .eq("owner_id", ownerId);
+      }
+      return { id: existing.id };
+    }
 
     let siblings = ctx.supabase
       .from("todo_sections")

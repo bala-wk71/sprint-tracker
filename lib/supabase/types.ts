@@ -546,6 +546,7 @@ export type Database = {
           position: number
           is_collapsed: boolean
           source_page_id: string | null
+          archived_at: string | null
           created_at: string
           updated_at: string
         }
@@ -557,6 +558,7 @@ export type Database = {
           position?: number
           is_collapsed?: boolean
           source_page_id?: string | null
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -568,6 +570,7 @@ export type Database = {
           position?: number
           is_collapsed?: boolean
           source_page_id?: string | null
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -837,6 +840,8 @@ export type Database = {
           id: string
           updated_at: string
           ai_persona: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
+          week_start_day: number
+          todo_auto_archive: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -846,6 +851,8 @@ export type Database = {
           id: string
           updated_at?: string
           ai_persona?: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
+          week_start_day?: number
+          todo_auto_archive?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -855,6 +862,8 @@ export type Database = {
           id?: string
           updated_at?: string
           ai_persona?: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
+          week_start_day?: number
+          todo_auto_archive?: boolean
         }
         Relationships: []
       }

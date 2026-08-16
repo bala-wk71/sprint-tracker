@@ -18,6 +18,11 @@ export type TodoSection = {
   name: string;
   position: number;
   is_collapsed: boolean;
+  /** Timestamp when the section was retired, or null while it is active. */
+  archived_at: string | null;
+  /** Set when the section was created from a note page — only these
+   *  auto-archive once everything in them is done. */
+  source_page_id: string | null;
   tasks: TodoTask[];
   subsections: TodoSection[];
 };

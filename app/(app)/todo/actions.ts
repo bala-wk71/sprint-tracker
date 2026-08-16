@@ -146,6 +146,102 @@ export async function setSectionCollapsed(
   return { ok: true };
 }
 
+const setArchivedSchema = z.object({
+  sectionId: z.string().uuid(),
+  archived: z.boolean(),
+});
+
+/**
+ * Archive or restore a section. Archiving is the non-destructive alternative
+ * to deleting: the section and everything under it leave the Tasks tab and
+ * live in the Archived tab, tasks and completion history intact.
+ *
+ * A subsection can be archived on its own; archiving a parent takes its
+ * subsections with it, since they are rendered inside it.
+ */
+export async function setSectionArchived(
+  input: z.infer<typeof setArchivedSchema>
+): Promise<ActionResult> {
+  const parsed = setArchivedSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const ctx = await getUserOrFail();
+  if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  const { error } = await ctx.supabase
+    .from("todo_sections")
+    .update({ archived_at: parsed.data.archived ? new Date().toISOString() : null })
+    .eq("id", parsed.data.sectionId)
+    .eq("owner_id", ctx.user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
+}
+
+/**
+ * Archive every section that has no open task left, skipping any whose parent
+ * is being archived in the same pass — the parent carries its subsections, so
+ * one restore later brings the whole branch back.
+ */
+export async function archiveClearedSections(): Promise<
+  ActionResult<{ archived: number }>
+> {
+  const ctx = await getUserOrFail();
+  if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  const [{ data: sections, error: sectionsError }, { data: openTasks }] =
+    await Promise.all([
+      ctx.supabase
+        .from("todo_sections")
+        .select("id, parent_id, archived_at")
+        .eq("owner_id", ctx.user.id),
+      ctx.supabase
+        .from("todo_tasks")
+        .select("section_id")
+        .eq("owner_id", ctx.user.id)
+        .eq("is_completed", false),
+    ]);
+
+  if (sectionsError) return { ok: false, error: sectionsError.message };
+
+  const cleared = clearedSectionIds(sections ?? [], openTasks ?? []);
+  const targets = (sections ?? [])
+    .filter((s) => !s.archived_at && cleared.has(s.id))
+    .filter((s) => !s.parent_id || !cleared.has(s.parent_id))
+    .map((s) => s.id);
+
+  if (targets.length === 0) return { ok: true, data: { archived: 0 } };
+
+  const { error } = await ctx.supabase
+    .from("todo_sections")
+    .update({ archived_at: new Date().toISOString() })
+    .in("id", targets)
+    .eq("owner_id", ctx.user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true, data: { archived: targets.length } };
+}
+
+/**
+ * Sections with nothing open left in them, subsections included. A parent
+ * counts as busy while any of its children is.
+ */
+function clearedSectionIds(
+  sections: { id: string; parent_id: string | null }[],
+  openTasks: { section_id: string }[]
+): Set<string> {
+  const busy = new Set(openTasks.map((t) => t.section_id));
+  const parentOf = new Map(sections.map((s) => [s.id, s.parent_id]));
+  for (const id of [...busy]) {
+    const parent = parentOf.get(id);
+    if (parent) busy.add(parent);
+  }
+  return new Set(sections.map((s) => s.id).filter((id) => !busy.has(id)));
+}
+
 const reorderSchema = z.object({
   orderedIds: z.array(z.string().uuid()).min(1).max(500),
 });
@@ -316,7 +412,7 @@ const toggleTaskSchema = z.object({
 
 export async function toggleTaskComplete(
   input: z.infer<typeof toggleTaskSchema>
-): Promise<ActionResult> {
+): Promise<ActionResult<ArchiveEffect>> {
   const parsed = toggleTaskSchema.safeParse(input);
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -324,14 +420,16 @@ export async function toggleTaskComplete(
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
 
-  const { error } = await ctx.supabase
+  const { data: task, error } = await ctx.supabase
     .from("todo_tasks")
     .update({
       is_completed: parsed.data.isCompleted,
       completed_at: parsed.data.isCompleted ? new Date().toISOString() : null,
     })
     .eq("id", parsed.data.taskId)
-    .eq("owner_id", ctx.user.id);
+    .eq("owner_id", ctx.user.id)
+    .select("section_id")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
 
@@ -342,5 +440,113 @@ export async function toggleTaskComplete(
     xp = await awardXp(ctx.supabase, ctx.user.id, "todo_done", parsed.data.taskId);
   }
 
-  return { ok: true, xp };
+  const effect = task
+    ? await settleArchiveState(ctx, task.section_id, parsed.data.isCompleted)
+    : EMPTY_ARCHIVE_EFFECT;
+
+  return { ok: true, xp, data: effect };
+}
+
+export type ArchiveEffect = {
+  /** Sections the server just archived on its own. */
+  archivedSectionIds: string[];
+  /** Sections pulled back out of the archive because work reopened in them. */
+  restoredSectionIds: string[];
+};
+
+const EMPTY_ARCHIVE_EFFECT: ArchiveEffect = {
+  archivedSectionIds: [],
+  restoredSectionIds: [],
+};
+
+/**
+ * Keep a note-created section's archived state in step with its tasks.
+ *
+ * Ticking off the last open item retires the section (this is the automatic
+ * half of archiving, and only note sections opt in — hand-made sections are
+ * long-lived lists the user curates). Reopening an item in an archived section
+ * always brings it back, note-created or not, since an archived section with
+ * live work in it would simply be lost.
+ */
+async function settleArchiveState(
+  ctx: NonNullable<Awaited<ReturnType<typeof getUserOrFail>>>,
+  sectionId: string,
+  completed: boolean
+): Promise<ArchiveEffect> {
+  const { data: section } = await ctx.supabase
+    .from("todo_sections")
+    .select("id, parent_id, source_page_id, archived_at")
+    .eq("id", sectionId)
+    .eq("owner_id", ctx.user.id)
+    .maybeSingle();
+
+  if (!section) return EMPTY_ARCHIVE_EFFECT;
+
+  if (!completed) {
+    // Restore the section and, if it sits inside one, its parent.
+    const ids = [section.id, section.parent_id].filter(
+      (id): id is string => Boolean(id)
+    );
+    const { data: restored } = await ctx.supabase
+      .from("todo_sections")
+      .update({ archived_at: null })
+      .in("id", ids)
+      .eq("owner_id", ctx.user.id)
+      .not("archived_at", "is", null)
+      .select("id");
+
+    return {
+      ...EMPTY_ARCHIVE_EFFECT,
+      restoredSectionIds: (restored ?? []).map((r) => r.id),
+    };
+  }
+
+  if (!section.source_page_id || section.archived_at) return EMPTY_ARCHIVE_EFFECT;
+
+  const { data: prefs } = await ctx.supabase
+    .from("users")
+    .select("todo_auto_archive")
+    .eq("id", ctx.user.id)
+    .maybeSingle();
+
+  if (prefs && prefs.todo_auto_archive === false) return EMPTY_ARCHIVE_EFFECT;
+
+  // The branch is only done when the section and its siblings under the same
+  // parent have nothing open left, so walk the parent's whole subtree.
+  const rootId = section.parent_id ?? section.id;
+  const { data: branch } = await ctx.supabase
+    .from("todo_sections")
+    .select("id, parent_id, source_page_id")
+    .eq("owner_id", ctx.user.id)
+    .or(`id.eq.${rootId},parent_id.eq.${rootId}`);
+
+  const branchIds = (branch ?? []).map((s) => s.id);
+  if (branchIds.length === 0) return EMPTY_ARCHIVE_EFFECT;
+
+  const { data: openTasks } = await ctx.supabase
+    .from("todo_tasks")
+    .select("section_id")
+    .eq("owner_id", ctx.user.id)
+    .eq("is_completed", false)
+    .in("section_id", branchIds);
+
+  const cleared = clearedSectionIds(branch ?? [], openTasks ?? []);
+
+  // Prefer archiving the root so one restore brings the branch back; fall back
+  // to the subsection when the rest of the branch is still live.
+  const target = [(branch ?? []).find((s) => s.id === rootId), section].find(
+    (s) => s && cleared.has(s.id) && s.source_page_id
+  );
+
+  if (!target) return EMPTY_ARCHIVE_EFFECT;
+
+  const { error: archiveError } = await ctx.supabase
+    .from("todo_sections")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", target.id)
+    .eq("owner_id", ctx.user.id);
+
+  if (archiveError) return EMPTY_ARCHIVE_EFFECT;
+
+  return { ...EMPTY_ARCHIVE_EFFECT, archivedSectionIds: [target.id] };
 }

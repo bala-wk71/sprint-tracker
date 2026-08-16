@@ -65,11 +65,13 @@ function groupCompleted(tasks: DoneTask[]): DoneGroup[] {
 }
 
 function CompletedRow({ task }: { task: DoneTask }) {
-  const { run } = useTodoStore();
+  const { run, applyArchiveEffect } = useTodoStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const handleRestore = () => {
-    run(
+  // Reopening a task inside an archived section pulls that section back out of
+  // the archive server-side; mirror that here.
+  const handleRestore = async () => {
+    const result = await run(
       (sections) =>
         tree.updateTask(sections, task.id, (t) => ({
           ...t,
@@ -78,6 +80,7 @@ function CompletedRow({ task }: { task: DoneTask }) {
         })),
       () => toggleTaskComplete({ taskId: task.id, isCompleted: false })
     );
+    if (result.ok) applyArchiveEffect(result.data);
   };
 
   const handleDelete = () => {

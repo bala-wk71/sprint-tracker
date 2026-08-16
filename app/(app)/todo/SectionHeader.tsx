@@ -10,6 +10,7 @@ import {
   Plus,
   Check,
   X,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +19,7 @@ import {
   deleteSection,
   createSection,
   reorderSections,
+  setSectionArchived,
 } from "./actions";
 import { useTodoStore } from "./store";
 import * as tree from "./tree";
@@ -86,6 +88,19 @@ export function SectionHeader({
     );
   };
 
+  // Archiving is the soft alternative to deleting — the section keeps its
+  // tasks and comes back from the Archived tab, so it needs no confirmation.
+  const handleArchive = () => {
+    run(
+      (sections) =>
+        tree.mapSection(sections, section.id, (s) => ({
+          ...s,
+          archived_at: new Date().toISOString(),
+        })),
+      () => setSectionArchived({ sectionId: section.id, archived: true })
+    );
+  };
+
   const handleDelete = () => {
     const suffix = total > 0 ? ` and its ${total} task${total === 1 ? "" : "s"}` : "";
     if (!confirm(`Delete "${section.name}"${suffix}?`)) return;
@@ -108,6 +123,8 @@ export function SectionHeader({
       name,
       position: 0,
       is_collapsed: false,
+      archived_at: null,
+      source_page_id: null,
       tasks: [],
       subsections: [],
     };
@@ -240,6 +257,14 @@ export function SectionHeader({
                   Sub
                 </button>
               )}
+              <button
+                onClick={handleArchive}
+                className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label="Archive section"
+                title="Archive — keeps the tasks, hides the section"
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </button>
               <button
                 onClick={() => setEditing(true)}
                 className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
