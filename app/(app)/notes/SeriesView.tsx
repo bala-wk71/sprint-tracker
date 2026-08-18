@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { archiveOldOccurrences, createPage } from "./actions";
 import { formatMeetingDate } from "./kinds";
-import type { Occurrence } from "./types";
+import type { Occurrence, PageActionItem } from "./types";
 
 const TIDY_CHOICES = [30, 60, 90] as const;
 
@@ -26,9 +26,16 @@ const TIDY_CHOICES = [30, 60, 90] as const;
 export function SeriesView({
   seriesId,
   occurrences,
+  strayItems,
 }: {
   seriesId: string;
   occurrences: Occurrence[];
+  /**
+   * Items filed against the series itself. Nothing creates these any more —
+   * they are what a meeting that was promoted to a series left behind. Shown
+   * rather than swallowed, and the section disappears once they are cleared.
+   */
+  strayItems: PageActionItem[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -148,6 +155,38 @@ export function SeriesView({
           <Check className="h-4 w-4 shrink-0" />
           {notice}
         </p>
+      )}
+
+      {strayItems.length > 0 && (
+        <section className="rounded-lg border border-border bg-card p-4">
+          <h2 className="mb-1 text-sm font-semibold text-foreground">
+            Action items on the series itself
+          </h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            From before this became a series. They still live on your todo
+            board — new items are filed against a sitting instead.
+          </p>
+          <ul className="space-y-1">
+            {strayItems.map((item) => (
+              <li
+                key={item.id}
+                className={cn(
+                  "flex items-center gap-2 text-sm",
+                  item.is_completed
+                    ? "text-muted-foreground line-through"
+                    : "text-foreground"
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                {item.due_date && (
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {item.due_date}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="rounded-lg border border-border bg-card p-4">

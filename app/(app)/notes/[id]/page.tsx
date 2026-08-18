@@ -131,7 +131,11 @@ export default async function NoteDetailPage({
     return (
       <div className="space-y-4">
         {header}
-        <SeriesView seriesId={page.id} occurrences={occurrences} />
+        <SeriesView
+          seriesId={page.id}
+          occurrences={occurrences}
+          strayItems={itemRows ?? []}
+        />
       </div>
     );
   }
