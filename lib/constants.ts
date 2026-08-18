@@ -1,43 +1,99 @@
-// Signal/Noise Task Categories
+// ---------------------------------------------------------------------------
+// Signal / Noise task categories
+//
+// Four categories are one 2x2 over two independent questions:
+//
+//                     do I know how to start?
+//                        yes          no
+//   worth my week   Sharp Signal   Fuzzy Signal
+//   not really      Sharp Noise    Fuzzy Noise
+//
+//   signal / noise  is VALUE   — is this worth the week?
+//   sharp  / fuzzy  is CLARITY — can you see the first move?
+//
+// The old names for the clarity axis were "strong" and "weak", which read as
+// importance rather than clarity: "Strong Noise" sounded like the worst
+// quadrant when it is the third, and "Weak Noise" — the one to delete —
+// sounded like the mildest. "Clear" was unavailable as its replacement,
+// because LEVEL_TITLES already spends it on level 5.
+//
+// The enum values in Postgres are unchanged, so these are display names only.
+// `personal` deliberately sits off the grid: it is not low-value work, it is a
+// fixed cost you are protecting, and the signal ratio excludes it.
+// ---------------------------------------------------------------------------
+
 export const TASK_CATEGORIES = {
   strong_signal: {
-    label: "Strong Signal",
-    emoji: "🟢",
+    label: "Sharp Signal",
     color: "strong-signal",
-    priority: "First",
-    description: "High value + clear path",
+    priority: "Do first",
+    description: "Worth it, and you know your first move.",
+    example: "Ship the feature you have already scoped.",
   },
   weak_signal: {
-    label: "Weak Signal",
-    emoji: "🟡",
+    label: "Fuzzy Signal",
     color: "weak-signal",
-    priority: "Second",
-    description: "Valuable but unclear",
+    priority: "Do second",
+    description: "Worth it, but you cannot see the path yet.",
+    example: "Work out why retention drops in week two.",
   },
   strong_noise: {
-    label: "Strong Noise",
-    emoji: "🔴",
+    label: "Sharp Noise",
     color: "strong-noise",
     priority: "Limit",
-    description: "Clear but low value",
+    description: "Easy and obligatory, but it moves little.",
+    example: "Status decks, expense claims, the standing sync.",
   },
   weak_noise: {
-    label: "Weak Noise",
-    emoji: "🟣",
+    label: "Fuzzy Noise",
     color: "weak-noise",
     priority: "Eliminate",
-    description: "Low value + unclear",
+    description: "Vague, unowned, and not worth it.",
+    example: "The meeting with no agenda.",
   },
   personal: {
     label: "Personal",
-    emoji: "🔵",
     color: "personal",
-    priority: "Fixed",
-    description: "Life essentials",
+    priority: "Protect",
+    description: "A fixed cost you are choosing to keep.",
+    example: "Gym, commute, family, sleep.",
   },
 } as const;
 
 export type TaskCategory = keyof typeof TASK_CATEGORIES;
+
+/**
+ * The 2x2 as the picker draws it: axis headings, then rows of cells. Kept
+ * beside the categories so a label and the grid it sits in cannot drift.
+ */
+export const CATEGORY_GRID = {
+  clarityAxis: { label: "Do I know how to start?", yes: "Yes", no: "Not sure" },
+  valueAxis: { label: "Is it worth my week?", yes: "Worth it", no: "Not really" },
+  rows: [
+    { value: "yes", cells: ["strong_signal", "weak_signal"] },
+    { value: "no", cells: ["strong_noise", "weak_noise"] },
+  ],
+  /** Off the grid, offered beside it. */
+  aside: "personal",
+} as const satisfies {
+  clarityAxis: { label: string; yes: string; no: string };
+  valueAxis: { label: string; yes: string; no: string };
+  rows: readonly { value: "yes" | "no"; cells: readonly TaskCategory[] }[];
+  aside: TaskCategory;
+};
+
+/**
+ * Stack and legend order everywhere: the action ladder, then the fixed cost,
+ * then whatever was never tagged. The colours escalate along it — see the
+ * --viz-* block in globals.css.
+ */
+export const CATEGORY_ORDER = [
+  "strong_signal",
+  "weak_signal",
+  "strong_noise",
+  "weak_noise",
+  "personal",
+] as const satisfies readonly TaskCategory[];
 
 // Morning Moods
 export const MORNING_MOODS = [

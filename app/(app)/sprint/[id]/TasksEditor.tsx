@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { TASK_CATEGORIES, WEEK_HOURS, type TaskCategory } from "@/lib/constants";
+import { WEEK_HOURS, type TaskCategory } from "@/lib/constants";
+import { CategoryPicker } from "@/components/sprint/CategoryPicker";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
 import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
 import { addTaskToSprint, deleteTask, updateTask } from "./actions";
@@ -147,29 +148,15 @@ export function TasksEditor({
         editingId === task.id && draft ? (
           <div
             key={task.id}
-            className="grid gap-2 rounded-md border border-primary/40 bg-background p-3 sm:grid-cols-2 lg:grid-cols-[2fr_1.2fr_0.8fr_auto_auto_auto]"
+            className="space-y-2 rounded-md border border-primary/40 bg-background p-3"
           >
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[2fr_0.8fr_auto_auto_auto]">
             <input
               type="text"
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <select
-              value={draft.category}
-              onChange={(e) =>
-                setDraft({ ...draft, category: e.target.value as TaskCategory })
-              }
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {(Object.entries(TASK_CATEGORIES) as [TaskCategory, typeof TASK_CATEGORIES[TaskCategory]][]).map(
-                ([value, meta]) => (
-                  <option key={value} value={value}>
-                    {meta.label}
-                  </option>
-                )
-              )}
-            </select>
             <input
               type="number"
               step="0.5"
@@ -207,6 +194,12 @@ export function TasksEditor({
             >
               Cancel
             </button>
+          </div>
+
+            <CategoryPicker
+              value={draft.category}
+              onChange={(category) => setDraft({ ...draft, category })}
+            />
           </div>
         ) : (
           <div
@@ -247,7 +240,8 @@ export function TasksEditor({
       )}
 
       {adding ? (
-        <div className="grid gap-2 rounded-md border border-primary/40 bg-background p-3 sm:grid-cols-2 lg:grid-cols-[2fr_1.2fr_0.8fr_auto_auto_auto]">
+        <div className="space-y-2 rounded-md border border-primary/40 bg-background p-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[2fr_0.8fr_auto_auto_auto]">
           <input
             type="text"
             placeholder="Task name"
@@ -256,21 +250,6 @@ export function TasksEditor({
             autoFocus
             className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          <select
-            value={newTask.category}
-            onChange={(e) =>
-              setNewTask({ ...newTask, category: e.target.value as TaskCategory })
-            }
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {(Object.entries(TASK_CATEGORIES) as [TaskCategory, typeof TASK_CATEGORIES[TaskCategory]][]).map(
-              ([value, meta]) => (
-                <option key={value} value={value}>
-                  {meta.emoji} {meta.label}
-                </option>
-              )
-            )}
-          </select>
           <input
             type="number"
             step="0.5"
@@ -311,6 +290,12 @@ export function TasksEditor({
           >
             Cancel
           </button>
+        </div>
+
+          <CategoryPicker
+            value={newTask.category}
+            onChange={(category) => setNewTask({ ...newTask, category })}
+          />
         </div>
       ) : (
         <button

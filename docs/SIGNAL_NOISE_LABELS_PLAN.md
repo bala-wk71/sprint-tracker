@@ -1,7 +1,8 @@
 # Signal / Noise Categories — Labelling Plan
 
 - Date: 2026-08-18
-- Status: plan only. Nothing here is implemented.
+- Status: **Phases 1-3 implemented** (Option B). Phase 4 not built.
+  Colour was reassigned to follow the action ladder — see section 5.
 - Trigger: "the strong weak signal and noise are confusing on where to put what
   so some clear labels there would help."
 
@@ -250,3 +251,45 @@ One edit to `label` in `TASK_CATEGORIES`, assuming Option B. Then:
    right.
 4. **Phase 4 or not.** Cheap to skip, cheap to add later; no point building the
    guided flow before seeing whether the grid alone fixes it.
+
+
+---
+
+## 5. What was built (2026-08-18)
+
+Option B, plus Phases 1-3. Phase 4 was left alone deliberately: build the
+guided flow only if the grid turns out not to be enough.
+
+- **Labels**: Sharp Signal / Fuzzy Signal / Sharp Noise / Fuzzy Noise /
+  Personal. Priority verbs became imperatives — `Do first`, `Do second`,
+  `Limit`, `Eliminate`, `Protect` — since they are now shown to the user.
+- **Picker**: `components/sprint/CategoryPicker.tsx`, a 2x2 with the two
+  questions as row and column headings, replacing all three `<select>`s. The
+  selected cell's description and an example print underneath — not in every
+  cell (a wall) and not on hover (invisible on a phone).
+- **Colour now follows the action ladder**, which is the part that had been
+  contradicting itself: red sat on `strong_noise` (the quadrant you merely
+  *limit*) and purple on `weak_noise` (the one you *eliminate*). Swapped, so
+  the escalation runs green → amber → purple → red, with blue off to the side
+  for Personal. No new hues were introduced, so the palette keeps its
+  validated CVD properties.
+- **Palette re-validated** in the new adjacency with the dataviz validator,
+  light and dark: all checks pass. Worst adjacent pair is amber↔green,
+  ΔE 9.1 protan light / 8.4 dark against a floor of 8; normal-vision 22.9 /
+  19.8 against a floor of 15. The contrast WARN on green and amber in light
+  mode is relieved by the visible labels the meter and legends already carry.
+  `--viz-untagged` stays deliberately achromatic — a "no data" bucket, not a
+  sixth category.
+- **One source of truth**: `SignalMeter`, `AnalyticsCharts` and the stack
+  order all read `TASK_CATEGORIES` / `CATEGORY_ORDER`. The emoji field is
+  gone. Four copies of the labels became one.
+- **Untouched**: the Postgres enum, and `LEVEL_TITLES` in `lib/gamification.ts`
+  — the collision that ruled "Clear Signal" out as a category name.
+
+### Not verified visually
+
+No browser tooling was connected when this was built. It typechecks, lints and
+builds; the picker was rendered through `renderToStaticMarkup` to confirm its
+structure, headings, selected state and description line. Layout, colour in
+situ, and the analytics charts under the swapped palette have not been seen on
+screen.

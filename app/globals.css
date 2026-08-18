@@ -25,11 +25,21 @@
   --ring: 218 92% 40%;
   --radius: 0.5rem;
 
-  /* Signal/Noise Categories — deeper, more saturated for light background */
+  /* Signal/Noise categories — deeper, more saturated for light background.
+     Colour follows the action ladder, not the value axis:
+
+       Sharp Signal  do first    green   go
+       Fuzzy Signal  do second   amber   caution, shape it first
+       Sharp Noise   limit       purple  overhead, neither good nor alarming
+       Fuzzy Noise   eliminate   red     stop
+
+     Red used to sit on strong_noise and purple on weak_noise, which put the
+     loudest warning on the quadrant you merely cap and the quietest on the one
+     you delete — the same inversion the old "strong/weak" names had. */
   --strong-signal: 140 64% 33%;
   --weak-signal: 38 94% 38%;
-  --strong-noise: 355 72% 48%;
-  --weak-noise: 258 92% 66%;
+  --strong-noise: 258 92% 66%;
+  --weak-noise: 355 72% 48%;
   --personal: 213 90% 48%;
 
   /* Progress Indicators */
@@ -38,12 +48,16 @@
   --progress-danger: 355 72% 48%;
 
   /* Data-viz palette (hex, CVD-validated per surface — keep in sync with
-     AnalyticsCharts PALETTES). Stack order: signal → personal → noise. */
+     AnalyticsCharts PALETTES). Stack/legend order is CATEGORY_ORDER: the
+     action ladder, then personal, then untagged. Validated in that adjacency:
+     worst adjacent pair amber↔green ΔE 9.1 protan (floor 8), normal-vision
+     22.9 (floor 15). The grey untagged slot is deliberately achromatic — it
+     is a "no data" bucket, not a sixth category. */
   --viz-strong-signal: #1baf7a;
   --viz-weak-signal: #eda100;
+  --viz-strong-noise: #4a3aa7;
+  --viz-weak-noise: #e34948;
   --viz-personal: #2a78d6;
-  --viz-strong-noise: #e34948;
-  --viz-weak-noise: #4a3aa7;
   --viz-untagged: #898781;
   /* Sequential blue ramp for the consistency heatmap (low → high). */
   --viz-heat-1: #b7d3f6;
@@ -55,9 +69,9 @@
 .dark {
   --viz-strong-signal: #199e70;
   --viz-weak-signal: #c98500;
+  --viz-strong-noise: #9085e9;
+  --viz-weak-noise: #e66767;
   --viz-personal: #3987e5;
-  --viz-strong-noise: #e66767;
-  --viz-weak-noise: #9085e9;
   --viz-untagged: #898781;
   --viz-heat-1: #0d366b;
   --viz-heat-2: #1c5cab;
@@ -110,8 +124,8 @@
 
   --strong-signal: 138 55% 64%;
   --weak-signal: 46 100% 64%;
-  --strong-noise: 0 100% 77%;
-  --weak-noise: 266 100% 83%;
+  --strong-noise: 266 100% 83%;
+  --weak-noise: 0 100% 77%;
   --personal: 208 100% 74%;
 
   --progress-good: 138 55% 64%;

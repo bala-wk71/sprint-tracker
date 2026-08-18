@@ -1,17 +1,23 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
-import type { TaskCategory } from "@/lib/constants";
+import {
+  CATEGORY_ORDER,
+  TASK_CATEGORIES,
+  type TaskCategory,
+} from "@/lib/constants";
 
 type CategoryHours = Record<TaskCategory | "untagged", number>;
 
-// Stack order: signal → personal → noise → untagged. Matches the validated
-// --viz-* palette order in globals.css.
+// Stack order is CATEGORY_ORDER — the action ladder, then personal — and the
+// labels come from TASK_CATEGORIES rather than a second copy, which is how
+// this legend used to drift from the picker. `untagged` is appended here
+// because it is a "no data" bucket, not a category.
 const SEGMENTS: Array<{ key: keyof CategoryHours; label: string; varName: string }> = [
-  { key: "strong_signal", label: "Strong Signal", varName: "--viz-strong-signal" },
-  { key: "weak_signal", label: "Weak Signal", varName: "--viz-weak-signal" },
-  { key: "personal", label: "Personal", varName: "--viz-personal" },
-  { key: "strong_noise", label: "Strong Noise", varName: "--viz-strong-noise" },
-  { key: "weak_noise", label: "Weak Noise", varName: "--viz-weak-noise" },
-  { key: "untagged", label: "Untagged", varName: "--viz-untagged" },
+  ...CATEGORY_ORDER.map((key) => ({
+    key,
+    label: TASK_CATEGORIES[key].label,
+    varName: `--viz-${TASK_CATEGORIES[key].color}`,
+  })),
+  { key: "untagged" as const, label: "Untagged", varName: "--viz-untagged" },
 ];
 
 type Props = {

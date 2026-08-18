@@ -3,15 +3,16 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
-import { TASK_CATEGORIES, WEEK_HOURS, type TaskCategory } from "@/lib/constants";
+import { WEEK_HOURS, type TaskCategory } from "@/lib/constants";
 import {
   weekEndIsoOf,
   weekStartDayName,
   weekStartIsoOf,
   type WeekStartDay,
 } from "@/lib/week";
+import { CategoryPicker } from "@/components/sprint/CategoryPicker";
 import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
 import { createSprintWithTasks } from "./actions";
 
@@ -170,53 +171,57 @@ export function CreateSprintForm({
         <WeekCapacityBar plannedHours={plannedHours} className="mb-2" />
         <div className="space-y-2">
           {fields.map((field, index) => (
+            // The category no longer shares a row with the name and hours: a
+            // 2x2 does not fit a 1.2fr column, and squeezing it back into a
+            // dropdown is what made the choice a guess in the first place.
             <div
               key={field.id}
-              className="grid gap-2 rounded-md border border-border bg-background p-3 lg:grid-cols-[2fr_1.2fr_0.8fr_auto_auto]"
+              className="space-y-2 rounded-md border border-border bg-background p-3"
             >
-              <input
-                type="text"
-                placeholder="Task name"
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                {...register(`tasks.${index}.name`, { required: true })}
-              />
-              <select
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                {...register(`tasks.${index}.category`)}
-              >
-                {(Object.entries(TASK_CATEGORIES) as [TaskCategory, typeof TASK_CATEGORIES[TaskCategory]][]).map(
-                  ([value, meta]) => (
-                    <option key={value} value={value}>
-                      {meta.label}
-                    </option>
-                  )
-                )}
-              </select>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                placeholder="Target hrs"
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                {...register(`tasks.${index}.target_hours`, { valueAsNumber: true })}
-              />
-              <label className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
+              <div className="grid gap-2 sm:grid-cols-[2fr_0.8fr_auto_auto]">
                 <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-input"
-                  {...register(`tasks.${index}.is_recurring`)}
+                  type="text"
+                  placeholder="Task name"
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  {...register(`tasks.${index}.name`, { required: true })}
                 />
-                Recurring
-              </label>
-              <button
-                type="button"
-                onClick={() => fields.length > 1 && remove(index)}
-                disabled={fields.length === 1}
-                className="inline-flex items-center justify-center rounded-md px-2 text-muted-foreground hover:text-destructive disabled:opacity-30"
-                aria-label={`Remove task ${index + 1}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  placeholder="Target hrs"
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  {...register(`tasks.${index}.target_hours`, { valueAsNumber: true })}
+                />
+                <label className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input"
+                    {...register(`tasks.${index}.is_recurring`)}
+                  />
+                  Recurring
+                </label>
+                <button
+                  type="button"
+                  onClick={() => fields.length > 1 && remove(index)}
+                  disabled={fields.length === 1}
+                  className="inline-flex items-center justify-center rounded-md px-2 text-muted-foreground hover:text-destructive disabled:opacity-30"
+                  aria-label={`Remove task ${index + 1}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+
+              <Controller
+                control={control}
+                name={`tasks.${index}.category`}
+                render={({ field: categoryField }) => (
+                  <CategoryPicker
+                    value={categoryField.value as TaskCategory}
+                    onChange={categoryField.onChange}
+                  />
+                )}
+              />
             </div>
           ))}
         </div>

@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CATEGORY_ORDER, TASK_CATEGORIES } from "@/lib/constants";
 
 // CVD-validated per surface — keep in sync with the --viz-* vars in
 // globals.css. Recharts writes SVG presentation attributes, which can't
@@ -25,8 +26,8 @@ const PALETTES = {
     strong_signal: "#1baf7a",
     weak_signal: "#eda100",
     personal: "#2a78d6",
-    strong_noise: "#e34948",
-    weak_noise: "#4a3aa7",
+    strong_noise: "#4a3aa7",
+    weak_noise: "#e34948",
     untagged: "#898781",
     energy: "#eda100",
     primary: "#2a78d6",
@@ -38,8 +39,8 @@ const PALETTES = {
     strong_signal: "#199e70",
     weak_signal: "#c98500",
     personal: "#3987e5",
-    strong_noise: "#e66767",
-    weak_noise: "#9085e9",
+    strong_noise: "#9085e9",
+    weak_noise: "#e66767",
     untagged: "#898781",
     energy: "#c98500",
     primary: "#3987e5",
@@ -73,22 +74,22 @@ type Props = {
   weeklySeries: WeeklyRow[];
 };
 
-// Stack order matches SignalMeter: signal → personal → noise → untagged.
+// Stack order matches SignalMeter: the action ladder (do first → do second →
+// limit → eliminate), then personal, then untagged. The --viz-* palette was
+// CVD-validated in exactly this adjacency.
 const STACK_KEYS = [
-  "strong_signal",
-  "weak_signal",
-  "personal",
-  "strong_noise",
-  "weak_noise",
+  ...CATEGORY_ORDER,
   "untagged",
 ] as const;
 
+// Labels come from TASK_CATEGORIES so a rename lands here too; `untagged` is
+// local because it is a "no data" bucket rather than a category.
 const CATEGORY_LABELS: Record<(typeof STACK_KEYS)[number], string> = {
-  strong_signal: "Strong Signal",
-  weak_signal: "Weak Signal",
-  personal: "Personal",
-  strong_noise: "Strong Noise",
-  weak_noise: "Weak Noise",
+  strong_signal: TASK_CATEGORIES.strong_signal.label,
+  weak_signal: TASK_CATEGORIES.weak_signal.label,
+  personal: TASK_CATEGORIES.personal.label,
+  strong_noise: TASK_CATEGORIES.strong_noise.label,
+  weak_noise: TASK_CATEGORIES.weak_noise.label,
   untagged: "Untagged",
 };
 
