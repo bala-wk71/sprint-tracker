@@ -482,6 +482,7 @@ export type Database = {
           meeting_date: string | null
           attendees: string | null
           position: number
+          archived_at: string | null
           is_archived: boolean
           created_at: string
           updated_at: string
@@ -499,7 +500,7 @@ export type Database = {
           meeting_date?: string | null
           attendees?: string | null
           position?: number
-          is_archived?: boolean
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -516,7 +517,7 @@ export type Database = {
           meeting_date?: string | null
           attendees?: string | null
           position?: number
-          is_archived?: boolean
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }

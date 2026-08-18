@@ -4,23 +4,28 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  CalendarClock,
+  Archive,
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  FileText,
   FolderTree,
   Plus,
   Search,
-  Trash2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createPage, deletePage, reorderPages } from "./actions";
+import { createPage, reorderPages, setPageArchived } from "./actions";
+import { KindIcon } from "./kinds";
 import { filterTree, moveNode } from "./tree";
 import type { NotePageNode } from "./types";
 
-export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
+export function NotesSidebar({
+  tree,
+  archivedCount,
+}: {
+  tree: NotePageNode[];
+  archivedCount: number;
+}) {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -52,9 +57,11 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
       return next;
     });
 
-  const addPage = (parentId: string | null) => {
+  // What the "+" on a row makes is decided by what the row is: a series only
+  // ever gains another sitting, and a plain page gains a plain page.
+  const addPage = (parentId: string | null, kind: "page" | "meeting") => {
     startTransition(async () => {
-      const result = await createPage({ parentId });
+      const result = await createPage({ parentId, kind });
       if (!result.ok) return;
       if (parentId) {
         setCollapsed((prev) => {
@@ -68,15 +75,22 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
     });
   };
 
-  const removePage = (node: NotePageNode) => {
-    const message =
-      node.children.length > 0
-        ? `Delete "${node.title}" and every page nested inside it? This cannot be undone.`
-        : `Delete "${node.title}"? This cannot be undone.`;
-    if (!confirm(message)) return;
+  // Archiving replaces deleting as the one-click action on a row. Deleting for
+  // good still exists, but it lives on the archive screen where the page is
+  // already out of the way and the click is deliberate.
+  const archive = (node: NotePageNode) => {
+    // Archiving one page is cheap and reversible, so it just happens. Taking a
+    // whole branch — a series and every sitting in it — is worth a beat.
+    if (
+      node.children.length > 0 &&
+      !confirm(
+        `Archive "${node.title}" and everything inside it? You can restore it from the archive.`
+      )
+    )
+      return;
 
     startTransition(async () => {
-      const result = await deletePage(node.id);
+      const result = await setPageArchived({ pageId: node.id, archived: true });
       if (!result.ok) return;
       if (activeId === node.id) router.push("/notes");
       else router.refresh();
@@ -93,15 +107,24 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
     });
   };
 
-  const renderNode = (node: NotePageNode, depth: number) => {
+  const renderNode = (
+    node: NotePageNode,
+    depth: number,
+    parentKind: NotePageNode["kind"] | null = null
+  ) => {
     const hasChildren = node.children.length > 0;
     const isOpen = searching || !collapsed.has(node.id);
     const isActive = node.id === activeId;
-    const Icon = node.kind === "meeting" ? CalendarClock : FileText;
-    // Neighbours are hidden while filtering, so a move would look inert.
-    const canReorder = !searching;
+    const isOccurrence = parentKind === "series";
+    // Neighbours are hidden while filtering, so a move would look inert; and
+    // occurrences sort themselves by meeting date, so there is no order here
+    // for a nudge to change.
+    const canReorder = !searching && !isOccurrence;
     const canMoveUp = canReorder && moveNode(local, node.id, -1) !== null;
     const canMoveDown = canReorder && moveNode(local, node.id, 1) !== null;
+    // A meeting is one sitting: nothing goes inside it.
+    const addKind: "page" | "meeting" | null =
+      node.kind === "meeting" ? null : node.kind === "series" ? "meeting" : "page";
 
     return (
       <li key={node.id}>
@@ -140,7 +163,7 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
               isActive ? "font-medium" : "hover:text-foreground"
             )}
           >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <KindIcon kind={node.kind} className="h-3.5 w-3.5 shrink-0" />
             <span className="min-w-0 truncate">{node.title}</span>
           </Link>
 
@@ -167,29 +190,43 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
                 </button>
               </>
             )}
+            {addKind && (
+              <button
+                onClick={() => addPage(node.id, addKind)}
+                disabled={pending}
+                className="rounded p-1 hover:text-foreground disabled:opacity-50"
+                aria-label={
+                  addKind === "meeting"
+                    ? `Add an occurrence to ${node.title}`
+                    : `Add a page inside ${node.title}`
+                }
+                title={addKind === "meeting" ? "Add occurrence" : "Add subpage"}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
-              onClick={() => addPage(node.id)}
+              onClick={() => archive(node)}
               disabled={pending}
               className="rounded p-1 hover:text-foreground disabled:opacity-50"
-              aria-label={`Add a page inside ${node.title}`}
-              title="Add subpage"
+              aria-label={
+                hasChildren
+                  ? `Archive ${node.title} and everything inside it`
+                  : `Archive ${node.title}`
+              }
+              title={hasChildren ? "Archive, with everything inside" : "Archive"}
             >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => removePage(node)}
-              disabled={pending}
-              className="rounded p-1 hover:text-destructive disabled:opacity-50"
-              aria-label={`Delete ${node.title}`}
-              title="Delete page"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Archive className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
         {hasChildren && isOpen && (
-          <ul>{node.children.map((child) => renderNode(child, depth + 1))}</ul>
+          <ul>
+            {node.children.map((child) =>
+              renderNode(child, depth + 1, node.kind)
+            )}
+          </ul>
         )}
       </li>
     );
@@ -245,13 +282,27 @@ export function NotesSidebar({ tree }: { tree: NotePageNode[] }) {
         )}
 
         <button
-          onClick={() => addPage(null)}
+          onClick={() => addPage(null, "page")}
           disabled={pending}
           className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
           New top-level page
         </button>
+
+        {archivedCount > 0 && (
+          <Link
+            href="/notes/archive"
+            onClick={() => setMobileOpen(false)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Archive
+            <span className="ml-auto tabular-nums opacity-70">
+              {archivedCount}
+            </span>
+          </Link>
+        )}
       </aside>
     </>
   );
