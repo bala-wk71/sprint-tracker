@@ -105,12 +105,19 @@ export function CategoryPicker({
   const selected = TASK_CATEGORIES[value];
 
   return (
-    <div className={cn("space-y-1.5", className)}>
+    // Capped: the picker sits in a full-width task row, and left to stretch a
+    // 12-character label sat in a 630px cell.
+    <div className={cn("max-w-lg space-y-1.5", className)}>
+      {/* The clarity question sits above the grid rather than in its first
+          column: as a grid cell its length set the column width, and at 390px
+          that squeezed the cells until "Sharp Signal" truncated to "Sharp S…".
+          Above the grid it costs one line and no width. */}
+      <p className="text-[11px] text-muted-foreground">
+        {CATEGORY_GRID.clarityAxis.label}
+      </p>
+
       <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-center gap-1.5">
-        {/* Column headings state the clarity axis. */}
-        <span className="text-[11px] text-muted-foreground">
-          {CATEGORY_GRID.clarityAxis.label}
-        </span>
+        <span />
         <span className="px-1 text-[11px] font-medium text-foreground">
           {CATEGORY_GRID.clarityAxis.yes}
         </span>

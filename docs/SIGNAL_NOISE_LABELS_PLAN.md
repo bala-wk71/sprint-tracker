@@ -286,10 +286,24 @@ guided flow only if the grid turns out not to be enough.
 - **Untouched**: the Postgres enum, and `LEVEL_TITLES` in `lib/gamification.ts`
   — the collision that ruled "Clear Signal" out as a category name.
 
-### Not verified visually
+### Verified visually (Playwright, 2026-08-19)
 
-No browser tooling was connected when this was built. It typechecks, lints and
-builds; the picker was rendered through `renderToStaticMarkup` to confirm its
-structure, headings, selected state and description line. Layout, colour in
-situ, and the analytics charts under the swapped palette have not been seen on
-screen.
+Screenshotted at 1440px and 390px, light and dark, plus the real
+`CreateSprintForm` task rows. Three things only a rendered page would have
+caught:
+
+1. **The colour swap was not being served.** The dev server had cached the old
+   `globals.css`; computed `--strong-noise` still read `355 72% 48%` (red) with
+   the file on disk saying `258 92% 66%`. A clean restart fixed it — the values
+   themselves were right, and the production build was never affected.
+2. **Cell labels truncated to "Sharp Si…" at 390px.** The clarity question was
+   a grid cell, so its length set the first column's width. Moved above the
+   grid: costs one line, no width.
+3. **Cells ballooned to ~630px at 1440px**, a 12-character label in a
+   half-screen button, because the picker stretched to the task row. Capped at
+   `max-w-lg`.
+
+Also corrected while checking: the third `globals.css` block is `.colourful`,
+a separate theme, not dark mode. `.dark` overrides only the `--viz-*` hexes and
+inherits the category HSLs from `:root`. All three definition sites carry the
+swap consistently.
