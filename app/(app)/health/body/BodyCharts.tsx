@@ -58,13 +58,11 @@ const emptySubscribe = () => () => {};
 export function BodyCharts({
   entries,
   weightUnit,
-  targetWeightKg,
   todayIso,
 }: {
   /** Oldest first. */
   entries: BodyRow[];
   weightUnit: WeightUnit;
-  targetWeightKg: number | null;
   /** Passed in rather than read from the clock: rendering must not depend on
    *  when it happens to run, and the server already knows the viewer's day. */
   todayIso: string;
@@ -128,11 +126,6 @@ export function BodyCharts({
   };
   const axisTick = { fill: c.axis, fontSize: 11 };
 
-  const target =
-    targetWeightKg === null
-      ? null
-      : Number(kgToDisplay(targetWeightKg, weightUnit).toFixed(1));
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 sm:w-fit">
@@ -183,19 +176,10 @@ export function BodyCharts({
               />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: "12px" }} />
-              {target !== null && (
-                <Line
-                  type="monotone"
-                  dataKey={() => target}
-                  name="Target"
-                  stroke={c.axis}
-                  strokeDasharray="4 4"
-                  strokeWidth={1}
-                  dot={false}
-                  isAnimationActive={false}
-                  legendType="plainline"
-                />
-              )}
+              {/* No target line here. Drawing one 6kg below the data forces
+                  the axis to span the gap, which flattens the trend this chart
+                  exists to show — and the card above already gives the target,
+                  the distance to it and the date. */}
               <Line
                 type="monotone"
                 dataKey="weight"
@@ -245,6 +229,7 @@ export function BodyCharts({
                 tick={axisTick}
                 axisLine={false}
                 tickLine={false}
+                domain={["dataMin - 2", "dataMax + 2"]}
                 unit="%"
                 width={56}
               />
@@ -254,6 +239,7 @@ export function BodyCharts({
                 tick={axisTick}
                 axisLine={false}
                 tickLine={false}
+                domain={["dataMin - 2", "dataMax + 2"]}
                 unit={` ${weightUnit}`}
                 width={64}
               />

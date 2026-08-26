@@ -109,3 +109,13 @@ export const HEALTH_TABS = [
   { href: "/health/eat", label: "Eat", exact: false },
   { href: "/health/body", label: "Body", exact: false },
 ] as const;
+
+/**
+ * Largest CSV the importer accepts, in bytes.
+ *
+ * Lives here rather than beside the import actions because a "use server"
+ * module may only export async functions, and the client needs this value to
+ * refuse an oversized file before posting it. Kept under the
+ * serverActions.bodySizeLimit set in next.config.ts.
+ */
+export const MAX_CSV_BYTES = 4_000_000;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SlidersHorizontal } from "lucide-react";
+import { FileUp, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HEALTH_TABS } from "@/lib/health/constants";
 
@@ -44,6 +44,19 @@ export function HealthTabs() {
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
         Goals
+      </Link>
+
+      <Link
+        href="/health/import"
+        className={cn(
+          "flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent",
+          pathname.startsWith("/health/import")
+            ? "border-primary text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        <FileUp className="h-3.5 w-3.5" />
+        Import
       </Link>
     </div>
   );

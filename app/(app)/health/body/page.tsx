@@ -66,7 +66,6 @@ export default async function BodyPage({
         <BodyCharts
           entries={entries}
           weightUnit={profile.weight_unit}
-          targetWeightKg={profile.target_weight_kg}
           todayIso={todayIso}
         />
       )}
