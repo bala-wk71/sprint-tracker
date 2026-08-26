@@ -1,6 +1,7 @@
 import { format, subDays } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { gatherHealthContext } from "./healthContext";
 import {
   DEFAULT_WEEK_START_DAY,
   addDaysIso,
@@ -20,12 +21,14 @@ export async function gatherChatContext(
   const weekStart = weekStartIsoOf(today, weekStartDay);
   const lastWeekStart = addDaysIso(weekStart, -7);
 
-  const [sprint, lastWeekSprint, dailyLog, recentLogs] = await Promise.all([
-    getCurrentSprint(supabase, userId, weekStart),
-    getCurrentSprint(supabase, userId, lastWeekStart),
-    getDailyLog(supabase, userId, today),
-    getRecentDailyLogs(supabase, userId, 14),
-  ]);
+  const [sprint, lastWeekSprint, dailyLog, recentLogs, health] =
+    await Promise.all([
+      getCurrentSprint(supabase, userId, weekStart),
+      getCurrentSprint(supabase, userId, lastWeekStart),
+      getDailyLog(supabase, userId, today),
+      getRecentDailyLogs(supabase, userId, 14),
+      gatherHealthContext(supabase, userId, today),
+    ]);
 
   const sections: string[] = [];
   sections.push(`Today: ${today}`);
@@ -90,6 +93,8 @@ export async function gatherChatContext(
       }
     }
   }
+
+  sections.push(`\n${health}`);
 
   if (recentLogs.length > 0) {
     sections.push(`\n## Past 2 Weeks Daily Logs`);
@@ -194,9 +199,12 @@ export async function gatherWeeklyContext(
   userId: string,
   weekStart: string
 ): Promise<{ context: string; sprintId: string | null }> {
-  const [sprint, weekLogs] = await Promise.all([
+  const [sprint, weekLogs, health] = await Promise.all([
     getCurrentSprint(supabase, userId, weekStart),
     getWeekDailyLogs(supabase, userId, weekStart),
+    // Anchored on the end of the week being summarised, not on today, so a
+    // summary generated late still describes the week it is about.
+    gatherHealthContext(supabase, userId, weekEndIsoOf(weekStart)),
   ]);
 
   if (!sprint) return { context: "", sprintId: null };
@@ -250,6 +258,8 @@ export async function gatherWeeklyContext(
       sections.push(parts.join(" "));
     }
   }
+
+  sections.push(`\n${health}`);
 
   return { context: sections.join("\n"), sprintId: sprint.id };
 }

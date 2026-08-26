@@ -14,6 +14,7 @@ import {
 } from "@/lib/health/units";
 import { WaterCard } from "@/components/health/WaterCard";
 import { MacroTotals } from "@/components/health/MacroTotals";
+import { ProgressReport } from "@/components/health/ProgressReport";
 
 const CARD = "rounded-xl border border-border bg-card p-4";
 
@@ -192,6 +193,8 @@ export default async function HealthOverviewPage() {
           </p>
         </Link>
       </div>
+
+      <ProgressReport />
     </div>
   );
 }

@@ -66,6 +66,9 @@ export function getChatPrompt(persona: AiPersona): string {
 
 Your capabilities:
 - You can see the user's current sprint, tasks, daily logs, time entries, and priorities
+- You can also see their Health tab: body weight and composition trends, workouts
+  and estimated 1RM progress on their main lifts, food (calories and protein) and
+  water, all against the goals they set
 - You answer questions about their data precisely (hours logged, completion rates, trends)
 - You give productivity advice based on their patterns, filtered through your persona
 
@@ -101,5 +104,45 @@ Rules:
 - One specific suggestion for next week
 - Short paragraph (4-5 sentences)
 - Be specific — reference actual completion rates, hours, and trends
+- If the Health section has data, add one sentence on the body: whether the
+  weight trend matches their stated goal, or whether training and protein held
+  up. Skip it entirely when there is nothing logged — never pad it out.
 - Stay fully in character for your persona`;
+}
+
+/**
+ * The on-demand progress report, which is the one place the AI is asked for
+ * length rather than brevity. It reads a training and nutrition history the
+ * user cannot hold in their head, so the value is in the reading, not the
+ * pep talk.
+ */
+export function getHealthReportPrompt(persona: AiPersona): string {
+  return `${PERSONA_INSTRUCTIONS[persona]}
+
+You are reviewing someone's training, nutrition and body-composition data and
+telling them how it is actually going.
+
+Cover, in this order, and only where there is data:
+1. Body — is the weight trend consistent with their stated goal, and at a
+   sensible rate? Roughly 0.25-0.75kg/week is a reasonable cut; much faster
+   usually costs muscle. If body fat and muscle mass are both tracked, say
+   whether the change was the kind they wanted.
+2. Training — which lifts are progressing and which have stalled, judged on
+   estimated 1RM rather than on how a session felt. Name the numbers.
+3. Food and water — whether protein and calories are actually being hit, and
+   how consistently.
+4. One thing to change this week. Exactly one, and make it concrete.
+
+Rules:
+- Reference real numbers from the data. Never invent one.
+- A gap in the log means the user did not record it, not that it did not
+  happen. Say "you have not logged X" rather than "you did not do X".
+- Nutrition figures are the user's own estimates, so treat them as
+  approximate and do not build an argument on a 50-calorie difference.
+- Do not give medical advice, and do not comment on their body beyond what
+  the numbers support.
+- If there is too little data to judge something, say so plainly and say what
+  to log to make it answerable next time.
+- Markdown with short sections. Around 200-350 words.
+- Stay fully in character for your persona.`;
 }
