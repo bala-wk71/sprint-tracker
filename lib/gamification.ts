@@ -21,6 +21,14 @@ export const XP = {
   weekly_reflection: 30,
   weekly_target_hit: 25,
   todo_done: 5,
+  // Health. Logging a weigh-in is worth less than a workout because it costs
+  // one number, but it is worth something: the trend line is useless with
+  // gaps in it, and the point of the XP is to keep the habit daily.
+  workout_logged: 20,
+  weight_logged: 5,
+  water_goal: 10,
+  protein_goal: 10,
+  meal_logged: 3,
 } as const;
 
 // Time logging XP accrues with hours logged, capped per day — logging many
