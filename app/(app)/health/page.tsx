@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { Dumbbell, Flame, Scale, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  Droplet,
+  Dumbbell,
+  Flame,
+  Scale,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { todayIsoLocal } from "@/lib/dates";
 import { readHealthProfile } from "@/lib/health/profile";
@@ -12,6 +19,7 @@ import {
   ZERO_MACROS,
   type DatedValue,
 } from "@/lib/health/units";
+import { computeShieldedStreak } from "@/lib/gamification";
 import { WaterCard } from "@/components/health/WaterCard";
 import { MacroTotals } from "@/components/health/MacroTotals";
 import { ProgressReport } from "@/components/health/ProgressReport";
@@ -40,6 +48,8 @@ export default async function HealthOverviewPage() {
     { data: todayMeals },
     { data: weekWorkouts },
     { data: bodyRows },
+    { data: streakWater },
+    { data: streakWorkouts },
   ] = await Promise.all([
     readHealthProfile(supabase, user.id),
     supabase
@@ -68,7 +78,24 @@ export default async function HealthOverviewPage() {
       .gte("measured_on", ninetyDaysAgo)
       .not("weight_kg", "is", null)
       .order("measured_on"),
+    supabase
+      .from("water_logs")
+      .select("log_date, amount_ml")
+      .eq("owner_id", user.id)
+      .gte("log_date", ninetyDaysAgo),
+    supabase
+      .from("workouts")
+      .select("log_date")
+      .eq("owner_id", user.id)
+      .gte("log_date", ninetyDaysAgo),
   ]);
+
+  const waterByDate = new Map<string, number>();
+  for (const row of streakWater ?? [])
+    waterByDate.set(
+      row.log_date,
+      (waterByDate.get(row.log_date) ?? 0) + row.amount_ml
+    );
 
   const mealIds = (todayMeals ?? []).map((m) => m.id);
   const { data: items } =
@@ -95,6 +122,20 @@ export default async function HealthOverviewPage() {
   const workoutsThisWeek = (weekWorkouts ?? []).length;
   const lastWorkout = weekWorkouts?.[0] ?? null;
 
+  // Streaks reuse the same shielded counter as the daily log rather than a
+  // second engine: a missed day spends a banked shield instead of wiping the
+  // run, which is the whole reason the streak survives a bad week.
+  const waterGoalDates = [...waterByDate.entries()]
+    .filter(([, ml]) => ml >= profile.daily_water_ml_goal)
+    .map(([date]) => date)
+    .sort();
+  const workoutDates = [
+    ...new Set((streakWorkouts ?? []).map((w) => w.log_date)),
+  ].sort();
+
+  const waterStreak = computeShieldedStreak(waterGoalDates, todayIso);
+  const workoutStreak = computeShieldedStreak(workoutDates, todayIso);
+
   const points: DatedValue[] = (bodyRows ?? []).map((r) => ({
     date: r.measured_on,
     value: r.weight_kg as number,
@@ -115,6 +156,21 @@ export default async function HealthOverviewPage() {
           totals={totals}
           kcalGoal={profile.daily_kcal_goal}
           proteinGoal={profile.daily_protein_g_goal}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <StreakPill
+          icon={<Dumbbell className="h-3.5 w-3.5" />}
+          label="training"
+          days={workoutStreak.current}
+          shields={workoutStreak.shields}
+        />
+        <StreakPill
+          icon={<Droplet className="h-3.5 w-3.5" />}
+          label="water"
+          days={waterStreak.current}
+          shields={waterStreak.shields}
         />
       </div>
 
@@ -196,5 +252,37 @@ export default async function HealthOverviewPage() {
 
       <ProgressReport />
     </div>
+  );
+}
+
+function StreakPill({
+  icon,
+  label,
+  days,
+  shields,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  days: number;
+  shields: number;
+}) {
+  return (
+    <span
+      title={
+        shields > 0
+          ? `${shields} shield${shields === 1 ? "" : "s"} banked — a missed day spends one instead of resetting the streak.`
+          : undefined
+      }
+      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground"
+    >
+      {icon}
+      <span className="font-semibold text-foreground">{days}</span>
+      day {label} streak
+      {shields > 0 && (
+        <span className="text-primary">
+          · {shields} shield{shields === 1 ? "" : "s"}
+        </span>
+      )}
+    </span>
   );
 }

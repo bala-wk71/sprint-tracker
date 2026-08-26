@@ -480,6 +480,61 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: "Write 12 weekly reflections.",
     icon: "Brain",
   },
+  // --- Health -----------------------------------------------------------
+  {
+    id: "first-workout",
+    title: "Under the Bar",
+    description: "Log your first workout.",
+    icon: "Dumbbell",
+  },
+  {
+    id: "workouts-10",
+    title: "Showing Up",
+    description: "Log 10 workouts.",
+    icon: "Flame",
+  },
+  {
+    id: "workouts-50",
+    title: "Committed",
+    description: "Log 50 workouts.",
+    icon: "Medal",
+  },
+  {
+    id: "workouts-100",
+    title: "Century of Sessions",
+    description: "Log 100 workouts.",
+    icon: "Trophy",
+  },
+  {
+    id: "workout-streak-4",
+    title: "Four in a Row",
+    description: "Train four days running.",
+    icon: "Zap",
+  },
+  {
+    id: "sets-500",
+    title: "Volume Merchant",
+    description: "Log 500 working sets.",
+    icon: "Layers",
+  },
+  {
+    id: "water-30",
+    title: "Well Watered",
+    description: "Hit your water goal on 30 days.",
+    icon: "Droplet",
+  },
+  {
+    id: "weigh-ins-90",
+    title: "The Trend Line",
+    description: "Log 90 weigh-ins — enough to see past the noise.",
+    icon: "Scale",
+  },
+  {
+    id: "food-30",
+    title: "Kept the Books",
+    description: "Log what you ate on 30 days.",
+    icon: "UtensilsCrossed",
+  },
   // --- Levels -----------------------------------------------------------
   {
     id: "level-5",
@@ -503,6 +558,13 @@ export type GamificationStats = {
   reflections_count: number;
   perfect_days?: number;
   todos_done?: number;
+  // Health counters, optional so a stale RPC response stays safe to read.
+  workouts_total?: number;
+  workout_dates?: string[];
+  working_sets_total?: number;
+  water_goal_days?: number;
+  weigh_in_count?: number;
+  food_days?: number;
 };
 
 /** Longest run of consecutive dates (no shields — raw discipline). */
@@ -597,6 +659,21 @@ export function earnedAchievementIds(
   if (stats.sprints_count >= 12) ids.push("sprints-12");
   if (stats.reflections_count >= 4) ids.push("reflect-4");
   if (stats.reflections_count >= 12) ids.push("reflect-12");
+
+  const workouts = stats.workouts_total ?? 0;
+  if (workouts >= 1) ids.push("first-workout");
+  if (workouts >= 10) ids.push("workouts-10");
+  if (workouts >= 50) ids.push("workouts-50");
+  if (workouts >= 100) ids.push("workouts-100");
+
+  // Reuses the same run counter as the daily-log streak, on training dates.
+  if (longestRun([...(stats.workout_dates ?? [])].sort()) >= 4)
+    ids.push("workout-streak-4");
+
+  if ((stats.working_sets_total ?? 0) >= 500) ids.push("sets-500");
+  if ((stats.water_goal_days ?? 0) >= 30) ids.push("water-30");
+  if ((stats.weigh_in_count ?? 0) >= 90) ids.push("weigh-ins-90");
+  if ((stats.food_days ?? 0) >= 30) ids.push("food-30");
 
   if (level >= 5) ids.push("level-5");
   if (level >= 10) ids.push("level-10");
