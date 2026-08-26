@@ -52,6 +52,7 @@ export async function updatePreferences(
     "/analytics",
     "/sprint/setup",
     "/todo",
+    "/health",
   ]) {
     revalidatePath(path);
   }

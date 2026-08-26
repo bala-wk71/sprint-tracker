@@ -11,6 +11,7 @@ import {
   CheckSquare,
   ChevronLeft,
   ChevronRight,
+  HeartPulse,
   LayoutDashboard,
   ListTodo,
   LogOut,
@@ -34,6 +35,7 @@ const icons: Record<string, LucideIcon> = {
   CheckSquare,
   Bot,
   NotebookPen,
+  HeartPulse,
   Settings,
 };
 

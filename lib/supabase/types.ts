@@ -924,6 +924,546 @@ export type Database = {
           },
         ]
       }
+      health_profiles: {
+        Row: {
+          id: string
+          owner_id: string
+          height_cm: number | null
+          sex: "male" | "female" | "other" | null
+          birth_date: string | null
+          goal_type: "cut" | "bulk" | "recomp" | "maintain"
+          target_weight_kg: number | null
+          daily_water_ml_goal: number
+          daily_kcal_goal: number | null
+          daily_protein_g_goal: number | null
+          weekly_workout_goal: number
+          weight_unit: "kg" | "lb"
+          volume_unit: "ml" | "oz"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          height_cm?: number | null
+          sex?: "male" | "female" | "other" | null
+          birth_date?: string | null
+          goal_type?: "cut" | "bulk" | "recomp" | "maintain"
+          target_weight_kg?: number | null
+          daily_water_ml_goal?: number
+          daily_kcal_goal?: number | null
+          daily_protein_g_goal?: number | null
+          weekly_workout_goal?: number
+          weight_unit?: "kg" | "lb"
+          volume_unit?: "ml" | "oz"
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          height_cm?: number | null
+          sex?: "male" | "female" | "other" | null
+          birth_date?: string | null
+          goal_type?: "cut" | "bulk" | "recomp" | "maintain"
+          target_weight_kg?: number | null
+          daily_water_ml_goal?: number
+          daily_kcal_goal?: number | null
+          daily_protein_g_goal?: number | null
+          weekly_workout_goal?: number
+          weight_unit?: "kg" | "lb"
+          volume_unit?: "ml" | "oz"
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_profiles_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          id: string
+          owner_id: string | null
+          name: string
+          muscle_group: string
+          equipment: string
+          kind: string
+          is_archived: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id?: string | null
+          name: string
+          muscle_group?: string
+          equipment?: string
+          kind?: string
+          is_archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string | null
+          name?: string
+          muscle_group?: string
+          equipment?: string
+          kind?: string
+          is_archived?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workouts: {
+        Row: {
+          id: string
+          owner_id: string
+          daily_log_id: string | null
+          log_date: string
+          name: string | null
+          started_at: string | null
+          ended_at: string | null
+          rpe: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          daily_log_id?: string | null
+          log_date: string
+          name?: string | null
+          started_at?: string | null
+          ended_at?: string | null
+          rpe?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          daily_log_id?: string | null
+          log_date?: string
+          name?: string | null
+          started_at?: string | null
+          ended_at?: string | null
+          rpe?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workouts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workouts_daily_log_id_fkey"
+            columns: ["daily_log_id"]
+            isOneToOne: false
+            referencedRelation: "daily_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_sets: {
+        Row: {
+          id: string
+          owner_id: string
+          workout_id: string
+          exercise_id: string
+          position: number
+          weight_kg: number | null
+          reps: number | null
+          distance_m: number | null
+          duration_sec: number | null
+          is_warmup: boolean
+          rpe: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          workout_id: string
+          exercise_id: string
+          position?: number
+          weight_kg?: number | null
+          reps?: number | null
+          distance_m?: number | null
+          duration_sec?: number | null
+          is_warmup?: boolean
+          rpe?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          workout_id?: string
+          exercise_id?: string
+          position?: number
+          weight_kg?: number | null
+          reps?: number | null
+          distance_m?: number | null
+          duration_sec?: number | null
+          is_warmup?: boolean
+          rpe?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sets_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      body_metrics: {
+        Row: {
+          id: string
+          owner_id: string
+          measured_on: string
+          weight_kg: number | null
+          body_fat_pct: number | null
+          muscle_mass_kg: number | null
+          water_pct: number | null
+          bone_mass_kg: number | null
+          visceral_fat: number | null
+          bmi: number | null
+          bmr: number | null
+          protein_pct: number | null
+          subcutaneous_fat_pct: number | null
+          skeletal_muscle_pct: number | null
+          metabolic_age: number | null
+          waist_cm: number | null
+          chest_cm: number | null
+          arm_cm: number | null
+          thigh_cm: number | null
+          hip_cm: number | null
+          neck_cm: number | null
+          notes: string | null
+          source: "manual" | "import"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          measured_on: string
+          weight_kg?: number | null
+          body_fat_pct?: number | null
+          muscle_mass_kg?: number | null
+          water_pct?: number | null
+          bone_mass_kg?: number | null
+          visceral_fat?: number | null
+          bmi?: number | null
+          bmr?: number | null
+          protein_pct?: number | null
+          subcutaneous_fat_pct?: number | null
+          skeletal_muscle_pct?: number | null
+          metabolic_age?: number | null
+          waist_cm?: number | null
+          chest_cm?: number | null
+          arm_cm?: number | null
+          thigh_cm?: number | null
+          hip_cm?: number | null
+          neck_cm?: number | null
+          notes?: string | null
+          source?: "manual" | "import"
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          measured_on?: string
+          weight_kg?: number | null
+          body_fat_pct?: number | null
+          muscle_mass_kg?: number | null
+          water_pct?: number | null
+          bone_mass_kg?: number | null
+          visceral_fat?: number | null
+          bmi?: number | null
+          bmr?: number | null
+          protein_pct?: number | null
+          subcutaneous_fat_pct?: number | null
+          skeletal_muscle_pct?: number | null
+          metabolic_age?: number | null
+          waist_cm?: number | null
+          chest_cm?: number | null
+          arm_cm?: number | null
+          thigh_cm?: number | null
+          hip_cm?: number | null
+          neck_cm?: number | null
+          notes?: string | null
+          source?: "manual" | "import"
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "body_metrics_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      water_logs: {
+        Row: {
+          id: string
+          owner_id: string
+          log_date: string
+          amount_ml: number
+          logged_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          log_date: string
+          amount_ml: number
+          logged_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          log_date?: string
+          amount_ml?: number
+          logged_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_logs_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      foods: {
+        Row: {
+          id: string
+          owner_id: string
+          name: string
+          brand: string | null
+          serving_qty: number
+          serving_unit: string
+          kcal: number
+          protein_g: number
+          carbs_g: number
+          fat_g: number
+          fiber_g: number
+          is_favorite: boolean
+          source: "manual" | "ai" | "import"
+          times_used: number
+          last_used_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          name: string
+          brand?: string | null
+          serving_qty?: number
+          serving_unit?: string
+          kcal?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          is_favorite?: boolean
+          source?: "manual" | "ai" | "import"
+          times_used?: number
+          last_used_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          name?: string
+          brand?: string | null
+          serving_qty?: number
+          serving_unit?: string
+          kcal?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          is_favorite?: boolean
+          source?: "manual" | "ai" | "import"
+          times_used?: number
+          last_used_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "foods_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meals: {
+        Row: {
+          id: string
+          owner_id: string
+          log_date: string | null
+          meal_type: "breakfast" | "lunch" | "dinner" | "snack"
+          eaten_at: string | null
+          raw_text: string | null
+          is_template: boolean
+          template_name: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          log_date?: string | null
+          meal_type?: "breakfast" | "lunch" | "dinner" | "snack"
+          eaten_at?: string | null
+          raw_text?: string | null
+          is_template?: boolean
+          template_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          log_date?: string | null
+          meal_type?: "breakfast" | "lunch" | "dinner" | "snack"
+          eaten_at?: string | null
+          raw_text?: string | null
+          is_template?: boolean
+          template_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meals_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_items: {
+        Row: {
+          id: string
+          owner_id: string
+          meal_id: string
+          food_id: string | null
+          position: number
+          name: string
+          qty: number
+          unit: string
+          kcal: number
+          protein_g: number
+          carbs_g: number
+          fat_g: number
+          fiber_g: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          meal_id: string
+          food_id?: string | null
+          position?: number
+          name: string
+          qty?: number
+          unit?: string
+          kcal?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          meal_id?: string
+          food_id?: string | null
+          position?: number
+          name?: string
+          qty?: number
+          unit?: string
+          kcal?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_items_meal_id_fkey"
+            columns: ["meal_id"]
+            isOneToOne: false
+            referencedRelation: "meals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_items_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
