@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { QuickLog } from "@/components/health/QuickLog";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { levelFromXp } from "@/lib/gamification";
 
@@ -46,6 +47,10 @@ export default async function AppLayout({
         <Header />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>
+      {/* Logging water or a weight has to be possible from wherever you are —
+          having to navigate to the Health tab first is the friction that turns
+          a daily habit into a weekly one. */}
+      <QuickLog />
     </div>
   );
 }
