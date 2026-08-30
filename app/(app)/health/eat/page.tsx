@@ -7,8 +7,7 @@ import { readHealthProfile } from "@/lib/health/profile";
 import { defaultMealType, MEAL_TYPES } from "@/lib/health/constants";
 import { sumMacros, ZERO_MACROS } from "@/lib/health/units";
 import { MacroTotals } from "@/components/health/MacroTotals";
-import { MealComposer } from "./MealComposer";
-import { QuickStrip } from "./QuickStrip";
+import { LogCard } from "./LogCard";
 import { DayMeals } from "./DayMeals";
 import type { FoodRow, MealItemRow, MealRow, TemplateRow } from "./types";
 
@@ -56,7 +55,7 @@ export default async function EatPage({
         )
         .eq("owner_id", user.id)
         .order("last_used_at", { ascending: false, nullsFirst: false })
-        .limit(30),
+        .limit(60),
       supabase
         .from("meals")
         .select("id, template_name")
@@ -192,15 +191,12 @@ export default async function EatPage({
         proteinGoal={profile.daily_protein_g_goal}
       />
 
-      <QuickStrip
+      <LogCard
         logDate={date}
-        mealType={suggestedMeal}
-        favorites={foods.filter((f) => f.is_favorite)}
-        recents={foods}
+        defaultMealType={suggestedMeal}
+        foods={foods}
         templates={templates}
       />
-
-      <MealComposer logDate={date} defaultMealType={suggestedMeal} />
 
       <DayMeals meals={meals} />
     </div>

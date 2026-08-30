@@ -289,3 +289,9 @@ textarea {
 .colourful ::-webkit-scrollbar-track  { background: hsl(345 100% 98%); }
 .colourful ::-webkit-scrollbar-thumb  { background: hsl(335 100% 85%); border-radius: 4px; }
 .colourful ::-webkit-scrollbar-thumb:hover { background: hsl(335 100% 78%); }
+
+/* A row that scrolls sideways on a phone should read as a row, not as a
+   widget with a bar under it. Mobile browsers overlay their scrollbars
+   already; this only removes the desktop one. */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
