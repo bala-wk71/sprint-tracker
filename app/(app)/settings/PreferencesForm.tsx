@@ -14,16 +14,19 @@ import { updatePreferences } from "./preferences-actions";
 type Props = {
   weekStartDay: WeekStartDay;
   todoAutoArchive: boolean;
+  coachReadsJournal: boolean;
 };
 
 export function PreferencesForm({
   weekStartDay: initialWeekStartDay,
   todoAutoArchive: initialAutoArchive,
+  coachReadsJournal: initialCoachReadsJournal,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [weekStartDay, setWeekStartDay] = useState(initialWeekStartDay);
   const [autoArchive, setAutoArchive] = useState(initialAutoArchive);
+  const [coachReadsJournal, setCoachReadsJournal] = useState(initialCoachReadsJournal);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -34,12 +37,14 @@ export function PreferencesForm({
       const result = await updatePreferences({
         weekStartDay: next.weekStartDay,
         todoAutoArchive: next.todoAutoArchive,
+        coachReadsJournal: next.coachReadsJournal,
       });
       if (!result.ok) {
         setError(result.error);
         // Put the controls back to what the server still holds.
         setWeekStartDay(initialWeekStartDay);
         setAutoArchive(initialAutoArchive);
+        setCoachReadsJournal(initialCoachReadsJournal);
         return;
       }
       setSaved(true);
@@ -55,6 +60,11 @@ export function PreferencesForm({
   const handleAutoArchive = (value: boolean) => {
     setAutoArchive(value);
     save({ todoAutoArchive: value });
+  };
+
+  const handleCoachReadsJournal = (value: boolean) => {
+    setCoachReadsJournal(value);
+    save({ coachReadsJournal: value });
   };
 
   return (
@@ -110,6 +120,30 @@ export function PreferencesForm({
               Each note page gets its own todo section. With this on, a section
               retires to the Archived tab as soon as its last item is ticked
               off. You can always archive or restore one by hand.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div id="coach" className="scroll-mt-20 border-t border-border pt-6">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={coachReadsJournal}
+            disabled={pending}
+            onChange={(e) => handleCoachReadsJournal(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-input"
+          />
+          <span>
+            <span className="block text-sm font-medium text-foreground">
+              Let the coach read my journal
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Off until you turn it on. With it on, goal reviews can use what
+              you wrote in check-ins, and the coach can write you a monthly
+              look-back from your journal. Entries marked &ldquo;Keep from the
+              coach&rdquo; are always skipped, and your reviewers&apos; access
+              doesn&apos;t change.
             </span>
           </span>
         </label>

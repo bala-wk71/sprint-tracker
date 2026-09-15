@@ -478,6 +478,53 @@ export type Database = {
           },
         ]
       }
+      goal_reviews: {
+        Row: {
+          id: string
+          goal_id: string
+          owner_id: string
+          direction: string
+          summary: string
+          reasons: Json
+          next_step: string
+          input_counts: Json
+          read_journal: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          goal_id: string
+          owner_id: string
+          direction: string
+          summary: string
+          reasons?: Json
+          next_step?: string
+          input_counts?: Json
+          read_journal?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          goal_id?: string
+          owner_id?: string
+          direction?: string
+          summary?: string
+          reasons?: Json
+          next_step?: string
+          input_counts?: Json
+          read_journal?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_reviews_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_steps: {
         Row: {
           id: string
@@ -1053,6 +1100,7 @@ export type Database = {
           ai_persona: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
           week_start_day: number
           todo_auto_archive: boolean
+          coach_reads_journal: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -1064,6 +1112,7 @@ export type Database = {
           ai_persona?: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
           week_start_day?: number
           todo_auto_archive?: boolean
+          coach_reads_journal?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -1075,6 +1124,7 @@ export type Database = {
           ai_persona?: "drill_sergeant" | "nurturer" | "nietzsche" | "rational"
           week_start_day?: number
           todo_auto_archive?: boolean
+          coach_reads_journal?: boolean
         }
         Relationships: []
       }

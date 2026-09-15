@@ -9,6 +9,7 @@ export type PreferenceResult = { ok: true } | { ok: false; error: string };
 const preferencesSchema = z.object({
   weekStartDay: z.number().int().min(0).max(6).optional(),
   todoAutoArchive: z.boolean().optional(),
+  coachReadsJournal: z.boolean().optional(),
 });
 
 /**
@@ -29,11 +30,17 @@ export async function updatePreferences(
   const user = await getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
 
-  const updates: { week_start_day?: number; todo_auto_archive?: boolean } = {};
+  const updates: {
+    week_start_day?: number;
+    todo_auto_archive?: boolean;
+    coach_reads_journal?: boolean;
+  } = {};
   if (parsed.data.weekStartDay !== undefined)
     updates.week_start_day = parsed.data.weekStartDay;
   if (parsed.data.todoAutoArchive !== undefined)
     updates.todo_auto_archive = parsed.data.todoAutoArchive;
+  if (parsed.data.coachReadsJournal !== undefined)
+    updates.coach_reads_journal = parsed.data.coachReadsJournal;
 
   if (Object.keys(updates).length === 0) return { ok: true };
 
@@ -53,6 +60,8 @@ export async function updatePreferences(
     "/sprint/setup",
     "/todo",
     "/health",
+    "/goals",
+    "/journal",
   ]) {
     revalidatePath(path);
   }

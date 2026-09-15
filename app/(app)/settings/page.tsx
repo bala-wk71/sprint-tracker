@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   const { data: profile } = user
     ? await supabase
         .from("users")
-        .select("week_start_day, todo_auto_archive")
+        .select("week_start_day, todo_auto_archive, coach_reads_journal")
         .eq("id", user.id)
         .maybeSingle()
     : { data: null };
@@ -61,6 +61,7 @@ export default async function SettingsPage() {
         <PreferencesForm
           weekStartDay={toWeekStartDay(profile?.week_start_day)}
           todoAutoArchive={profile?.todo_auto_archive ?? true}
+          coachReadsJournal={profile?.coach_reads_journal ?? false}
         />
       </section>
 
