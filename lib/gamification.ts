@@ -29,6 +29,9 @@ export const XP = {
   water_goal: 10,
   protein_goal: 10,
   meal_logged: 3,
+  // Once a day however many entries — the point is the habit of writing,
+  // not the volume.
+  journal_entry: 10,
 } as const;
 
 // Time logging XP accrues with hours logged, capped per day — logging many

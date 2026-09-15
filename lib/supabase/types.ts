@@ -468,6 +468,59 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          id: string
+          owner_id: string
+          entry_date: string
+          title: string
+          body: string
+          mood: string | null
+          kind: string
+          author: string
+          is_private: boolean
+          hide_from_coach: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          entry_date?: string
+          title?: string
+          body: string
+          mood?: string | null
+          kind?: string
+          author?: string
+          is_private?: boolean
+          hide_from_coach?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          entry_date?: string
+          title?: string
+          body?: string
+          mood?: string | null
+          kind?: string
+          author?: string
+          is_private?: boolean
+          hide_from_coach?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       note_pages: {
         Row: {
           id: string

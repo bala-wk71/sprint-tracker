@@ -6,12 +6,14 @@ import Link from "next/link";
 import {
   Dumbbell,
   Droplet,
+  PenLine,
   Plus,
   Scale,
   UtensilsCrossed,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { JournalComposer } from "@/components/journal/JournalComposer";
 import { displayToKg, kgToDisplay } from "@/lib/health/units";
 import {
   loadQuickLogState,
@@ -20,7 +22,7 @@ import {
 import { saveBodyMetrics } from "@/app/(app)/health/body/actions";
 import { WaterCard } from "./WaterCard";
 
-type Tab = "water" | "weight" | "food" | "train";
+type Tab = "water" | "weight" | "food" | "train" | "write";
 
 /**
  * The log-anything button, present on every page.
@@ -98,6 +100,7 @@ export function QuickLog() {
                   { id: "weight", label: "Weight", icon: Scale },
                   { id: "food", label: "Food", icon: UtensilsCrossed },
                   { id: "train", label: "Train", icon: Dumbbell },
+                  { id: "write", label: "Write", icon: PenLine },
                 ] as const
               ).map((t) => (
                 <button
@@ -173,6 +176,14 @@ export function QuickLog() {
                           : "Repeat your last workout in one tap, or start from scratch."
                       }
                     />
+                  )}
+
+                  {/* A thought is gone by the time you've navigated to the
+                      journal, so it can be written from wherever you are. */}
+                  {tab === "write" && (
+                    <div className="rounded-xl border border-border bg-card p-4">
+                      <JournalComposer compact todayIso={state.logDate} />
+                    </div>
                   )}
                 </>
               )}

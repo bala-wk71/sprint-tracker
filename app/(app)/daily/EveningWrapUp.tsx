@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -203,6 +204,12 @@ export function EveningWrapUp({
           placeholder="What stood out today?"
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
+        <Link
+          href="/journal"
+          className="mt-1 inline-block text-xs text-muted-foreground hover:text-primary"
+        >
+          Want to write more? Keep going in your journal →
+        </Link>
       </div>
 
       {/* Improvement + Win in two columns */}

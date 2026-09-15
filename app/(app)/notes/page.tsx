@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Archive, ListChecks } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { NotesJournalTabs } from "@/components/journal/NotesJournalTabs";
 import { NewPageButtons } from "./NewPageButtons";
 import { NotesSearch } from "./NotesSearch";
 import { KindIcon } from "./kinds";
@@ -79,6 +80,7 @@ export default async function NotesIndexPage({
 
   return (
     <div className="space-y-6">
+      <NotesJournalTabs />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-foreground">Notes</h1>

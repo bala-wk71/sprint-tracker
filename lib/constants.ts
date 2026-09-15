@@ -186,7 +186,12 @@ export const NAV_GROUPS: readonly { label: string; items: readonly NavItem[] }[]
     label: "Life",
     items: [
       { href: "/health", label: "Health", icon: "HeartPulse" },
-      { href: "/notes", label: "Notes", icon: "NotebookPen" },
+      {
+        href: "/notes",
+        label: "Notes & Journal",
+        icon: "NotebookPen",
+        match: ["/notes", "/journal"],
+      },
     ],
   },
   {
