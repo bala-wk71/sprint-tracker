@@ -18,6 +18,7 @@ import { CheckInForm } from "@/components/goals/CheckInForm";
 import { GoalStatusActions } from "@/components/goals/GoalStatusActions";
 import { CheckInHistory } from "@/components/goals/CheckInHistory";
 import { LinkedWork } from "@/components/goals/LinkedWork";
+import { GoalReview } from "@/components/goals/GoalReview";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CARD = "rounded-xl border border-border bg-card p-4 sm:p-6";
@@ -45,6 +46,8 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
     comments,
     todayIso,
     weekStartDay,
+    { data: reviews },
+    { data: profile },
   ] = await Promise.all([
     supabase.from("goals").select("*").eq("id", id).eq("owner_id", user.id).maybeSingle(),
     supabase.from("goal_steps").select("id, title, done_at").eq("goal_id", id).order("position"),
@@ -77,6 +80,13 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
     loadComments("goal", id),
     todayIsoLocal(),
     getWeekStartDay(),
+    supabase
+      .from("goal_reviews")
+      .select("id, direction, summary, reasons, next_step, input_counts, read_journal, created_at")
+      .eq("goal_id", id)
+      .order("created_at", { ascending: false })
+      .limit(2),
+    supabase.from("users").select("coach_reads_journal").eq("id", user.id).single(),
   ]);
   if (!goal) notFound();
 
@@ -221,6 +231,13 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
             quiet={quiet}
             tasks={tasks}
             todos={linkedTodos ?? []}
+          />
+
+          <GoalReview
+            goalId={goal.id}
+            latest={reviews?.[0] ?? null}
+            previous={reviews?.[1] ?? null}
+            coachReadsJournal={profile?.coach_reads_journal ?? false}
           />
 
           <CheckInHistory entries={history} unit={goal.unit} />

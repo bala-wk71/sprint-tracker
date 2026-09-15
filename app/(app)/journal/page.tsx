@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { format, subMonths } from "date-fns";
+import { endOfMonth, format, subMonths } from "date-fns";
 import { History } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { todayIsoLocal } from "@/lib/dates";
@@ -10,6 +10,7 @@ import { JournalComposer } from "@/components/journal/JournalComposer";
 import { JournalSearch } from "@/components/journal/JournalSearch";
 import { NotesJournalTabs } from "@/components/journal/NotesJournalTabs";
 import { Timeline } from "@/components/journal/Timeline";
+import { LookBackCard } from "@/components/journal/LookBackCard";
 
 const MONTH_STEP = 3;
 
@@ -33,9 +34,21 @@ export default async function JournalPage({
   const since = subMonths(new Date(`${todayIso}T00:00:00`), months);
   const sinceIso = format(since, "yyyy-MM-dd");
 
-  const [items, onThisDay] = await Promise.all([
+  // The look-back is dated the last day of the month it describes.
+  const lastMonth = subMonths(new Date(`${todayIso}T00:00:00`), 1);
+  const lastMonthEnd = format(endOfMonth(lastMonth), "yyyy-MM-dd");
+
+  const [items, onThisDay, { data: profile }, { data: lookBack }] = await Promise.all([
     loadTimeline(supabase, user.id, { filter, query, sinceIso }),
     query ? Promise.resolve(null) : loadOnThisDay(supabase, user.id, todayIso),
+    supabase.from("users").select("coach_reads_journal").eq("id", user.id).single(),
+    supabase
+      .from("journal_entries")
+      .select("id")
+      .eq("owner_id", user.id)
+      .eq("kind", "look_back")
+      .eq("entry_date", lastMonthEnd)
+      .maybeSingle(),
   ]);
 
   const hrefWith = (next: { type?: string; months?: number }) => {
@@ -63,6 +76,14 @@ export default async function JournalPage({
       <section aria-label="New entry" className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <JournalComposer todayIso={todayIso} />
       </section>
+
+      {!query && (
+        <LookBackCard
+          coachReadsJournal={profile?.coach_reads_journal ?? false}
+          monthLabel={format(lastMonth, "MMMM")}
+          existingId={lookBack?.id ?? null}
+        />
+      )}
 
       {onThisDay && (
         <Link

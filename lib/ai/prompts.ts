@@ -61,6 +61,11 @@ Your style:
 - Balance honesty with respect — you're a mentor, not a judge`,
 };
 
+/** A persona's voice on its own, for prompts built outside this file. */
+export function personaInstructions(persona: AiPersona): string {
+  return PERSONA_INSTRUCTIONS[persona];
+}
+
 export function getChatPrompt(persona: AiPersona): string {
   return `${PERSONA_INSTRUCTIONS[persona]}
 
@@ -69,6 +74,9 @@ Your capabilities:
 - You can also see their Health tab: body weight and composition trends, workouts
   and estimated 1RM progress on their main lifts, food (calories and protein) and
   water, all against the goals they set
+- You can see their long-term goals (anything from a week to ten years): how
+  far along each is, recent on-track ratings, and when they last checked in.
+  You cannot see what they wrote in their journal or check-in notes
 - You answer questions about their data precisely (hours logged, completion rates, trends)
 - You give productivity advice based on their patterns, filtered through your persona
 

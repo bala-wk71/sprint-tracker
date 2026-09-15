@@ -21,13 +21,14 @@ export async function gatherChatContext(
   const weekStart = weekStartIsoOf(today, weekStartDay);
   const lastWeekStart = addDaysIso(weekStart, -7);
 
-  const [sprint, lastWeekSprint, dailyLog, recentLogs, health] =
+  const [sprint, lastWeekSprint, dailyLog, recentLogs, health, goals] =
     await Promise.all([
       getCurrentSprint(supabase, userId, weekStart),
       getCurrentSprint(supabase, userId, lastWeekStart),
       getDailyLog(supabase, userId, today),
       getRecentDailyLogs(supabase, userId, 14),
       gatherHealthContext(supabase, userId, today),
+      getGoalsSummary(supabase, userId),
     ]);
 
   const sections: string[] = [];
@@ -96,6 +97,8 @@ export async function gatherChatContext(
 
   sections.push(`\n${health}`);
 
+  if (goals) sections.push(`\n## Long-term Goals\n${goals}`);
+
   if (recentLogs.length > 0) {
     sections.push(`\n## Past 2 Weeks Daily Logs`);
     for (const log of recentLogs) {
@@ -110,6 +113,56 @@ export async function gatherChatContext(
   }
 
   return sections.join("\n");
+}
+
+/**
+ * Open goals as numbers and dates only. Check-in notes and journal text are
+ * deliberately left out: chat has no opt-in switch, goal reviews do.
+ */
+async function getGoalsSummary(supabase: Client, userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("goals")
+    .select(
+      "id, title, area, start_date, target_date, status, track_type, start_value, target_value, current_value, unit, last_checkin_on, goal_steps(done_at)"
+    )
+    .eq("owner_id", userId)
+    .in("status", ["active", "paused"])
+    .order("target_date", { ascending: true })
+    .limit(12);
+  const goals = data ?? [];
+  if (goals.length === 0) return null;
+
+  const { data: ratings } = await supabase
+    .from("journal_entries")
+    .select("goal_id, on_track")
+    .in("goal_id", goals.map((g) => g.id))
+    .not("on_track", "is", null)
+    .order("entry_date", { ascending: false })
+    .limit(100);
+  const feelings = new Map<string, number[]>();
+  for (const r of ratings ?? []) {
+    if (!r.goal_id || r.on_track === null) continue;
+    const list = feelings.get(r.goal_id) ?? [];
+    if (list.length < 4) list.push(r.on_track);
+    feelings.set(r.goal_id, list);
+  }
+
+  return goals
+    .map((g) => {
+      const parts = [`- ${g.title} [${g.status}, ${g.area}] ${g.start_date} → ${g.target_date}`];
+      if (g.track_type === "steps") {
+        const done = g.goal_steps.filter((s) => s.done_at).length;
+        parts.push(`steps ${done}/${g.goal_steps.length}`);
+      } else if (g.track_type === "number") {
+        const unit = g.unit ? ` ${g.unit}` : "";
+        parts.push(`from ${g.start_value}${unit} to ${g.target_value}${unit}, now ${g.current_value ?? g.start_value}${unit}`);
+      }
+      const recent = feelings.get(g.id);
+      if (recent?.length) parts.push(`recent on-track ratings (newest first): ${recent.join(", ")}/10`);
+      parts.push(g.last_checkin_on ? `last check-in ${g.last_checkin_on}` : "no check-ins yet");
+      return parts.join("; ");
+    })
+    .join("\n");
 }
 
 export async function gatherDailyContext(
