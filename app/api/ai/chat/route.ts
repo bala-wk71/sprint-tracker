@@ -101,23 +101,41 @@ export async function POST(req: NextRequest) {
         [{ role: "user", parts: [{ text: compactPrompt }] }]
       );
 
-      await supabase.from("ai_messages").insert({
-        conversation_id: conversation.id,
-        role: "system",
-        content: summary,
-        is_summary: true,
-      });
+      // The kept tail always has KEEP_RECENT rows here (toCompact is non-empty
+      // only when there are more than KEEP_RECENT), and it ends with the user
+      // message saved above.
+      const kept = nonSummaryMessages.slice(toCompact.length);
 
-      // Re-fetch messages after compaction
-      const { data: refreshed } = await supabase
+      // Backdate the summary to the first kept message. The loader above reads
+      // `created_at >= latest summary`, so a summary stamped "now" would hide
+      // the kept messages from every later request. A tie with that message
+      // is harmless: the summary is picked out by is_summary, not position.
+      const { data: summaryRow } = await supabase
         .from("ai_messages")
+        .insert({
+          conversation_id: conversation.id,
+          role: "system",
+          content: summary,
+          is_summary: true,
+          created_at: kept[0].created_at,
+        })
         .select("id, role, content, is_summary, created_at")
-        .eq("conversation_id", conversation.id)
-        .gte("created_at", new Date().toISOString())
-        .order("created_at", { ascending: true });
+        .single();
 
-      // Fall through with current messages minus compacted ones
-      messages.splice(0, messages.length, ...(refreshed ?? messages));
+      // Build this request's history in memory instead of re-querying:
+      // summary + kept recent messages (including the current one).
+      messages.splice(
+        0,
+        messages.length,
+        summaryRow ?? {
+          id: "summary",
+          role: "system",
+          content: summary,
+          is_summary: true,
+          created_at: kept[0].created_at,
+        },
+        ...kept
+      );
     }
   }
 
