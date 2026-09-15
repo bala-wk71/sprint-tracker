@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekEndIsoOf, weekStartIsoOf } from "@/lib/week";
+import { PlanTabs } from "@/components/goals/PlanTabs";
 import { CreateSprintForm } from "./CreateSprintForm";
 import { UseAsTemplateButton } from "./UseAsTemplateButton";
 
@@ -25,6 +26,7 @@ export default async function SprintSetupPage() {
 
   return (
     <div className="space-y-8">
+      <PlanTabs />
       <div>
         <h1 className="text-2xl font-bold text-foreground">Plan</h1>
         <p className="text-muted-foreground">
