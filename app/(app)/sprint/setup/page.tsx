@@ -26,7 +26,7 @@ export default async function SprintSetupPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Sprint Setup</h1>
+        <h1 className="text-2xl font-bold text-foreground">Plan</h1>
         <p className="text-muted-foreground">
           Plan your week. Set tasks, categories, and hour targets.
         </p>

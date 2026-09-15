@@ -17,7 +17,13 @@ export default async function AppLayout({
   }
 
   const supabase = await createClient();
-  const { data: totalXp } = await supabase.rpc("total_xp");
+  const [{ data: totalXp }, { count: reviewingCount }] = await Promise.all([
+    supabase.rpc("total_xp"),
+    supabase
+      .from("reviewer_relationships")
+      .select("id", { count: "exact", head: true })
+      .eq("reviewer_id", user.id),
+  ]);
   const level = levelFromXp(Number(totalXp ?? 0));
 
   const meta = user.user_metadata ?? {};
@@ -39,11 +45,12 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar user={sidebarUser} />
+      <Sidebar user={sidebarUser} isReviewer={(reviewingCount ?? 0) > 0} />
       {/* min-w-0: without it this flex child cannot shrink below the widest
           row inside it, so one wide table or button cluster drags the entire
-          page sideways on a phone instead of wrapping. */}
-      <div className="flex min-w-0 flex-1 flex-col md:ml-60">
+          page sideways on a phone instead of wrapping.
+          --sidebar-w is set by Sidebar so collapsing it doesn't leave a gap. */}
+      <div className="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 md:ml-[var(--sidebar-w,15rem)]">
         <Header />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>

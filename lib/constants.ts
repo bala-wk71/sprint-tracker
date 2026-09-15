@@ -153,19 +153,50 @@ export type InviteStatus = (typeof INVITE_STATUSES)[number];
 // AI Assistant
 export const AI_USER_ID = "00000000-0000-0000-0000-000000000001";
 
-// Navigation items
-export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/sprint/setup", label: "Sprint Setup", icon: "ListTodo" },
-  { href: "/daily", label: "Daily Log", icon: "CalendarDays" },
-  { href: "/analytics", label: "Analytics", icon: "BarChart3" },
-  { href: "/review", label: "Reviewing", icon: "Users" },
-  { href: "/todo", label: "Todo", icon: "CheckSquare" },
-  { href: "/notes", label: "Notes", icon: "NotebookPen" },
-  { href: "/health", label: "Health", icon: "HeartPulse" },
-  { href: "/assistant", label: "Assistant", icon: "Bot" },
-  { href: "/settings", label: "Settings", icon: "Settings" },
-] as const;
+// Navigation. Grouped so the sidebar stays scannable as features grow —
+// new features go inside an existing item (as tabs) rather than adding rows.
+// Settings lives behind the profile block at the bottom of the sidebar.
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  /** Path prefixes that mark this item active (defaults to href). */
+  match?: readonly string[];
+  /** Only shown to people who review someone. */
+  reviewerOnly?: boolean;
+};
+
+export const NAV_GROUPS: readonly { label: string; items: readonly NavItem[] }[] = [
+  {
+    label: "Today",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+      { href: "/daily", label: "Daily Log", icon: "CalendarDays" },
+      { href: "/todo", label: "Todo", icon: "CheckSquare" },
+    ],
+  },
+  {
+    label: "Plan",
+    items: [
+      { href: "/sprint/setup", label: "Plan", icon: "Compass", match: ["/sprint"] },
+      { href: "/analytics", label: "Analytics", icon: "BarChart3" },
+    ],
+  },
+  {
+    label: "Life",
+    items: [
+      { href: "/health", label: "Health", icon: "HeartPulse" },
+      { href: "/notes", label: "Notes", icon: "NotebookPen" },
+    ],
+  },
+  {
+    label: "Support",
+    items: [
+      { href: "/assistant", label: "Assistant", icon: "Bot" },
+      { href: "/review", label: "Reviewing", icon: "Users", reviewerOnly: true },
+    ],
+  },
+];
 
 // Total hours a week has to offer — hard ceiling for sprint planning
 export const WEEK_HOURS = 168;
