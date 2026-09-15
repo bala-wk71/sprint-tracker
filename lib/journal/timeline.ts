@@ -2,11 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, subMonths, subYears } from "date-fns";
 import type { Database } from "@/lib/supabase/types";
 import { weekEndIsoOf } from "@/lib/week";
+import { formatValue } from "@/lib/goals/progress";
 import type { TimelineFilter } from "./constants";
 
 type Client = SupabaseClient<Database>;
 
-export type TimelineSource = "journal" | "look_back" | "daily" | "weekly";
+export type TimelineSource = "journal" | "look_back" | "check_in" | "daily" | "weekly";
 
 /**
  * One row of the journal timeline. Journal entries carry a markdown body;
@@ -25,6 +26,11 @@ export type TimelineItem = {
   isPrivate: boolean | null;
   href: string;
   createdAt: string;
+  /** Goal check-ins only: the goal it belongs to and what was recorded. */
+  goalTitle?: string;
+  goalHref?: string;
+  onTrack?: number | null;
+  valueLabel?: string | null;
 };
 
 const LIMIT = 200;
@@ -52,8 +58,14 @@ export async function loadTimeline(
   const journal = async (): Promise<TimelineItem[]> => {
     let q = supabase
       .from("journal_entries")
-      .select("id, entry_date, title, body, mood, kind, is_private, created_at")
+      .select(
+        "id, entry_date, title, body, mood, kind, is_private, created_at, goal_id, on_track, value, goals(title, unit)"
+      )
       .eq("owner_id", ownerId);
+    // "Journal" means what you wrote and the coach's letters; check-ins get
+    // their own filter so a busy goal doesn't bury everything else.
+    if (opts.filter === "journal") q = q.in("kind", ["entry", "look_back"]);
+    if (opts.filter === "check_in") q = q.eq("kind", "check_in");
     q = searching
       ? q.textSearch("search_vector", term, { type: "websearch" })
       : q.gte("entry_date", opts.sinceIso);
@@ -61,18 +73,33 @@ export async function loadTimeline(
       .order("entry_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(LIMIT);
-    return (data ?? []).map((e) => ({
-      key: `j:${e.id}`,
-      date: e.entry_date,
-      source: e.kind === "look_back" ? "look_back" : "journal",
-      title: e.title || null,
-      body: e.body,
-      sections: [],
-      mood: e.mood,
-      isPrivate: e.is_private,
-      href: `/journal/${e.id}`,
-      createdAt: e.created_at,
-    }));
+    return (data ?? []).map((e): TimelineItem => {
+      const base = {
+        key: `j:${e.id}`,
+        date: e.entry_date,
+        title: e.title || null,
+        body: e.body,
+        sections: [],
+        mood: e.mood,
+        isPrivate: e.is_private,
+        href: `/journal/${e.id}`,
+        createdAt: e.created_at,
+      };
+      if (e.kind !== "check_in") {
+        return { ...base, source: e.kind === "look_back" ? "look_back" : "journal" };
+      }
+      // A check-in whose goal was deleted keeps its text but loses the link.
+      const goalHref = e.goal_id ? `/goals/${e.goal_id}` : undefined;
+      return {
+        ...base,
+        source: "check_in",
+        href: goalHref ?? base.href,
+        goalTitle: e.goals?.title,
+        goalHref,
+        onTrack: e.on_track,
+        valueLabel: e.value === null ? null : formatValue(e.value, e.goals?.unit ?? null),
+      };
+    });
   };
 
   const daily = async (): Promise<TimelineItem[]> => {
@@ -160,7 +187,7 @@ export async function loadTimeline(
   };
 
   const batches = await Promise.all([
-    want("journal") ? journal() : [],
+    want("journal") || want("check_in") ? journal() : [],
     want("daily") ? daily() : [],
     want("weekly") ? weekly() : [],
   ]);

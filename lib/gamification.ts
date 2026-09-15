@@ -543,6 +543,62 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: "Log what you ate on 30 days.",
     icon: "UtensilsCrossed",
   },
+  // --- Journal & goals --------------------------------------------------
+  {
+    id: "first-journal",
+    title: "First Page",
+    description: "Write your first journal entry.",
+    icon: "PenLine",
+  },
+  {
+    id: "journal-10",
+    title: "Ten Pages",
+    description: "Write 10 journal entries.",
+    icon: "NotebookPen",
+  },
+  {
+    id: "journal-50",
+    title: "Keeping the Record",
+    description: "Write 50 journal entries.",
+    icon: "BookOpen",
+  },
+  {
+    id: "journal-150",
+    title: "The Archive",
+    description: "Write 150 journal entries.",
+    icon: "Library",
+  },
+  {
+    id: "checkins-12",
+    title: "Kept Checking In",
+    description: "Check in on your goals 12 times.",
+    icon: "CalendarClock",
+  },
+  {
+    id: "goals-done-1",
+    title: "Finisher",
+    description: "Finish your first goal.",
+    icon: "Flag",
+  },
+  {
+    id: "goals-done-5",
+    title: "Five Crossed Off",
+    description: "Finish 5 goals.",
+    icon: "FlagTriangleRight",
+  },
+  {
+    id: "goals-done-10",
+    title: "Summit Collector",
+    description: "Finish 10 goals.",
+    icon: "MountainSnow",
+  },
+  {
+    id: "long-view",
+    title: "The Long View",
+    description:
+      "Keep a goal of a year or more going, with check-ins spread across six months.",
+    icon: "Telescope",
+  },
   // --- Levels -----------------------------------------------------------
   {
     id: "level-5",
@@ -573,6 +629,11 @@ export type GamificationStats = {
   water_goal_days?: number;
   weigh_in_count?: number;
   food_days?: number;
+  // Journal & goal counters (stats v4), optional for the same reason.
+  journal_entries_count?: number;
+  checkins_count?: number;
+  goals_done?: number;
+  long_view_goals?: number;
 };
 
 /** Longest run of consecutive dates (no shields — raw discipline). */
@@ -682,6 +743,20 @@ export function earnedAchievementIds(
   if ((stats.water_goal_days ?? 0) >= 30) ids.push("water-30");
   if ((stats.weigh_in_count ?? 0) >= 90) ids.push("weigh-ins-90");
   if ((stats.food_days ?? 0) >= 30) ids.push("food-30");
+
+  const journalEntries = stats.journal_entries_count ?? 0;
+  if (journalEntries >= 1) ids.push("first-journal");
+  if (journalEntries >= 10) ids.push("journal-10");
+  if (journalEntries >= 50) ids.push("journal-50");
+  if (journalEntries >= 150) ids.push("journal-150");
+  if ((stats.checkins_count ?? 0) >= 12) ids.push("checkins-12");
+
+  const goalsDone = stats.goals_done ?? 0;
+  if (goalsDone >= 1) ids.push("goals-done-1");
+  if (goalsDone >= 5) ids.push("goals-done-5");
+  if (goalsDone >= 10) ids.push("goals-done-10");
+  // The six-month span is measured in SQL; any one qualifying goal is enough.
+  if ((stats.long_view_goals ?? 0) >= 1) ids.push("long-view");
 
   if (level >= 5) ids.push("level-5");
   if (level >= 10) ids.push("level-10");

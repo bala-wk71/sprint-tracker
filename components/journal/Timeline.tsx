@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { Bot, Lock, Users } from "lucide-react";
+import { Bot, Lock, Target, Users } from "lucide-react";
 import { Markdown } from "@/components/shared/Markdown";
 import { JOURNAL_MOODS } from "@/lib/journal/constants";
 import type { TimelineItem, TimelineSource } from "@/lib/journal/timeline";
@@ -8,6 +8,7 @@ import type { TimelineItem, TimelineSource } from "@/lib/journal/timeline";
 const SOURCE_LABEL: Record<TimelineSource, string> = {
   journal: "Journal",
   look_back: "Coach look-back",
+  check_in: "Goal check-in",
   daily: "Daily reflection",
   weekly: "Weekly reflection",
 };
@@ -57,7 +58,9 @@ function TimelineRow({ item }: { item: TimelineItem }) {
       ? "Open day"
       : item.source === "weekly"
         ? "Open week"
-        : isLong
+        : item.source === "check_in" && item.goalHref
+          ? "Open goal"
+          : isLong
           ? "Read all"
           : item.source === "journal"
             ? "Edit"
@@ -86,6 +89,24 @@ function TimelineRow({ item }: { item: TimelineItem }) {
             </span>
           )}
         </div>
+
+        {item.source === "check_in" && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            {item.goalTitle && item.goalHref && (
+              <Link
+                href={item.goalHref}
+                className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2 py-0.5 font-medium text-foreground hover:border-primary"
+              >
+                <Target className="h-3 w-3 shrink-0 text-primary" />
+                <span className="truncate">{item.goalTitle}</span>
+              </Link>
+            )}
+            {item.onTrack != null && (
+              <span className="text-muted-foreground">Feels {item.onTrack}/10</span>
+            )}
+            {item.valueLabel && <span className="text-muted-foreground">{item.valueLabel}</span>}
+          </div>
+        )}
 
         {item.title && <p className="font-medium text-foreground">{item.title}</p>}
 

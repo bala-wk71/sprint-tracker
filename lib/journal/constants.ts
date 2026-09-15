@@ -32,6 +32,7 @@ export const JOURNAL_PROMPTS = [
 export const TIMELINE_FILTERS = [
   { value: "all", label: "All" },
   { value: "journal", label: "Journal" },
+  { value: "check_in", label: "Check-ins" },
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
 ] as const;
