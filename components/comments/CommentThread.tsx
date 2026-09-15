@@ -14,7 +14,7 @@ import {
   type CommentRow,
 } from "./actions";
 
-type TargetType = "daily_log" | "sprint";
+type TargetType = CommentRow["target_type"];
 
 type Props = {
   targetType: TargetType;

@@ -28,7 +28,7 @@ export type CommentRow = {
 const BODY_MAX = 2000;
 
 const createSchema = z.object({
-  target_type: z.enum(["daily_log", "sprint"]),
+  target_type: z.enum(["daily_log", "sprint", "goal", "journal_entry"]),
   target_id: z.string().uuid(),
   owner_id: z.string().uuid(),
   parent_id: z.string().uuid().nullable(),

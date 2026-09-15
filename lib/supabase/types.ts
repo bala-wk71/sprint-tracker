@@ -414,6 +414,7 @@ export type Database = {
           owner_id: string
           position: number
           sprint_id: string
+          goal_id: string | null
           target_hours: number
           template_id: string | null
           updated_at: string
@@ -427,6 +428,7 @@ export type Database = {
           owner_id: string
           position?: number
           sprint_id: string
+          goal_id?: string | null
           target_hours?: number
           template_id?: string | null
           updated_at?: string
@@ -440,6 +442,7 @@ export type Database = {
           owner_id?: string
           position?: number
           sprint_id?: string
+          goal_id?: string | null
           target_hours?: number
           template_id?: string | null
           updated_at?: string
@@ -457,6 +460,13 @@ export type Database = {
             columns: ["sprint_id"]
             isOneToOne: false
             referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
             referencedColumns: ["id"]
           },
           {
@@ -801,6 +811,7 @@ export type Database = {
           position: number
           source_page_id: string | null
           due_date: string | null
+          goal_id: string | null
           created_at: string
           updated_at: string
         }
@@ -815,6 +826,7 @@ export type Database = {
           position?: number
           source_page_id?: string | null
           due_date?: string | null
+          goal_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -829,6 +841,7 @@ export type Database = {
           position?: number
           source_page_id?: string | null
           due_date?: string | null
+          goal_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -845,6 +858,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "todo_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_tasks_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
             referencedColumns: ["id"]
           },
           {
@@ -1665,7 +1685,7 @@ export type Database = {
       gamification_stats: { Args: Record<string, never>; Returns: Json }
     }
     Enums: {
-      comment_target_type: "daily_log" | "sprint"
+      comment_target_type: "daily_log" | "sprint" | "goal" | "journal_entry"
       evening_mood:
         | "accomplished"
         | "okay"
@@ -1809,7 +1829,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      comment_target_type: ["daily_log", "sprint"],
+      comment_target_type: ["daily_log", "sprint", "goal", "journal_entry"],
       evening_mood: [
         "accomplished",
         "okay",

@@ -18,7 +18,7 @@ export default async function SprintDetailPage({
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: sprint }, { data: taskRows }] = await Promise.all([
+  const [{ data: sprint }, { data: taskRows }, { data: goalRows }] = await Promise.all([
     supabase
       .from("sprints")
       .select("id, week_start_date, notes, owner_id")
@@ -27,9 +27,14 @@ export default async function SprintDetailPage({
       .maybeSingle(),
     supabase
       .from("tasks")
-      .select("id, name, category, target_hours, is_recurring, position")
+      .select("id, name, category, target_hours, is_recurring, position, goal_id")
       .eq("sprint_id", id)
       .order("position", { ascending: true }),
+    supabase
+      .from("goals")
+      .select("id, title, status")
+      .eq("owner_id", user.id)
+      .order("target_date", { ascending: true }),
   ]);
 
   if (!sprint) {
@@ -42,7 +47,20 @@ export default async function SprintDetailPage({
     category: t.category as TaskCategory,
     target_hours: Number(t.target_hours),
     is_recurring: t.is_recurring,
+    goal_id: t.goal_id,
   }));
+
+  // Open goals are offered for new links; a closed goal stays listed only
+  // while a task still points at it, so an existing link never goes blank.
+  const goals = (goalRows ?? [])
+    .filter(
+      (g) =>
+        g.status === "active" ||
+        g.status === "paused" ||
+        tasks.some((t) => t.goal_id === g.id)
+    )
+    .map(({ id: goalId, title }) => ({ id: goalId, title }));
+  const linkedCount = tasks.filter((t) => t.goal_id).length;
 
   const totalTarget = tasks.reduce((sum, t) => sum + t.target_hours, 0);
 
@@ -112,8 +130,17 @@ export default async function SprintDetailPage({
       </div>
 
       <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Tasks</h2>
-        <TasksEditor sprintId={sprint.id} initialTasks={tasks} />
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold text-foreground">Tasks</h2>
+          {goals.length > 0 && tasks.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {linkedCount === 0
+                ? "None of this week's tasks are linked to a goal yet"
+                : `${linkedCount} of ${tasks.length} ${tasks.length === 1 ? "task helps" : "tasks help"} a goal`}
+            </p>
+          )}
+        </div>
+        <TasksEditor sprintId={sprint.id} initialTasks={tasks} goals={goals} />
       </section>
     </div>
   );

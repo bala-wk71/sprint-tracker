@@ -11,6 +11,7 @@ import {
   ChevronDown,
   NotebookPen,
   StickyNote,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -24,6 +25,8 @@ import * as tree from "./tree";
 import { RowActions } from "./RowActions";
 import { TaskNotes } from "./TaskNotes";
 import type { TodoTask } from "./types";
+import { GoalChip } from "@/components/goals/GoalChip";
+import { GoalSelect, useGoalOptions } from "@/components/goals/GoalOptions";
 
 export function TaskItem({
   task,
@@ -41,6 +44,8 @@ export function TaskItem({
   const [editValue, setEditValue] = useState(task.title);
   const [notesOpen, setNotesOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
+  const goals = useGoalOptions();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -86,6 +91,19 @@ export function TaskItem({
           description: description || null,
         })),
       () => updateTaskAction({ taskId: task.id, description })
+    );
+  };
+
+  const handleSetGoal = (goalId: string | null) => {
+    setGoalOpen(false);
+    run(
+      (sections) =>
+        tree.updateTask(sections, task.id, (t) => ({
+          ...t,
+          goal_id: goalId,
+          goal_title: goals.find((g) => g.id === goalId)?.title ?? null,
+        })),
+      () => updateTaskAction({ taskId: task.id, goalId })
     );
   };
 
@@ -210,6 +228,10 @@ export function TaskItem({
               </Link>
             )}
 
+            {task.goal_id && task.goal_title && (
+              <GoalChip goalId={task.goal_id} title={task.goal_title} />
+            )}
+
             {hasNotes && !notesOpen && (
               <StickyNote
                 className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
@@ -237,6 +259,18 @@ export function TaskItem({
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </>
+              )}
+              {goals.length > 0 && (
+                <button
+                  onClick={() => setGoalOpen((o) => !o)}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded hover:bg-accent hover:text-foreground",
+                    goalOpen || task.goal_id ? "text-foreground" : "text-muted-foreground"
+                  )}
+                  aria-label={task.goal_id ? "Change linked goal" : "Link to a goal"}
+                >
+                  <Target className="h-3.5 w-3.5" />
+                </button>
               )}
               <button
                 onClick={() => setNotesOpen((o) => !o)}
@@ -272,6 +306,17 @@ export function TaskItem({
           </>
         )}
       </div>
+
+      {goalOpen && (
+        <div className="px-10 pb-2">
+          <GoalSelect
+            id={`todo_goal_${task.id}`}
+            value={task.goal_id ?? null}
+            goals={goals}
+            onChange={handleSetGoal}
+          />
+        </div>
+      )}
 
       {notesOpen && (
         <TaskNotes

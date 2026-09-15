@@ -10,6 +10,9 @@ export type TodoTask = {
   /** Set when the task came from a note page — see app/(app)/notes. */
   source_page_id: string | null;
   source_page_title: string | null;
+  /** The long-term goal this todo serves, if any — see app/(app)/goals. */
+  goal_id?: string | null;
+  goal_title?: string | null;
 };
 
 export type TodoSection = {

@@ -1,5 +1,6 @@
 import { createClient, getUser } from "@/lib/supabase/server";
 import { getWeekStartDay } from "@/lib/dates";
+import { GoalOptionsProvider } from "@/components/goals/GoalOptions";
 import { TodoShell } from "./TodoShell";
 import type { TodoSection, TodoTask } from "./types";
 
@@ -8,7 +9,7 @@ export default async function TodoPage() {
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: sectionsRaw }, { data: tasksRaw }] = await Promise.all([
+  const [{ data: sectionsRaw }, { data: tasksRaw }, { data: goalRows }] = await Promise.all([
     supabase
       .from("todo_sections")
       .select("id, parent_id, name, position, is_collapsed, archived_at, source_page_id")
@@ -17,17 +18,28 @@ export default async function TodoPage() {
     supabase
       .from("todo_tasks")
       .select(
-        "id, section_id, title, description, is_completed, completed_at, position, due_date, source_page_id, note_pages(title)"
+        "id, section_id, title, description, is_completed, completed_at, position, due_date, source_page_id, goal_id, note_pages(title), goals(title)"
       )
       .eq("owner_id", user.id)
       .order("position"),
+    supabase
+      .from("goals")
+      .select("id, title")
+      .eq("owner_id", user.id)
+      .in("status", ["active", "paused"])
+      .order("target_date"),
   ]);
 
   const sections = sectionsRaw ?? [];
   const tasks: TodoTask[] = (tasksRaw ?? []).map((row) => {
-    const { note_pages, ...task } = row;
+    const { note_pages, goals, ...task } = row;
     const page = Array.isArray(note_pages) ? note_pages[0] : note_pages;
-    return { ...task, source_page_title: page?.title ?? null };
+    const goal = Array.isArray(goals) ? goals[0] : goals;
+    return {
+      ...task,
+      source_page_title: page?.title ?? null,
+      goal_title: goal?.title ?? null,
+    };
   });
 
   // Group tasks by section
@@ -67,7 +79,9 @@ export default async function TodoPage() {
           Organise tasks by section and subsection.
         </p>
       </div>
-      <TodoShell sections={tree} weekStartDay={await getWeekStartDay()} />
+      <GoalOptionsProvider goals={goalRows ?? []}>
+        <TodoShell sections={tree} weekStartDay={await getWeekStartDay()} />
+      </GoalOptionsProvider>
     </div>
   );
 }

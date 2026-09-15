@@ -5,18 +5,26 @@ import { format } from "date-fns";
 import { ChevronLeft, Lock, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient, getUser } from "@/lib/supabase/server";
-import { todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { addDaysIso, weekStartIsoOf } from "@/lib/week";
 import { BIG_GOAL_DAYS, goalArea, horizonLabel, lengthInDays } from "@/lib/goals/constants";
 import { isPastEnd, nextCheckinLabel, timeLeftLabel } from "@/lib/goals/progress";
+import { loadComments } from "@/components/comments/loadComments";
+import { CommentThread } from "@/components/comments/CommentThread";
 import { GoalProgressBar } from "@/components/goals/GoalProgressBar";
 import { GoalStatusChip } from "@/components/goals/GoalStatusChip";
 import { StepList } from "@/components/goals/StepList";
 import { CheckInForm } from "@/components/goals/CheckInForm";
 import { GoalStatusActions } from "@/components/goals/GoalStatusActions";
 import { CheckInHistory } from "@/components/goals/CheckInHistory";
+import { LinkedWork } from "@/components/goals/LinkedWork";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CARD = "rounded-xl border border-border bg-card p-4 sm:p-6";
+
+function one<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
 
 export default async function GoalPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,21 +34,50 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: goal }, { data: steps }, { data: allGoals }, { data: entries }, todayIso] =
-    await Promise.all([
-      supabase.from("goals").select("*").eq("id", id).eq("owner_id", user.id).maybeSingle(),
-      supabase.from("goal_steps").select("id, title, done_at").eq("goal_id", id).order("position"),
-      supabase.from("goals").select("id, parent_id, title, status, area").eq("owner_id", user.id),
-      supabase
-        .from("journal_entries")
-        .select("id, entry_date, title, body, kind, on_track, value")
-        .eq("goal_id", id)
-        .eq("owner_id", user.id)
-        .order("entry_date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(60),
-      todayIsoLocal(),
-    ]);
+  const [
+    { data: goal },
+    { data: steps },
+    { data: allGoals },
+    { data: entries },
+    { data: linkedTasks },
+    { data: linkedTodos },
+    { data: timeRows },
+    comments,
+    todayIso,
+    weekStartDay,
+  ] = await Promise.all([
+    supabase.from("goals").select("*").eq("id", id).eq("owner_id", user.id).maybeSingle(),
+    supabase.from("goal_steps").select("id, title, done_at").eq("goal_id", id).order("position"),
+    supabase.from("goals").select("id, parent_id, title, status, area").eq("owner_id", user.id),
+    supabase
+      .from("journal_entries")
+      .select("id, entry_date, title, body, kind, on_track, value")
+      .eq("goal_id", id)
+      .eq("owner_id", user.id)
+      .order("entry_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(60),
+    supabase
+      .from("tasks")
+      .select("id, name, sprint_id, sprints(week_start_date)")
+      .eq("goal_id", id)
+      .eq("owner_id", user.id),
+    supabase
+      .from("todo_tasks")
+      .select("id, title, is_completed")
+      .eq("goal_id", id)
+      .eq("owner_id", user.id)
+      .order("is_completed")
+      .order("position"),
+    supabase
+      .from("time_entries")
+      .select("duration_hours, daily_logs!inner(log_date), tasks!inner(goal_id)")
+      .eq("owner_id", user.id)
+      .eq("tasks.goal_id", id),
+    loadComments("goal", id),
+    todayIsoLocal(),
+    getWeekStartDay(),
+  ]);
   if (!goal) notFound();
 
   const byId = new Map((allGoals ?? []).map((g) => [g.id, g]));
@@ -60,6 +97,40 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
   const closed = goal.status === "done" || goal.status === "let_go";
   const pastEnd = isPastEnd(goal, todayIso);
   const targetLabel = format(new Date(`${goal.target_date}T00:00:00`), "d MMM yyyy");
+
+  // Hours come from time logged against sprint tasks linked to this goal.
+  const weekStart = weekStartIsoOf(todayIso, weekStartDay);
+  const monthStart = `${todayIso.slice(0, 8)}01`;
+  const quietSince = addDaysIso(todayIso, -21);
+  let hoursWeek = 0;
+  let hoursMonth = 0;
+  let hoursTotal = 0;
+  let lastWorkedOn = "";
+  for (const entry of timeRows ?? []) {
+    const h = Number(entry.duration_hours || 0);
+    const date = one(entry.daily_logs as { log_date: string } | { log_date: string }[] | null)?.log_date;
+    hoursTotal += h;
+    if (!date) continue;
+    if (date >= weekStart) hoursWeek += h;
+    if (date >= monthStart) hoursMonth += h;
+    if (date > lastWorkedOn) lastWorkedOn = date;
+  }
+  const quiet =
+    goal.status === "active" &&
+    goal.start_date <= quietSince &&
+    lastWorkedOn < quietSince &&
+    (goal.last_checkin_on ?? "") < quietSince;
+
+  const tasks = (linkedTasks ?? [])
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      sprintId: t.sprint_id,
+      weekStart:
+        one(t.sprints as { week_start_date: string } | { week_start_date: string }[] | null)
+          ?.week_start_date ?? null,
+    }))
+    .sort((a, b) => (b.weekStart ?? "").localeCompare(a.weekStart ?? ""));
 
   return (
     <div className="space-y-6">
@@ -143,7 +214,30 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
             </section>
           )}
 
+          <LinkedWork
+            hoursWeek={hoursWeek}
+            hoursMonth={hoursMonth}
+            hoursTotal={hoursTotal}
+            quiet={quiet}
+            tasks={tasks}
+            todos={linkedTodos ?? []}
+          />
+
           <CheckInHistory entries={history} unit={goal.unit} />
+
+          {!goal.is_private && (
+            <section className={CARD}>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">Comments from your reviewers</h2>
+              <CommentThread
+                targetType="goal"
+                targetId={goal.id}
+                ownerId={user.id}
+                currentUserId={user.id}
+                initialComments={comments}
+                revalidatePaths={[`/goals/${goal.id}`]}
+              />
+            </section>
+          )}
         </div>
 
         <aside className="space-y-6">

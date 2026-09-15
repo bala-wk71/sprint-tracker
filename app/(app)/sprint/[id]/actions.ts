@@ -20,6 +20,7 @@ const updateTaskSchema = z.object({
   category: TASK_CATEGORY,
   target_hours: z.coerce.number().min(0).max(168),
   is_recurring: z.boolean(),
+  goal_id: z.string().uuid().nullable().optional(),
 });
 
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
@@ -32,6 +33,20 @@ async function getUserOrFail() {
     data: { user },
   } = await supabase.auth.getUser();
   return user ? { supabase, user } : null;
+}
+
+/** A task may only point at one of the user's own goals. */
+async function ownsGoal(
+  ctx: NonNullable<Awaited<ReturnType<typeof getUserOrFail>>>,
+  goalId: string
+) {
+  const { data } = await ctx.supabase
+    .from("goals")
+    .select("id")
+    .eq("id", goalId)
+    .eq("owner_id", ctx.user.id)
+    .maybeSingle();
+  return Boolean(data);
 }
 
 export async function updateTask(input: UpdateTaskInput): Promise<ActionResult> {
@@ -73,6 +88,10 @@ export async function updateTask(input: UpdateTaskInput): Promise<ActionResult> 
     };
   }
 
+  if (parsed.data.goal_id && !(await ownsGoal(ctx, parsed.data.goal_id))) {
+    return { ok: false, error: "That goal doesn't exist anymore." };
+  }
+
   const { error } = await ctx.supabase
     .from("tasks")
     .update({
@@ -80,6 +99,7 @@ export async function updateTask(input: UpdateTaskInput): Promise<ActionResult> 
       category: parsed.data.category,
       target_hours: parsed.data.target_hours,
       is_recurring: parsed.data.is_recurring,
+      ...(parsed.data.goal_id !== undefined ? { goal_id: parsed.data.goal_id } : {}),
     })
     .eq("id", parsed.data.taskId)
     .eq("owner_id", ctx.user.id);
@@ -87,6 +107,7 @@ export async function updateTask(input: UpdateTaskInput): Promise<ActionResult> 
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/sprint/[id]`, "page");
+  revalidatePath("/goals/[id]", "page");
   revalidatePath("/dashboard");
   return { ok: true };
 }
@@ -97,6 +118,7 @@ const addTaskSchema = z.object({
   category: TASK_CATEGORY,
   target_hours: z.coerce.number().min(0).max(168),
   is_recurring: z.boolean().default(false),
+  goal_id: z.string().uuid().nullable().optional(),
 });
 
 export async function addTaskToSprint(
@@ -132,6 +154,10 @@ export async function addTaskToSprint(
     };
   }
 
+  if (parsed.data.goal_id && !(await ownsGoal(ctx, parsed.data.goal_id))) {
+    return { ok: false, error: "That goal doesn't exist anymore." };
+  }
+
   const { error } = await ctx.supabase.from("tasks").insert({
     sprint_id: parsed.data.sprintId,
     owner_id: ctx.user.id,
@@ -139,6 +165,7 @@ export async function addTaskToSprint(
     category: parsed.data.category,
     target_hours: parsed.data.target_hours,
     is_recurring: parsed.data.is_recurring,
+    goal_id: parsed.data.goal_id ?? null,
     position: existing?.length ?? 0,
   });
 

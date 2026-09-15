@@ -6,7 +6,7 @@ import type { CommentRow } from "./actions";
  * client can flatten into a one-level threaded view (parent_id grouping).
  */
 export async function loadComments(
-  targetType: "daily_log" | "sprint",
+  targetType: CommentRow["target_type"],
   targetId: string
 ): Promise<CommentRow[]> {
   const supabase = await createClient();

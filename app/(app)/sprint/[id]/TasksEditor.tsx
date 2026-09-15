@@ -7,6 +7,8 @@ import { WEEK_HOURS, type TaskCategory } from "@/lib/constants";
 import { CategoryPicker } from "@/components/sprint/CategoryPicker";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
 import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
+import { GoalChip } from "@/components/goals/GoalChip";
+import { GoalSelect, type GoalOption } from "@/components/goals/GoalOptions";
 import { addTaskToSprint, deleteTask, updateTask } from "./actions";
 
 export type EditableTask = {
@@ -15,14 +17,18 @@ export type EditableTask = {
   category: TaskCategory;
   target_hours: number;
   is_recurring: boolean;
+  goal_id: string | null;
 };
 
 export function TasksEditor({
   sprintId,
   initialTasks,
+  goals,
 }: {
   sprintId: string;
   initialTasks: EditableTask[];
+  /** Goals a task can say it serves. */
+  goals: GoalOption[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -34,6 +40,7 @@ export function TasksEditor({
     category: "strong_signal",
     target_hours: 0,
     is_recurring: false,
+    goal_id: null,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +55,7 @@ export function TasksEditor({
     liveTotal = baseTotal + (Number(newTask.target_hours) || 0);
   }
   const overCapacity = liveTotal > WEEK_HOURS;
+  const goalTitle = (goalId: string) => goals.find((g) => g.id === goalId)?.title ?? null;
 
   const beginEdit = (task: EditableTask) => {
     setEditingId(task.id);
@@ -77,6 +85,7 @@ export function TasksEditor({
         category: draft.category,
         target_hours: draft.target_hours,
         is_recurring: draft.is_recurring,
+        goal_id: draft.goal_id,
       });
       if (!result.ok) {
         setError(result.error);
@@ -128,6 +137,7 @@ export function TasksEditor({
         category: "strong_signal",
         target_hours: 0,
         is_recurring: false,
+        goal_id: null,
       });
       setAdding(false);
       router.refresh();
@@ -200,6 +210,12 @@ export function TasksEditor({
               value={draft.category}
               onChange={(category) => setDraft({ ...draft, category })}
             />
+            <GoalSelect
+              id={`task_goal_${draft.id}`}
+              value={draft.goal_id}
+              goals={goals}
+              onChange={(goal_id) => setDraft({ ...draft, goal_id })}
+            />
           </div>
         ) : (
           <div
@@ -216,6 +232,9 @@ export function TasksEditor({
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                   Recurring
                 </span>
+              )}
+              {task.goal_id && goalTitle(task.goal_id) && (
+                <GoalChip goalId={task.goal_id} title={goalTitle(task.goal_id)!} />
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -295,6 +314,12 @@ export function TasksEditor({
           <CategoryPicker
             value={newTask.category}
             onChange={(category) => setNewTask({ ...newTask, category })}
+          />
+          <GoalSelect
+            id="task_goal_new"
+            value={newTask.goal_id}
+            goals={goals}
+            onChange={(goal_id) => setNewTask({ ...newTask, goal_id })}
           />
         </div>
       ) : (

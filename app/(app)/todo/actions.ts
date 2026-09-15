@@ -318,6 +318,8 @@ const updateTaskSchema = z.object({
   taskId: z.string().uuid(),
   title: z.string().trim().min(1).max(500).optional(),
   description: z.string().trim().max(2000).optional(),
+  /** The long-term goal this todo serves; null unlinks it. */
+  goalId: z.string().uuid().nullable().optional(),
 });
 
 export async function updateTask(
@@ -330,10 +332,23 @@ export async function updateTask(
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
 
-  const updates: { title?: string; description?: string | null } = {};
+  const updates: { title?: string; description?: string | null; goal_id?: string | null } = {};
   if (parsed.data.title !== undefined) updates.title = parsed.data.title;
   if (parsed.data.description !== undefined)
     updates.description = parsed.data.description || null;
+  if (parsed.data.goalId !== undefined) {
+    // A todo may only point at one of the user's own goals.
+    if (parsed.data.goalId) {
+      const { data: goal } = await ctx.supabase
+        .from("goals")
+        .select("id")
+        .eq("id", parsed.data.goalId)
+        .eq("owner_id", ctx.user.id)
+        .maybeSingle();
+      if (!goal) return { ok: false, error: "That goal doesn't exist anymore." };
+    }
+    updates.goal_id = parsed.data.goalId;
+  }
 
   const { error } = await ctx.supabase
     .from("todo_tasks")
