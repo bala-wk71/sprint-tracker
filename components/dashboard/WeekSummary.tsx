@@ -259,7 +259,7 @@ export async function WeekSummary({
                   href="/sprint/setup"
                   className="text-primary hover:underline"
                 >
-                  Sprint Setup
+                  Plan
                 </Link>{" "}
                 to plan tasks for the week of{" "}
                 {format(new Date(`${weekStart}T00:00:00`), "MMM d, yyyy")}.
