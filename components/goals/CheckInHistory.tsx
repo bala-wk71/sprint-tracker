@@ -14,7 +14,16 @@ export type GoalEntry = {
 };
 
 /** Everything written about one goal, newest first: check-ins and closing notes. */
-export function CheckInHistory({ entries, unit }: { entries: GoalEntry[]; unit: string | null }) {
+export function CheckInHistory({
+  entries,
+  unit,
+  readOnly = false,
+}: {
+  entries: GoalEntry[];
+  unit: string | null;
+  /** Reviewers read the history; only the owner gets edit links. */
+  readOnly?: boolean;
+}) {
   return (
     <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
       <h2 className="mb-3 text-lg font-semibold text-foreground">Check-ins and notes</h2>
@@ -41,9 +50,11 @@ export function CheckInHistory({ entries, unit }: { entries: GoalEntry[]; unit: 
                     Feels {e.on_track}/10
                   </span>
                 )}
-                <Link href={`/journal/${e.id}`} className="ml-auto hover:text-foreground">
-                  Edit
-                </Link>
+                {!readOnly && (
+                  <Link href={`/journal/${e.id}`} className="ml-auto hover:text-foreground">
+                    Edit
+                  </Link>
+                )}
               </div>
               {e.kind !== "check_in" && e.title && (
                 <p className="text-sm font-medium text-foreground">{e.title}</p>

@@ -7,6 +7,7 @@ import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { WeekNav } from "@/app/(app)/dashboard/WeekNav";
+import { ReviewGoalsSection } from "@/components/goals/ReviewGoalsSection";
 
 type SearchParams = Promise<{ week?: string }>;
 type RouteParams = Promise<{ ownerId: string }>;
@@ -117,6 +118,8 @@ export default async function ReviewOwnerPage({
         Private notes, reflections, and gratitude entries are hidden from
         reviewers.
       </div>
+
+      <ReviewGoalsSection ownerId={ownerId} />
 
       <WeekSummary
         ownerId={ownerId}

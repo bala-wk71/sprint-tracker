@@ -34,9 +34,23 @@ type Props = {
   feelings: number[];
   parentTitle: string | null;
   todayIso: string;
+  /** Where the title links; reviewers read goals under their own route. */
+  hrefBase?: string;
+  /** Reviewers see where a goal stands, never the check-in button. */
+  readOnly?: boolean;
 };
 
-export function GoalRow({ goal, stepsDone, stepsTotal, feelings, parentTitle, todayIso }: Props) {
+export function GoalRow({
+  goal,
+  stepsDone,
+  stepsTotal,
+  feelings,
+  parentTitle,
+  todayIso,
+  hrefBase = "/goals",
+  readOnly = false,
+}: Props) {
+  const href = `${hrefBase}/${goal.id}`;
   const area = goalArea(goal.area);
   const closed = goal.status === "done" || goal.status === "let_go";
   const due = isCheckinDue(goal, todayIso);
@@ -48,7 +62,7 @@ export function GoalRow({ goal, stepsDone, stepsTotal, feelings, parentTitle, to
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn("h-2 w-2 shrink-0 rounded-full", area.dot)} aria-hidden />
           <Link
-            href={`/goals/${goal.id}`}
+            href={href}
             className="min-w-0 truncate font-medium text-foreground hover:text-primary"
           >
             {goal.title}
@@ -87,12 +101,12 @@ export function GoalRow({ goal, stepsDone, stepsTotal, feelings, parentTitle, to
           <GoalStatusChip status={goal.status} />
         ) : pastEnd ? (
           <Link
-            href={`/goals/${goal.id}`}
+            href={href}
             className="rounded-full bg-amber-500/15 px-2 py-0.5 font-semibold text-amber-700 dark:text-amber-300"
           >
             Past end date
           </Link>
-        ) : due ? (
+        ) : due && !readOnly ? (
           <Link
             href={`/goals/${goal.id}#check-in`}
             className="inline-block rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground hover:bg-primary/90"

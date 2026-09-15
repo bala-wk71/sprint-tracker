@@ -7,6 +7,8 @@ import { todayIsoLocal } from "@/lib/dates";
 import { toJournalMood } from "@/lib/journal/constants";
 import { JournalComposer } from "@/components/journal/JournalComposer";
 import { Markdown } from "@/components/shared/Markdown";
+import { loadComments } from "@/components/comments/loadComments";
+import { CommentThread } from "@/components/comments/CommentThread";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -22,7 +24,7 @@ export default async function JournalEntryPage({
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: entry }, todayIso] = await Promise.all([
+  const [{ data: entry }, todayIso, comments] = await Promise.all([
     supabase
       .from("journal_entries")
       .select("id, entry_date, title, body, mood, author, is_private, hide_from_coach")
@@ -30,6 +32,7 @@ export default async function JournalEntryPage({
       .eq("owner_id", user.id)
       .maybeSingle(),
     todayIsoLocal(),
+    loadComments("journal_entry", id),
   ]);
   if (!entry) notFound();
 
@@ -75,6 +78,20 @@ export default async function JournalEntryPage({
           />
         )}
       </section>
+
+      {!fromCoach && !entry.is_private && (
+        <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Comments from your reviewers</h2>
+          <CommentThread
+            targetType="journal_entry"
+            targetId={entry.id}
+            ownerId={user.id}
+            currentUserId={user.id}
+            initialComments={comments}
+            revalidatePaths={[`/journal/${entry.id}`]}
+          />
+        </section>
+      )}
     </div>
   );
 }
