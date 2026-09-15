@@ -32,6 +32,11 @@ export const XP = {
   // Once a day however many entries — the point is the habit of writing,
   // not the volume.
   journal_entry: 10,
+  // Goals. Creating one earns nothing — it is too easy to repeat — and
+  // letting one go costs nothing either.
+  goal_checkin: 10,
+  goal_step: 15,
+  goal_done: 50,
 } as const;
 
 // Time logging XP accrues with hours logged, capped per day — logging many

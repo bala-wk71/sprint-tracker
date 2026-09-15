@@ -468,6 +468,127 @@ export type Database = {
           },
         ]
       }
+      goal_steps: {
+        Row: {
+          id: string
+          goal_id: string
+          owner_id: string
+          title: string
+          position: number
+          done_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          goal_id: string
+          owner_id: string
+          title: string
+          position?: number
+          done_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          goal_id?: string
+          owner_id?: string
+          title?: string
+          position?: number
+          done_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_steps_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          id: string
+          owner_id: string
+          parent_id: string | null
+          title: string
+          why: string
+          area: string
+          horizon: string
+          start_date: string
+          target_date: string
+          track_type: string
+          start_value: number | null
+          target_value: number | null
+          current_value: number | null
+          unit: string | null
+          status: string
+          is_private: boolean
+          pinned: boolean
+          checkin_every_days: number
+          last_checkin_on: string | null
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          parent_id?: string | null
+          title: string
+          why?: string
+          area: string
+          horizon: string
+          start_date?: string
+          target_date: string
+          track_type: string
+          start_value?: number | null
+          target_value?: number | null
+          current_value?: number | null
+          unit?: string | null
+          status?: string
+          is_private?: boolean
+          pinned?: boolean
+          checkin_every_days?: number
+          last_checkin_on?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          parent_id?: string | null
+          title?: string
+          why?: string
+          area?: string
+          horizon?: string
+          start_date?: string
+          target_date?: string
+          track_type?: string
+          start_value?: number | null
+          target_value?: number | null
+          current_value?: number | null
+          unit?: string | null
+          status?: string
+          is_private?: boolean
+          pinned?: boolean
+          checkin_every_days?: number
+          last_checkin_on?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           id: string
@@ -480,6 +601,9 @@ export type Database = {
           author: string
           is_private: boolean
           hide_from_coach: boolean
+          goal_id: string | null
+          on_track: number | null
+          value: number | null
           created_at: string
           updated_at: string
         }
@@ -494,6 +618,9 @@ export type Database = {
           author?: string
           is_private?: boolean
           hide_from_coach?: boolean
+          goal_id?: string | null
+          on_track?: number | null
+          value?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -508,10 +635,20 @@ export type Database = {
           author?: string
           is_private?: boolean
           hide_from_coach?: boolean
+          goal_id?: string | null
+          on_track?: number | null
+          value?: number | null
           created_at?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "journal_entries_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "journal_entries_owner_id_fkey"
             columns: ["owner_id"]
