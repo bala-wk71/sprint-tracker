@@ -68,7 +68,13 @@ export async function logWater(
   // after an undo does not pay twice.
   const xp =
     totalMl >= profile.daily_water_ml_goal
-      ? await awardXp(ctx.supabase, ctx.user.id, "water_goal", parsed.data.logDate)
+      ? await awardXp(
+          ctx.supabase,
+          ctx.user.id,
+          "water_goal",
+          parsed.data.logDate,
+          parsed.data.logDate
+        )
       : 0;
 
   revalidatePath("/health");

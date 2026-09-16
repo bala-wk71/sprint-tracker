@@ -59,6 +59,7 @@ export async function placeWager(stake: number): Promise<PlaceWagerResult> {
     amount: -stake,
     reason: "wager_stake",
     dedupe_key: `wager_stake:${weekStart}`,
+    earned_on: todayIso,
   });
   if (escrowError) {
     await supabase
@@ -120,6 +121,7 @@ export async function resolveWagers(): Promise<ResolveWagersResult> {
         amount: wagerPayout(wager.stake),
         reason: "wager_win",
         dedupe_key: `wager_win:${wager.week_start}`,
+        earned_on: todayIso,
       });
       // A dedupe conflict means a concurrent resolve already paid out —
       // still fine to mark won; any other failure leaves it active to retry.

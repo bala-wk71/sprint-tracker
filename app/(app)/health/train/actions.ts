@@ -160,7 +160,8 @@ export async function finishWorkout(
     ctx.supabase,
     ctx.user.id,
     "workout_logged",
-    workout.id
+    workout.id,
+    workout.log_date
   );
 
   revalidatePath("/health/train");

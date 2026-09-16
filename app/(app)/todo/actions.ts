@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { awardXp } from "@/lib/gamification";
+import { awardTrackedXp } from "@/lib/gamification";
+import { todayIsoLocal } from "@/lib/dates";
 
 // These actions deliberately do not call revalidatePath: the page keeps an
 // optimistic client-side copy of the tree (see store.tsx), and any revalidation
@@ -452,7 +453,13 @@ export async function toggleTaskComplete(
   // can't farm points, so only genuinely new completions count.
   let xp = 0;
   if (parsed.data.isCompleted) {
-    xp = await awardXp(ctx.supabase, ctx.user.id, "todo_done", parsed.data.taskId);
+    xp = await awardTrackedXp(
+      ctx.supabase,
+      ctx.user.id,
+      "todo_done",
+      parsed.data.taskId,
+      await todayIsoLocal()
+    );
   }
 
   const effect = task

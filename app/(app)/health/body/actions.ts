@@ -107,7 +107,13 @@ export async function saveBodyMetrics(
   // One award per day, however many times the row is corrected.
   const xp =
     parsed.data.weightKg != null
-      ? await awardXp(supabase, user.id, "weight_logged", measuredOn)
+      ? await awardXp(
+          supabase,
+          user.id,
+          "weight_logged",
+          measuredOn,
+          measuredOn
+        )
       : 0;
 
   revalidatePath("/health/body");

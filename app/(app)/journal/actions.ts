@@ -76,7 +76,14 @@ export async function saveJournalEntry(
 
   // Keyed on the day you actually wrote, not the entry's date, so writing
   // several entries or backdating one never earns more than once a day.
-  const xp = await awardXp(ctx.supabase, ctx.user.id, "journal_entry", await todayIsoLocal());
+  const wroteOn = await todayIsoLocal();
+  const xp = await awardXp(
+    ctx.supabase,
+    ctx.user.id,
+    "journal_entry",
+    wroteOn,
+    wroteOn
+  );
 
   revalidatePath("/journal");
   return { ok: true, xp, data: { id: data.id } };

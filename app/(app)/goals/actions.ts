@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { awardXp } from "@/lib/gamification";
+import { awardTrackedXp } from "@/lib/gamification";
 import { todayIsoLocal } from "@/lib/dates";
 import {
   GOAL_AREA_VALUES,
@@ -227,7 +227,16 @@ export async function setGoalStatus(input: z.input<typeof statusSchema>): Promis
     revalidatePath("/journal");
   }
 
-  const xp = status === "done" ? await awardXp(ctx.supabase, ctx.user.id, "goal_done", goal.id) : 0;
+  const xp =
+    status === "done"
+      ? await awardTrackedXp(
+          ctx.supabase,
+          ctx.user.id,
+          "goal_done",
+          goal.id,
+          await todayIsoLocal()
+        )
+      : 0;
   revalidateGoal(id);
   return { ok: true, xp };
 }

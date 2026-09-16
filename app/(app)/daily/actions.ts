@@ -155,6 +155,7 @@ export async function saveMorningCheckIn(
         ctx.supabase,
         ctx.user.id,
         "morning_checkin",
+        parsed.data.date,
         parsed.data.date
       );
     }
@@ -382,12 +383,19 @@ export async function saveEveningWrapUp(
         ctx.supabase,
         ctx.user.id,
         "evening_wrapup",
+        parsed.data.date,
         parsed.data.date
       );
     }
     for (const p of parsed.data.priority_statuses) {
       if (p.status === "done") {
-        xp += await awardXp(ctx.supabase, ctx.user.id, "priority_done", p.id);
+        xp += await awardXp(
+          ctx.supabase,
+          ctx.user.id,
+          "priority_done",
+          p.id,
+          parsed.data.date
+        );
       }
     }
 
@@ -413,6 +421,7 @@ export async function saveEveningWrapUp(
         ctx.supabase,
         ctx.user.id,
         "perfect_day",
+        parsed.data.date,
         parsed.data.date
       );
     }

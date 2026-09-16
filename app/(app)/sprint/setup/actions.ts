@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { awardXp } from "@/lib/gamification";
+import { awardTrackedXp } from "@/lib/gamification";
 import { WEEK_HOURS } from "@/lib/constants";
-import { getWeekStartDay } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
 
 const TASK_CATEGORY = z.enum([
@@ -109,7 +109,13 @@ export async function createSprintWithTasks(
     return { ok: false, error: tasksError.message };
   }
 
-  await awardXp(supabase, user.id, "sprint_created", sprint.id);
+  await awardTrackedXp(
+    supabase,
+    user.id,
+    "sprint_created",
+    sprint.id,
+    await todayIsoLocal()
+  );
 
   revalidatePath("/sprint/setup");
   revalidatePath("/dashboard");

@@ -142,7 +142,7 @@ async function awardProteinGoal(
   const total = (items ?? []).reduce((s, i) => s + Number(i.protein_g), 0);
   if (total < profile.daily_protein_g_goal) return 0;
 
-  return awardXp(supabase, ownerId, "protein_goal", logDate);
+  return awardXp(supabase, ownerId, "protein_goal", logDate, logDate);
 }
 
 /** Find or create the meal a food should land in. */
@@ -255,7 +255,8 @@ export async function saveMeal(
     ctx.supabase,
     ctx.user.id,
     "meal_logged",
-    `${logDate}:${type}`
+    `${logDate}:${type}`,
+    logDate
   );
   const proteinXp = await awardProteinGoal(ctx.supabase, ctx.user.id, logDate);
 
@@ -338,7 +339,8 @@ export async function logFood(
     ctx.supabase,
     ctx.user.id,
     "meal_logged",
-    `${parsed.data.logDate}:${parsed.data.mealType}`
+    `${parsed.data.logDate}:${parsed.data.mealType}`,
+    parsed.data.logDate
   );
   const proteinXp = await awardProteinGoal(
     ctx.supabase,
@@ -413,7 +415,8 @@ export async function logTemplate(
     ctx.supabase,
     ctx.user.id,
     "meal_logged",
-    `${parsed.data.logDate}:${parsed.data.mealType}`
+    `${parsed.data.logDate}:${parsed.data.mealType}`,
+    parsed.data.logDate
   );
   const proteinXp = await awardProteinGoal(
     ctx.supabase,

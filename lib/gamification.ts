@@ -20,7 +20,9 @@ export const XP = {
   sprint_created: 20,
   weekly_reflection: 30,
   weekly_target_hit: 25,
-  todo_done: 5,
+  // Was 5 and uncapped, which is what let the notes page alone carry an
+  // account to level 6 without a single tracked day. See DAILY_AWARD_CAP.
+  todo_done: 3,
   // Health. Logging a weigh-in is worth less than a workout because it costs
   // one number, but it is worth something: the trend line is useless with
   // gaps in it, and the point of the XP is to keep the habit daily.
@@ -47,6 +49,40 @@ export const TIME_LOG_XP_DAILY_CAP = 10;
 export type XpReason = keyof typeof XP;
 
 /**
+ * Awards that only pay out on a day the user actually tracked.
+ *
+ * These are worth real XP but none of them is itself an act of tracking: you
+ * can tick todos, tick off goal steps and plan a sprint all week without ever
+ * recording how a single day went. They pay nothing on an untracked day, and
+ * nothing is banked — log the day first, then tick things off.
+ *
+ * `priority_done` is deliberately absent: priorities live inside the daily log
+ * and completing one already requires a wrap-up, so it is gated by
+ * construction. The check-in, wrap-up, time, health and journal awards are the
+ * tracking itself and can never be gated on it.
+ */
+const TRACKED_DAY_ONLY: ReadonlySet<XpReason> = new Set<XpReason>([
+  "todo_done",
+  "goal_step",
+  "goal_checkin",
+  "goal_done",
+  "sprint_created",
+]);
+
+/**
+ * Most XP a single reason can earn in one day. Absent means uncapped, which is
+ * safe only where the action is naturally bounded (one check-in a day, one
+ * wrap-up, one weekly reflection).
+ */
+export const DAILY_AWARD_CAP: Partial<Record<XpReason, number>> = {
+  // 5 todos a day is a real day's list; beyond that the page is a notepad,
+  // and a notepad should not out-earn tracking your day.
+  todo_done: 5,
+  goal_step: 2,
+  goal_checkin: 3,
+};
+
+/**
  * Idempotent XP award: the (owner, dedupe_key) unique constraint means a
  * retried or re-saved action never double-awards. Failures are swallowed —
  * gamification must never break the underlying action.
@@ -56,7 +92,8 @@ export async function awardXp(
   supabase: Client,
   ownerId: string,
   reason: XpReason,
-  dedupeKey: string
+  dedupeKey: string,
+  earnedOn?: string
 ): Promise<number> {
   try {
     const { error } = await supabase.from("xp_events").insert({
@@ -64,10 +101,74 @@ export async function awardXp(
       amount: XP[reason],
       reason,
       dedupe_key: `${reason}:${dedupeKey}`,
+      // Omitted rather than null when the caller has no date to hand: the
+      // column defaults to current_date, which is only wrong for the handful
+      // of legacy callers that don't know the user's local day.
+      ...(earnedOn ? { earned_on: earnedOn } : {}),
     });
     return error ? 0 : XP[reason];
   } catch {
     return 0;
+  }
+}
+
+/**
+ * Award that pays out only on a day the user tracked, and only while that
+ * day is under this reason's daily cap.
+ *
+ * Both checks fail closed to "no XP", never to an error: as with awardXp, a
+ * gamification problem must not break the action the user actually took. The
+ * underlying todo still ticks, the goal step still completes.
+ *
+ * `date` is the user's local day (todayIsoLocal()), not a UTC date — an IST
+ * evening and the UTC date it falls in are different days.
+ */
+export async function awardTrackedXp(
+  supabase: Client,
+  ownerId: string,
+  reason: XpReason,
+  dedupeKey: string,
+  date: string
+): Promise<number> {
+  try {
+    if (TRACKED_DAY_ONLY.has(reason)) {
+      const { data: tracked, error } = await supabase.rpc("day_is_tracked", {
+        d: date,
+      });
+      if (error || !tracked) return 0;
+    }
+
+    const cap = DAILY_AWARD_CAP[reason];
+    if (cap !== undefined) {
+      const { count, error } = await supabase
+        .from("xp_events")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", ownerId)
+        .eq("reason", reason)
+        .eq("earned_on", date);
+      if (error) return 0;
+      if ((count ?? 0) >= cap) return 0;
+    }
+
+    return await awardXp(supabase, ownerId, reason, dedupeKey, date);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Whether a gated award would pay out right now — for UI that wants to say
+ * "log your day to start earning again" instead of silently granting nothing.
+ */
+export async function dayIsTracked(
+  supabase: Client,
+  date: string
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc("day_is_tracked", { d: date });
+    return error ? false : Boolean(data);
+  } catch {
+    return false;
   }
 }
 
@@ -108,6 +209,7 @@ export async function awardTimeLogXp(
       amount: delta,
       reason: "time_entry",
       dedupe_key: `time_entry:day:${date}:${target}`,
+      earned_on: date,
     });
     return error ? 0 : delta;
   } catch {

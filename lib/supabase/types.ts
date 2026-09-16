@@ -930,6 +930,7 @@ export type Database = {
           amount: number
           reason: string
           dedupe_key: string
+          earned_on: string
           created_at: string
         }
         Insert: {
@@ -938,6 +939,7 @@ export type Database = {
           amount: number
           reason: string
           dedupe_key: string
+          earned_on?: string
           created_at?: string
         }
         Update: {
@@ -946,6 +948,7 @@ export type Database = {
           amount?: number
           reason?: string
           dedupe_key?: string
+          earned_on?: string
           created_at?: string
         }
         Relationships: [
@@ -1733,6 +1736,7 @@ export type Database = {
       is_reviewer_of: { Args: { target_owner: string }; Returns: boolean }
       total_xp: { Args: Record<string, never>; Returns: number }
       gamification_stats: { Args: Record<string, never>; Returns: Json }
+      day_is_tracked: { Args: { d: string }; Returns: boolean }
     }
     Enums: {
       comment_target_type: "daily_log" | "sprint" | "goal" | "journal_entry"

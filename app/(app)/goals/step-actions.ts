@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { awardXp } from "@/lib/gamification";
+import { awardTrackedXp } from "@/lib/gamification";
+import { todayIsoLocal } from "@/lib/dates";
 import type { GoalResult } from "./actions";
 
 const uuid = z.string().uuid();
@@ -64,7 +65,15 @@ export async function setGoalStepDone(stepId: string, done: boolean): Promise<Go
   if (error || !data) return { ok: false, error: "Couldn't update the step. Try again." };
 
   // Keyed on the step, so unticking and ticking again never pays twice.
-  const xp = done ? await awardXp(ctx.supabase, ctx.user.id, "goal_step", stepId) : 0;
+  const xp = done
+    ? await awardTrackedXp(
+        ctx.supabase,
+        ctx.user.id,
+        "goal_step",
+        stepId,
+        await todayIsoLocal()
+      )
+    : 0;
   revalidateGoal(data.goal_id);
   return { ok: true, xp };
 }

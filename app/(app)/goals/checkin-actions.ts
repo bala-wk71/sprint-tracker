@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { awardXp } from "@/lib/gamification";
+import { awardTrackedXp } from "@/lib/gamification";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
 import { formatValue } from "@/lib/goals/progress";
@@ -82,7 +82,13 @@ export async function checkInOnGoal(input: z.input<typeof checkInSchema>): Promi
 
   // Once per goal per week: checking in daily is fine, but it pays weekly.
   const weekStart = weekStartIsoOf(today, await getWeekStartDay());
-  const xp = await awardXp(supabase, user.id, "goal_checkin", `${goal.id}:${weekStart}`);
+  const xp = await awardTrackedXp(
+    supabase,
+    user.id,
+    "goal_checkin",
+    `${goal.id}:${weekStart}`,
+    today
+  );
 
   revalidatePath(`/goals/${goal.id}`);
   revalidatePath("/goals");
