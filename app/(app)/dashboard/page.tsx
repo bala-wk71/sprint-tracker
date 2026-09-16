@@ -3,6 +3,7 @@ import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekEndIsoOf, weekStartIsoOf } from "@/lib/week";
 import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { GamificationHero } from "@/components/dashboard/GamificationHero";
+import { DecayWarning } from "@/components/dashboard/DecayWarning";
 import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
 import { AchievementSync } from "@/components/dashboard/AchievementSync";
 import { WagerCard, type WagerSummary } from "@/components/dashboard/WagerCard";
@@ -114,6 +115,10 @@ export default async function DashboardPage({
         </div>
         <WeekNav weekStart={weekStart} currentWeekStart={currentWeekStart} />
       </div>
+      <DecayWarning
+        trackedDates={stats.tracked_dates ?? []}
+        todayIso={todayIso}
+      />
       <GamificationHero
         level={level}
         daily={dailyStreak}

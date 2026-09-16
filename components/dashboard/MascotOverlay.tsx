@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { resolveWagers } from "@/app/(app)/dashboard/wager-actions";
+import { applyXpDecay } from "@/app/(app)/dashboard/gamification-actions";
 import { getLastSeenXp, setLastSeenXp } from "@/lib/xpVisit";
 import { pickMascotArt, type MascotMood as Mood } from "@/lib/mascotArt";
 
@@ -40,11 +41,14 @@ export function MascotOverlay() {
     const show = (mood: Mood, headline: string, detail: string) =>
       setScene({ mood, headline, detail, art: pickMascotArt(mood) });
 
-    resolveWagers()
-      .then(({ resolutions, totalXp }) => {
+    // Decay settles first so the wager reads a post-bleed balance and the
+    // mascot never reports an XP total the page is about to contradict.
+    applyXpDecay()
+      .then((decay) => resolveWagers().then((wagers) => ({ decay, wagers })))
+      .then(({ decay, wagers: { resolutions, totalXp } }) => {
         const lastSeen = getLastSeenXp();
         setLastSeenXp(totalXp);
-        if (resolutions.length > 0) {
+        if (resolutions.length > 0 || decay.applied > 0) {
           router.refresh();
         }
 
@@ -61,6 +65,12 @@ export function MascotOverlay() {
             "happy",
             "Wager won!",
             `All 7 days logged — +${won.payout} XP paid out. That's how it's done!`
+          );
+        } else if (decay.applied > 0) {
+          show(
+            "sad",
+            `-${decay.applied} XP while you were away`,
+            `${decay.days} ${decay.days === 1 ? "day" : "days"} went untracked. Log today and it stops.`
           );
         } else if (lastSeen !== null && totalXp > lastSeen) {
           show(

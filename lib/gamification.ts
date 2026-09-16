@@ -264,6 +264,134 @@ export function wagerOutcome(
 }
 
 // ----------------------------------------------------------------------
+// XP decay
+// ----------------------------------------------------------------------
+
+/**
+ * The day every balance was zeroed. Decay never reaches back past it — the
+ * ledger before it describes an economy that no longer exists.
+ */
+export const XP_RESET_DATE = "2026-09-16";
+
+/** Untracked days forgiven at the start of every gap. */
+export const XP_DECAY_GRACE_DAYS = 2;
+/** Share of the running total each charged day costs. */
+export const XP_DECAY_RATE = 0.02;
+/** Floor on a single day's charge, so small balances still feel it. */
+export const XP_DECAY_MIN = 5;
+/**
+ * How far back a first run will reach. Someone returning after a year away
+ * should not be met with 300 decay rows and a wiped balance — the point is to
+ * keep the recent record honest, not to punish the whole absence.
+ */
+export const XP_DECAY_LOOKBACK_DAYS = 90;
+
+export type XpDecayCharge = { date: string; amount: number };
+
+export type XpDecayPlan = {
+  /** Days that need a new negative ledger row, oldest first. */
+  charges: XpDecayCharge[];
+  /** Total once these charges land. */
+  totalAfter: number;
+};
+
+/**
+ * Work out what an inactive stretch costs.
+ *
+ * Percentage of the running total rather than a flat rate, so it scales with
+ * what there is to lose: a Lighthouse account bleeds real points while a
+ * beginner barely notices. It compounds day by day and clamps at zero, so a
+ * long absence erodes the balance without ever wiping it.
+ *
+ * Pure and idempotent. `chargedDates` are days that already have a decay row;
+ * they are skipped rather than recomputed, because `totalXp` is the current
+ * total and so already reflects them. Re-running with the rows from a previous
+ * run produces no new charges.
+ *
+ * Today is never charged — it isn't over yet, matching the rule
+ * computeShieldedStreak() already applies to the streak.
+ */
+export function planXpDecay({
+  trackedDates,
+  todayIso,
+  totalXp,
+  chargedDates,
+  notBefore,
+}: {
+  trackedDates: string[];
+  todayIso: string;
+  totalXp: number;
+  chargedDates: string[];
+  /** Never charge days before this — the XP reset, for the first run. */
+  notBefore: string;
+}): XpDecayPlan {
+  const tracked = new Set(trackedDates);
+  const charged = new Set(chargedDates);
+
+  // An account that has never tracked anything has nothing to bleed. Without
+  // this, a new user who signs up and looks around would start losing XP
+  // before they had a chance to log their first day.
+  if (tracked.size === 0) return { charges: [], totalAfter: totalXp };
+
+  const first = [...trackedDates].sort()[0];
+  const yesterday = addDays(todayIso, -1);
+  const lookbackStart = addDays(todayIso, -XP_DECAY_LOOKBACK_DAYS);
+  const earliest = notBefore > lookbackStart ? notBefore : lookbackStart;
+
+  const charges: XpDecayCharge[] = [];
+  let running = totalXp;
+  let gap = 0;
+
+  // The walk starts at the first tracked day rather than at `earliest` so the
+  // gap counter is correct: a gap that began before the chargeable window
+  // still counts towards the grace period.
+  for (let d = first; d <= yesterday; d = addDays(d, 1)) {
+    if (tracked.has(d)) {
+      gap = 0;
+      continue;
+    }
+    gap++;
+    if (gap <= XP_DECAY_GRACE_DAYS) continue;
+    if (d < earliest) continue;
+    if (charged.has(d)) continue;
+    if (running <= 0) continue;
+
+    const amount = Math.min(
+      running,
+      Math.max(XP_DECAY_MIN, Math.round(running * XP_DECAY_RATE))
+    );
+    charges.push({ date: d, amount });
+    running -= amount;
+  }
+
+  return { charges, totalAfter: running };
+}
+
+/**
+ * How many days in a row, ending yesterday, went untracked. 0 when yesterday
+ * was tracked. Drives the dashboard warning, so someone can be told the bleed
+ * is coming rather than only discovering it afterwards.
+ */
+export function untrackedRun(trackedDates: string[], todayIso: string): number {
+  if (trackedDates.length === 0) return 0;
+  const tracked = new Set(trackedDates);
+  // Tracking today ends the gap as far as the warning is concerned. Decay
+  // itself still charges the days already missed — this only answers "should
+  // we be nagging them right now", and the answer is no.
+  if (tracked.has(todayIso)) return 0;
+
+  const first = [...trackedDates].sort()[0];
+  let run = 0;
+  // Stopping at the first tracked day keeps the count to the account's own
+  // history rather than the beginning of time.
+  for (let d = addDays(todayIso, -1); d >= first; d = addDays(d, -1)) {
+    if (tracked.has(d)) break;
+    run++;
+  }
+  return run;
+}
+
+// ----------------------------------------------------------------------
 // Levels
 // ----------------------------------------------------------------------
 
@@ -736,6 +864,12 @@ export type GamificationStats = {
   checkins_count?: number;
   goals_done?: number;
   long_view_goals?: number;
+  /**
+   * Every date the user recorded something about that day (stats v5) — the
+   * set form of day_is_tracked(). Optional so a stale RPC response stays safe
+   * to read; an absent value simply means no decay is computed that render.
+   */
+  tracked_dates?: string[];
 };
 
 /** Longest run of consecutive dates (no shields — raw discipline). */
