@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   generateResponse,
-  streamResponse,
+  streamWithTools,
   type GeminiMessage,
 } from "@/lib/ai/gemini";
-import { gatherChatContext } from "@/lib/ai/context";
+import { gatherBriefing } from "@/lib/ai/context";
+import {
+  runTool,
+  toolDeclarations,
+  type ToolContext,
+  type ToolTrace,
+} from "@/lib/ai/tools";
 import { getChatPrompt, type AiPersona } from "@/lib/ai/prompts";
 import { toWeekStartDay } from "@/lib/week";
+import { todayIsoLocal } from "@/lib/dates";
 
 const COMPACT_THRESHOLD_MESSAGES = 50;
 const COMPACT_THRESHOLD_CHARS = 100_000;
@@ -145,18 +152,30 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("ai_persona, week_start_day")
+    .select("ai_persona, week_start_day, coach_reads_journal")
     .eq("id", user.id)
     .single();
   const persona: AiPersona = profile?.ai_persona ?? "rational";
+  const readsJournal = profile?.coach_reads_journal ?? false;
+  const weekStartDay = toWeekStartDay(profile?.week_start_day);
+  const todayIso = await todayIsoLocal();
 
-  const dataContext = await gatherChatContext(
+  const toolCtx: ToolContext = {
+    supabase,
+    userId: user.id,
+    todayIso,
+    weekStartDay,
+    readsJournal,
+  };
+
+  const briefing = await gatherBriefing(
     supabase,
     user.id,
-    toWeekStartDay(profile?.week_start_day)
+    todayIso,
+    weekStartDay
   );
 
-  const systemInstruction = `${getChatPrompt(persona)}\n\n## User's Current Data\n${dataContext}`;
+  const systemInstruction = `${getChatPrompt(persona, readsJournal)}\n\n## Briefing\n${briefing}`;
 
   const geminiMessages: GeminiMessage[] = [];
 
@@ -188,13 +207,28 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let answer = "";
+      const trace: ToolTrace[] = [];
+
       try {
-        for await (const chunk of streamResponse(
+        for await (const event of streamWithTools(
           systemInstruction,
-          geminiMessages
+          geminiMessages,
+          toolDeclarations(toolCtx),
+          async (name, args) => runTool(toolCtx, name, args)
         )) {
-          answer += chunk;
-          controller.enqueue(encoder.encode(sse({ t: chunk })));
+          if (event.type === "text") {
+            answer += event.text;
+            controller.enqueue(encoder.encode(sse({ t: event.text })));
+          } else if (event.type === "reset") {
+            // What was streamed turned out to be preamble before a lookup.
+            answer = "";
+            controller.enqueue(encoder.encode(sse({ reset: true })));
+          } else {
+            trace.push({ name: event.name, summary: event.summary });
+            controller.enqueue(
+              encoder.encode(sse({ tool: event.summary }))
+            );
+          }
         }
       } catch (err) {
         const message =
@@ -211,6 +245,7 @@ export async function POST(req: NextRequest) {
           conversation_id: conversation.id,
           role: "assistant",
           content: answer,
+          tool_calls: trace.length > 0 ? trace : null,
         });
         await supabase
           .from("ai_conversations")

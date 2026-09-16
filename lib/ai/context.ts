@@ -478,3 +478,65 @@ async function getWeekDailyLogs(
 
   return result;
 }
+
+/**
+ * The small always-on header the coach gets every turn.
+ *
+ * gatherChatContext() above rebuilds an entire snapshot — current sprint, last
+ * sprint, today's log, fourteen days of history, health and goals — on every
+ * single message. That is a lot of tokens to spend on "what should I do
+ * today?", and it still cannot answer "how did June compare to July", because
+ * the window simply doesn't reach. With tools available, the coach only needs
+ * enough to orient itself and know what is worth looking up.
+ */
+export async function gatherBriefing(
+  supabase: Client,
+  userId: string,
+  todayIso: string,
+  weekStartDay: WeekStartDay = DEFAULT_WEEK_START_DAY
+): Promise<string> {
+  const weekStart = weekStartIsoOf(todayIso, weekStartDay);
+
+  const [{ data: tracked }, sprint, { data: goals }] = await Promise.all([
+    supabase.rpc("day_is_tracked", { d: todayIso }),
+    getCurrentSprint(supabase, userId, weekStart),
+    supabase
+      .from("goals")
+      .select("title, target_date")
+      .eq("owner_id", userId)
+      .eq("status", "active")
+      .order("target_date", { ascending: true })
+      .limit(8),
+  ]);
+
+  const lines = [
+    `Today is ${todayIso}. The user's week starts ${weekStart}.`,
+    tracked
+      ? "They have already recorded something for today."
+      : "They have not recorded anything for today yet.",
+  ];
+
+  if (sprint) {
+    const target = sprint.tasks.reduce((s, t) => s + t.target_hours, 0);
+    const logged = sprint.tasks.reduce((s, t) => s + (t.logged_hours ?? 0), 0);
+    const pct = target > 0 ? Math.round((logged / target) * 100) : 0;
+    lines.push(
+      `This week's sprint: ${sprint.tasks.length} tasks, ${logged.toFixed(1)}h of ${target}h planned (${pct}%).`
+    );
+  } else {
+    lines.push("No sprint planned for this week.");
+  }
+
+  const active = goals ?? [];
+  lines.push(
+    active.length > 0
+      ? `Active goals: ${active.map((g) => `${g.title} (by ${g.target_date})`).join("; ")}.`
+      : "No active goals."
+  );
+
+  lines.push(
+    "Everything else — past days, weeks, health, todos, goal detail, XP — is available through your tools."
+  );
+
+  return lines.join("\n");
+}

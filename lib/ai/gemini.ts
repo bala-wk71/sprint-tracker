@@ -9,9 +9,27 @@ const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
+/**
+ * A part is text, a function the model wants called, or the result we hand
+ * back. Callers that only ever build `{ text }` are unaffected — the union is
+ * a widening, and the optional keys keep existing object literals assignable.
+ */
+type GeminiPart = {
+  text?: string;
+  functionCall?: { name: string; args?: Record<string, unknown> };
+  functionResponse?: { name: string; response: Record<string, unknown> };
+};
+
 type GeminiMessage = {
   role: "user" | "model";
-  parts: { text: string }[];
+  parts: GeminiPart[];
+};
+
+/** A tool the model may call, in the shape the REST API expects. */
+type GeminiTool = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
 };
 
 /**
@@ -40,7 +58,7 @@ const DEFAULT_CONFIG: GenerationConfig = {
 type GeminiResponse = {
   candidates: {
     content: {
-      parts: { text: string }[];
+      parts: GeminiPart[];
     };
     finishReason?: string;
   }[];
@@ -203,32 +221,43 @@ export async function generateJson(
 }
 
 /**
- * Streaming variant of generateResponse, yielding text as the model writes it.
+ * Open a streaming generation and yield each decoded chunk.
  *
- * Chat is the one caller that benefits: a coach answer can run several hundred
- * tokens behind a thinking pass, and watching it arrive beats a spinner that
- * sits still for fifteen seconds. Everything that persists prose — cleaned-up
- * notes, goal reviews — stays on generateResponse, where truncation can be
- * detected before the text is saved.
- *
- * Streaming works on the ordinary Node runtime; it needs no edge runtime.
- *
- * Model fallback only applies before the first byte. Once the stream is open a
+ * Model fallback applies only before the first byte. Once the stream is open a
  * failure ends it, because the caller has already rendered a partial answer
  * and restarting on another model would rewrite it mid-sentence.
+ *
+ * Streaming works on the ordinary Node runtime; it needs no edge runtime.
  */
-export async function* streamResponse(
+/** Pull the JSON payloads out of one SSE event block. */
+function* parseEvent(event: string): Generator<GeminiResponse> {
+  for (const line of event.split("\n")) {
+    if (!line.startsWith("data:")) continue;
+    const payload = line.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      yield JSON.parse(payload) as GeminiResponse;
+    } catch {
+      // A malformed event is not worth killing a good stream over.
+    }
+  }
+}
+
+async function* openStream(
   systemInstruction: string,
   messages: GeminiMessage[],
-  options: { temperature?: number; maxOutputTokens?: number } = {}
-): AsyncGenerator<string, void, unknown> {
+  generationConfig: GenerationConfig,
+  tools: GeminiTool[]
+): AsyncGenerator<GeminiResponse, void, unknown> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
-  const generationConfig: GenerationConfig = {
-    temperature: options.temperature ?? DEFAULT_CONFIG.temperature,
-    maxOutputTokens: options.maxOutputTokens ?? DEFAULT_CONFIG.maxOutputTokens,
+  const body: Record<string, unknown> = {
+    system_instruction: { parts: [{ text: systemInstruction }] },
+    contents: messages,
+    generationConfig,
   };
+  if (tools.length > 0) body.tools = [{ function_declarations: tools }];
 
   let lastError = "";
 
@@ -242,11 +271,7 @@ export async function* streamResponse(
       res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemInstruction }] },
-          contents: messages,
-          generationConfig,
-        }),
+        body: JSON.stringify(body),
       });
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
@@ -262,31 +287,40 @@ export async function* streamResponse(
     const decoder = new TextDecoder();
     let buffer = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+    // Gemini terminates SSE events with CRLF CRLF, not LF LF. Splitting on
+    // "\n\n" alone matches nothing against "\r\n\r\n", which silently drops
+    // every event and yields an empty stream — normalise before framing.
+    const consume = function* (
+      chunk: string,
+      flush: boolean
+    ): Generator<GeminiResponse> {
+      buffer += chunk.replace(/\r\n/g, "\n");
 
-      // SSE events are separated by a blank line; a chunk can split one in
-      // half, so only whole events are consumed and the remainder is kept.
+      // A chunk can split an event in half, so only whole events are taken
+      // and the remainder is kept for the next read. On flush, whatever is
+      // left is treated as a final event: the last one need not be
+      // blank-line terminated.
       let sep = buffer.indexOf("\n\n");
       while (sep !== -1) {
         const event = buffer.slice(0, sep);
         buffer = buffer.slice(sep + 2);
-        for (const line of event.split("\n")) {
-          if (!line.startsWith("data:")) continue;
-          const payload = line.slice(5).trim();
-          if (!payload || payload === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(payload) as GeminiResponse;
-            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) yield text;
-          } catch {
-            // A malformed event is not worth killing a good stream over.
-          }
-        }
+        yield* parseEvent(event);
         sep = buffer.indexOf("\n\n");
       }
+      if (flush && buffer.trim()) {
+        const rest = buffer;
+        buffer = "";
+        yield* parseEvent(rest);
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        yield* consume("", true);
+        break;
+      }
+      yield* consume(decoder.decode(value, { stream: true }), false);
     }
     return;
   }
@@ -294,4 +328,105 @@ export async function* streamResponse(
   throw readableFailure(lastError, new Error(lastError));
 }
 
-export type { GeminiMessage, ResponseSchema };
+/** Runs one tool call and returns the text to hand back to the model. */
+export type ToolRunner = (
+  name: string,
+  args: Record<string, unknown>
+) => Promise<{ text: string; summary: string }>;
+
+export type StreamEvent =
+  | { type: "text"; text: string }
+  | { type: "tool"; name: string; summary: string }
+  /** Discard any text emitted so far: it was preamble before a lookup. */
+  | { type: "reset" };
+
+/** Lookups the model may chain before it has to answer. */
+const DEFAULT_MAX_HOPS = 4;
+
+/**
+ * Streaming generation with function calling.
+ *
+ * Each hop opens a stream. Text is emitted as it arrives, because the common
+ * case is a hop that answers directly and buffering it would defeat the point.
+ * If that hop turns out to have asked for a tool instead, a `reset` event tells
+ * the caller to drop whatever preamble it showed, the tools are run, their
+ * results are appended, and the next hop starts.
+ *
+ * The hop ceiling matters on Gemini's free tier: a turn costs one request per
+ * hop against a ~15/minute budget. When it is reached the model is asked once
+ * more with no tools at all, which forces it to answer from what it has rather
+ * than ending the turn on an unanswered tool call.
+ */
+export async function* streamWithTools(
+  systemInstruction: string,
+  messages: GeminiMessage[],
+  tools: GeminiTool[],
+  run: ToolRunner,
+  options: {
+    temperature?: number;
+    maxOutputTokens?: number;
+    maxHops?: number;
+  } = {}
+): AsyncGenerator<StreamEvent, void, unknown> {
+  const generationConfig: GenerationConfig = {
+    temperature: options.temperature ?? DEFAULT_CONFIG.temperature,
+    maxOutputTokens: options.maxOutputTokens ?? DEFAULT_CONFIG.maxOutputTokens,
+  };
+  const maxHops = options.maxHops ?? DEFAULT_MAX_HOPS;
+  const convo = [...messages];
+
+  for (let hop = 0; hop <= maxHops; hop++) {
+    // The last pass drops the tools, so the model has to produce prose.
+    const hopTools = hop < maxHops ? tools : [];
+
+    const calls: { name: string; args: Record<string, unknown> }[] = [];
+    let emittedText = false;
+
+    for await (const chunk of openStream(
+      systemInstruction,
+      convo,
+      generationConfig,
+      hopTools
+    )) {
+      for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+        if (part.functionCall?.name) {
+          calls.push({
+            name: part.functionCall.name,
+            args: part.functionCall.args ?? {},
+          });
+        } else if (part.text) {
+          emittedText = true;
+          yield { type: "text", text: part.text };
+        }
+      }
+    }
+
+    if (calls.length === 0) return;
+
+    // This hop was a lookup after all; anything already shown was preamble.
+    if (emittedText) yield { type: "reset" };
+
+    convo.push({
+      role: "model",
+      parts: calls.map((c) => ({
+        functionCall: { name: c.name, args: c.args },
+      })),
+    });
+
+    const responses: GeminiPart[] = [];
+    for (const call of calls) {
+      const result = await run(call.name, call.args);
+      yield { type: "tool", name: call.name, summary: result.summary };
+      responses.push({
+        functionResponse: {
+          name: call.name,
+          response: { result: result.text },
+        },
+      });
+    }
+
+    convo.push({ role: "user", parts: responses });
+  }
+}
+
+export type { GeminiMessage, GeminiTool, ResponseSchema };

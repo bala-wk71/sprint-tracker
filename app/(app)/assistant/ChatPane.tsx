@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Bot, Send, Sparkles, User } from "lucide-react";
+import { Bot, Search, Send, Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/shared/Markdown";
 import { createThread } from "./actions";
@@ -43,6 +43,7 @@ export function ChatPane({
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [draft, setDraft] = useState("");
+  const [lookups, setLookups] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -70,6 +71,7 @@ export function ChatPane({
     setError(null);
     setStreaming(true);
     setDraft("");
+    setLookups([]);
 
     // The first message in a brand-new session has no thread to land in.
     // Create one titled from the message rather than making the user press
@@ -112,6 +114,7 @@ export function ChatPane({
       const decoder = new TextDecoder();
       let buffer = "";
       let answer = "";
+      const used: string[] = [];
 
       // Same SSE framing the server writes: one JSON object per `data:` line,
       // events separated by a blank line.
@@ -131,10 +134,22 @@ export function ChatPane({
             try {
               const msg = JSON.parse(payload) as {
                 t?: string;
+                tool?: string;
+                reset?: boolean;
                 error?: string;
                 done?: boolean;
               };
               if (msg.error) throw new Error(msg.error);
+              if (msg.reset) {
+                // That text was preamble before a lookup; drop it so the
+                // real answer doesn't read as a continuation of it.
+                answer = "";
+                setDraft("");
+              }
+              if (msg.tool) {
+                used.push(msg.tool);
+                setLookups([...used]);
+              }
               if (msg.t) {
                 answer += msg.t;
                 setDraft(answer);
@@ -155,11 +170,12 @@ export function ChatPane({
           id: crypto.randomUUID(),
           role: "assistant",
           content: answer,
-          tool_calls: null,
+          tool_calls: used.length > 0 ? used.map((summary) => ({ summary })) : null,
           created_at: new Date().toISOString(),
         },
       ]);
       setDraft("");
+      setLookups([]);
 
       // Pull in the server's state: the thread's title and its position in the
       // rail both move once a message lands.
@@ -167,6 +183,7 @@ export function ChatPane({
       else router.refresh();
     } catch (err) {
       setDraft("");
+      setLookups([]);
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setStreaming(false);
@@ -233,14 +250,23 @@ export function ChatPane({
                   id: "streaming",
                   role: "assistant",
                   content: draft,
-                  tool_calls: null,
+                  tool_calls: lookups.map((summary) => ({ summary })),
                   created_at: new Date().toISOString(),
                 }}
                 pending
               />
             )}
 
-            {streaming && !draft && (
+            {streaming && !draft && lookups.length > 0 && (
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Bot className="h-4 w-4 text-primary" />
+                </div>
+                <Lookups items={lookups} live />
+              </div>
+            )}
+
+            {streaming && !draft && lookups.length === 0 && (
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <Bot className="h-4 w-4 text-primary" />
@@ -303,6 +329,7 @@ function MessageBubble({
   pending?: boolean;
 }) {
   const isUser = message.role === "user";
+  const lookups = readLookups(message.tool_calls);
   // Timestamps are timezone-dependent, so the server-rendered text can differ
   // from the client's and trip hydration. Render them client-only.
   const mounted = useSyncExternalStore(
@@ -341,6 +368,11 @@ function MessageBubble({
           ) : (
             <Markdown content={message.content} />
           )}
+          {!isUser && lookups.length > 0 && (
+            <div className="mt-2.5 border-t border-border/50 pt-2">
+              <Lookups items={lookups} />
+            </div>
+          )}
         </div>
         {!pending && (
           <p className="mt-1 min-h-[15px] px-1 text-[10px] text-muted-foreground/70">
@@ -348,6 +380,51 @@ function MessageBubble({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * tool_calls is jsonb, so anything could be in there — rows written before
+ * tool calling existed hold null, and a hand-edited row could hold anything.
+ * Read defensively and show nothing rather than throwing inside a message.
+ */
+function readLookups(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) =>
+      entry && typeof entry === "object" && "summary" in entry
+        ? String((entry as { summary: unknown }).summary)
+        : null
+    )
+    .filter((s): s is string => Boolean(s));
+}
+
+/**
+ * What the coach went and read to answer. Grounding you can check beats a
+ * confident paragraph you have to take on trust — and when it says "no logs
+ * for that week", this is what shows it actually looked.
+ */
+function Lookups({ items, live = false }: { items: string[]; live?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-1.5",
+        live && "rounded-lg bg-muted/50 px-4 py-3"
+      )}
+    >
+      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <Search className={cn("h-3 w-3", live && "animate-pulse")} />
+        {live ? "Reading" : "Read"}
+      </span>
+      {items.map((item, i) => (
+        <span
+          key={`${item}-${i}`}
+          className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground"
+        >
+          {item}
+        </span>
+      ))}
     </div>
   );
 }
