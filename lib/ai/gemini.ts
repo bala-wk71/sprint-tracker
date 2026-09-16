@@ -202,4 +202,96 @@ export async function generateJson(
   }
 }
 
+/**
+ * Streaming variant of generateResponse, yielding text as the model writes it.
+ *
+ * Chat is the one caller that benefits: a coach answer can run several hundred
+ * tokens behind a thinking pass, and watching it arrive beats a spinner that
+ * sits still for fifteen seconds. Everything that persists prose — cleaned-up
+ * notes, goal reviews — stays on generateResponse, where truncation can be
+ * detected before the text is saved.
+ *
+ * Streaming works on the ordinary Node runtime; it needs no edge runtime.
+ *
+ * Model fallback only applies before the first byte. Once the stream is open a
+ * failure ends it, because the caller has already rendered a partial answer
+ * and restarting on another model would rewrite it mid-sentence.
+ */
+export async function* streamResponse(
+  systemInstruction: string,
+  messages: GeminiMessage[],
+  options: { temperature?: number; maxOutputTokens?: number } = {}
+): AsyncGenerator<string, void, unknown> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+  const generationConfig: GenerationConfig = {
+    temperature: options.temperature ?? DEFAULT_CONFIG.temperature,
+    maxOutputTokens: options.maxOutputTokens ?? DEFAULT_CONFIG.maxOutputTokens,
+  };
+
+  let lastError = "";
+
+  for (const model of MODELS) {
+    const url =
+      `https://generativelanguage.googleapis.com/v1beta/models/` +
+      `${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemInstruction }] },
+          contents: messages,
+          generationConfig,
+        }),
+      });
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      continue;
+    }
+
+    if (!res.ok || !res.body) {
+      lastError = `Gemini ${model} ${res.status}: ${await res.text()}`;
+      continue;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE events are separated by a blank line; a chunk can split one in
+      // half, so only whole events are consumed and the remainder is kept.
+      let sep = buffer.indexOf("\n\n");
+      while (sep !== -1) {
+        const event = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        for (const line of event.split("\n")) {
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(payload) as GeminiResponse;
+            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) yield text;
+          } catch {
+            // A malformed event is not worth killing a good stream over.
+          }
+        }
+        sep = buffer.indexOf("\n\n");
+      }
+    }
+    return;
+  }
+
+  throw readableFailure(lastError, new Error(lastError));
+}
+
 export type { GeminiMessage, ResponseSchema };

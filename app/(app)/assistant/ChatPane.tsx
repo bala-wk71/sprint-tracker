@@ -1,21 +1,24 @@
 "use client";
 
 import {
+  useCallback,
+  useEffect,
   useRef,
   useState,
-  useEffect,
-  useCallback,
   useSyncExternalStore,
 } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Bot, Send, User, Sparkles } from "lucide-react";
+import { Bot, Send, Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/shared/Markdown";
+import { createThread } from "./actions";
 
-type Message = {
+export type ChatMessage = {
   id: string;
   role: string;
   content: string;
+  tool_calls: unknown;
   created_at: string;
 };
 
@@ -26,73 +29,147 @@ const SUGGESTIONS = [
   "Summarise yesterday's log",
 ];
 
-export function ChatInterface({
+export function ChatPane({
+  conversationId,
   initialMessages,
+  coachReadsJournal,
 }: {
-  initialMessages: Message[];
+  conversationId: string | null;
+  initialMessages: ChatMessage[];
+  coachReadsJournal: boolean;
 }) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const router = useRouter();
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages, draft, scrollToBottom]);
 
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
-    }
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [input]);
 
-  const sendMessage = async (messageText?: string) => {
+  const send = async (messageText?: string) => {
     const text = (messageText ?? input).trim();
-    if (!text || sending) return;
+    if (!text || streaming) return;
 
     setInput("");
     setError(null);
-    setSending(true);
+    setStreaming(true);
+    setDraft("");
 
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    // The first message in a brand-new session has no thread to land in.
+    // Create one titled from the message rather than making the user press
+    // "New chat" before they can say anything.
+    let id = conversationId;
+    if (!id) {
+      const created = await createThread(text);
+      if (!created.ok) {
+        setError(created.error);
+        setStreaming(false);
+        return;
+      }
+      id = created.id;
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: text,
+        tool_calls: null,
+        created_at: new Date().toISOString(),
+      },
+    ]);
 
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, conversationId: id }),
       });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `Request failed (${res.status})`);
       }
 
-      const data = await res.json();
-      const assistantMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: data.message,
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let answer = "";
+
+      // Same SSE framing the server writes: one JSON object per `data:` line,
+      // events separated by a blank line.
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let sep = buffer.indexOf("\n\n");
+        while (sep !== -1) {
+          const event = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          for (const line of event.split("\n")) {
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (!payload) continue;
+            try {
+              const msg = JSON.parse(payload) as {
+                t?: string;
+                error?: string;
+                done?: boolean;
+              };
+              if (msg.error) throw new Error(msg.error);
+              if (msg.t) {
+                answer += msg.t;
+                setDraft(answer);
+              }
+            } catch (err) {
+              if (err instanceof Error && err.message) throw err;
+            }
+          }
+          sep = buffer.indexOf("\n\n");
+        }
+      }
+
+      if (!answer.trim()) throw new Error("The coach didn't answer. Try again.");
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: answer,
+          tool_calls: null,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      setDraft("");
+
+      // Pull in the server's state: the thread's title and its position in the
+      // rail both move once a message lands.
+      if (!conversationId) router.replace(`/assistant?c=${id}`);
+      else router.refresh();
     } catch (err) {
+      setDraft("");
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
-      setSending(false);
+      setStreaming(false);
       textareaRef.current?.focus();
     }
   };
@@ -100,15 +177,16 @@ export function ChatInterface({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      send();
     }
   };
 
+  const empty = messages.length === 0 && !draft;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
-      {/* Messages area */}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-border bg-card">
       <div className="flex-1 overflow-y-auto p-4">
-        {messages.length === 0 ? (
+        {empty ? (
           <div className="flex h-full items-center justify-center">
             <div className="max-w-md text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-background">
@@ -118,19 +196,26 @@ export function ChatInterface({
                 Your Sprint Coach
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Ask about your sprints, daily logs, or productivity patterns —
-                answers are grounded in your actual data.
+                Ask about your sprints, days, health or goals — answers are
+                grounded in your actual data.
+                {!coachReadsJournal && (
+                  <>
+                    {" "}
+                    Your journal stays private until you turn that on in
+                    settings.
+                  </>
+                )}
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map((suggestion) => (
+                {SUGGESTIONS.map((s) => (
                   <button
-                    key={suggestion}
-                    onClick={() => sendMessage(suggestion)}
-                    disabled={sending}
+                    key={s}
+                    onClick={() => send(s)}
+                    disabled={streaming}
                     className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
                   >
                     <Sparkles className="h-3 w-3 text-primary" />
-                    {suggestion}
+                    {s}
                   </button>
                 ))}
               </div>
@@ -138,11 +223,24 @@ export function ChatInterface({
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+            {messages.map((m) => (
+              <MessageBubble key={m.id} message={m} />
             ))}
 
-            {sending && (
+            {draft && (
+              <MessageBubble
+                message={{
+                  id: "streaming",
+                  role: "assistant",
+                  content: draft,
+                  tool_calls: null,
+                  created_at: new Date().toISOString(),
+                }}
+                pending
+              />
+            )}
+
+            {streaming && !draft && (
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <Bot className="h-4 w-4 text-primary" />
@@ -155,19 +253,17 @@ export function ChatInterface({
               </div>
             )}
 
-            <div ref={messagesEndRef} />
+            <div ref={endRef} />
           </div>
         )}
       </div>
 
-      {/* Error */}
       {error && (
         <div className="mx-4 mb-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {error}
         </div>
       )}
 
-      {/* Input area */}
       <div className="border-t border-border bg-card p-4">
         <div className="flex items-end gap-3">
           <textarea
@@ -177,12 +273,12 @@ export function ChatInterface({
             onKeyDown={handleKeyDown}
             placeholder="Ask your coach..."
             rows={1}
-            disabled={sending}
+            disabled={streaming}
             className="max-h-40 min-h-[2.75rem] flex-1 resize-none rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           />
           <button
-            onClick={() => sendMessage()}
-            disabled={sending || !input.trim()}
+            onClick={() => send()}
+            disabled={streaming || !input.trim()}
             aria-label="Send message"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
           >
@@ -199,10 +295,16 @@ export function ChatInterface({
 
 const emptySubscribe = () => () => {};
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  pending = false,
+}: {
+  message: ChatMessage;
+  pending?: boolean;
+}) {
   const isUser = message.role === "user";
-  // Timestamps are timezone-dependent, so the server-rendered text can
-  // differ from the client's and trip hydration. Render them client-only.
+  // Timestamps are timezone-dependent, so the server-rendered text can differ
+  // from the client's and trip hydration. Render them client-only.
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -210,9 +312,7 @@ function MessageBubble({ message }: { message: Message }) {
   );
 
   return (
-    <div
-      className={cn("flex items-start gap-3", isUser && "flex-row-reverse")}
-    >
+    <div className={cn("flex items-start gap-3", isUser && "flex-row-reverse")}>
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
@@ -225,7 +325,7 @@ function MessageBubble({ message }: { message: Message }) {
           <Bot className="h-4 w-4 text-primary" />
         )}
       </div>
-      <div className={cn("max-w-[80%]", isUser && "text-right")}>
+      <div className={cn("min-w-0 max-w-[80%]", isUser && "text-right")}>
         <div
           className={cn(
             "rounded-lg px-4 py-3 text-left text-sm",
@@ -242,9 +342,11 @@ function MessageBubble({ message }: { message: Message }) {
             <Markdown content={message.content} />
           )}
         </div>
-        <p className="mt-1 min-h-[15px] px-1 text-[10px] text-muted-foreground/70">
-          {mounted ? format(new Date(message.created_at), "MMM d, HH:mm") : null}
-        </p>
+        {!pending && (
+          <p className="mt-1 min-h-[15px] px-1 text-[10px] text-muted-foreground/70">
+            {mounted ? format(new Date(message.created_at), "MMM d, HH:mm") : null}
+          </p>
+        )}
       </div>
     </div>
   );

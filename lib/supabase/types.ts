@@ -1135,18 +1135,27 @@ export type Database = {
         Row: {
           id: string
           user_id: string
+          title: string
+          last_message_at: string
+          archived_at: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           user_id: string
+          title?: string
+          last_message_at?: string
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           user_id?: string
+          title?: string
+          last_message_at?: string
+          archived_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1159,6 +1168,7 @@ export type Database = {
           role: string
           content: string
           is_summary: boolean
+          tool_calls: Json | null
           created_at: string
         }
         Insert: {
@@ -1167,6 +1177,7 @@ export type Database = {
           role: string
           content: string
           is_summary?: boolean
+          tool_calls?: Json | null
           created_at?: string
         }
         Update: {
@@ -1175,6 +1186,7 @@ export type Database = {
           role?: string
           content?: string
           is_summary?: boolean
+          tool_calls?: Json | null
           created_at?: string
         }
         Relationships: [
