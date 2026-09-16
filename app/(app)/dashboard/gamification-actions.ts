@@ -66,6 +66,12 @@ export type XpDecayResult = {
   untrackedDays: number;
   /** Untracked days still forgiven before the next one costs anything. */
   graceLeft: number;
+  /**
+   * The date of this user's XP reset, if their ledger has one. The mascot
+   * needs it to explain a zeroed balance as a reset rather than reporting it
+   * as XP the user lost.
+   */
+  resetOn: string | null;
 };
 
 const EMPTY_DECAY: XpDecayResult = {
@@ -74,6 +80,7 @@ const EMPTY_DECAY: XpDecayResult = {
   totalXp: 0,
   untrackedDays: 0,
   graceLeft: XP_DECAY_GRACE_DAYS,
+  resetOn: null,
 };
 
 /**
@@ -96,16 +103,28 @@ export async function applyXpDecay(): Promise<XpDecayResult> {
     const supabase = await createClient();
     const todayIso = await todayIsoLocal();
 
-    const [{ data: statsRaw }, { data: totalXpRaw }, { data: decayRows }] =
-      await Promise.all([
-        supabase.rpc("gamification_stats"),
-        supabase.rpc("total_xp"),
-        supabase
-          .from("xp_events")
-          .select("earned_on")
-          .eq("owner_id", user.id)
-          .eq("reason", "decay"),
-      ]);
+    const [
+      { data: statsRaw },
+      { data: totalXpRaw },
+      { data: decayRows },
+      { data: resetRow },
+    ] = await Promise.all([
+      supabase.rpc("gamification_stats"),
+      supabase.rpc("total_xp"),
+      supabase
+        .from("xp_events")
+        .select("earned_on")
+        .eq("owner_id", user.id)
+        .eq("reason", "decay"),
+      supabase
+        .from("xp_events")
+        .select("earned_on")
+        .eq("owner_id", user.id)
+        .eq("reason", "reset")
+        .order("earned_on", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
     if (!statsRaw) return EMPTY_DECAY;
 
@@ -144,6 +163,7 @@ export async function applyXpDecay(): Promise<XpDecayResult> {
       totalXp: totalAfter,
       untrackedDays,
       graceLeft: Math.max(0, XP_DECAY_GRACE_DAYS - untrackedDays),
+      resetOn: resetRow?.earned_on ?? null,
     };
   } catch {
     return EMPTY_DECAY;

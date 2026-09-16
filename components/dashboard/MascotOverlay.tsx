@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { resolveWagers } from "@/app/(app)/dashboard/wager-actions";
 import { applyXpDecay } from "@/app/(app)/dashboard/gamification-actions";
-import { getLastSeenXp, setLastSeenXp } from "@/lib/xpVisit";
+import {
+  getLastSeenXp,
+  getSeenReset,
+  setLastSeenXp,
+  setSeenReset,
+} from "@/lib/xpVisit";
 import { pickMascotArt, type MascotMood as Mood } from "@/lib/mascotArt";
 
 type Scene = {
@@ -50,6 +55,19 @@ export function MascotOverlay() {
         setLastSeenXp(totalXp);
         if (resolutions.length > 0 || decay.applied > 0) {
           router.refresh();
+        }
+
+        // A zeroed balance is a reset, not a loss. Without this the mascot
+        // greets everyone with "-243 XP since your last visit", which reads
+        // as a bug or a punishment rather than the announced fresh start.
+        if (decay.resetOn && getSeenReset() !== decay.resetOn) {
+          setSeenReset(decay.resetOn);
+          show(
+            "happy",
+            "Everyone's XP is back to zero",
+            "Fresh start: XP now comes from tracking your days, and todos only count on a day you logged. Your badges and history are untouched."
+          );
+          return;
         }
 
         const lost = resolutions.find((r) => r.outcome === "lost");
