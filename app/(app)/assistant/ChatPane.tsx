@@ -131,31 +131,37 @@ export function ChatPane({
             if (!line.startsWith("data:")) continue;
             const payload = line.slice(5).trim();
             if (!payload) continue;
+            // Parse separately from handling. Wrapping both in one try meant
+            // a SyntaxError from a truncated line was indistinguishable from
+            // the server's own error event, and the catch rethrew both — so
+            // one malformed frame killed an otherwise healthy stream.
+            let msg: {
+              t?: string;
+              tool?: string;
+              reset?: boolean;
+              error?: string;
+              done?: boolean;
+            };
             try {
-              const msg = JSON.parse(payload) as {
-                t?: string;
-                tool?: string;
-                reset?: boolean;
-                error?: string;
-                done?: boolean;
-              };
-              if (msg.error) throw new Error(msg.error);
-              if (msg.reset) {
-                // That text was preamble before a lookup; drop it so the
-                // real answer doesn't read as a continuation of it.
-                answer = "";
-                setDraft("");
-              }
-              if (msg.tool) {
-                used.push(msg.tool);
-                setLookups([...used]);
-              }
-              if (msg.t) {
-                answer += msg.t;
-                setDraft(answer);
-              }
-            } catch (err) {
-              if (err instanceof Error && err.message) throw err;
+              msg = JSON.parse(payload);
+            } catch {
+              continue;
+            }
+
+            if (msg.error) throw new Error(msg.error);
+            if (msg.reset) {
+              // That text was preamble before a lookup; drop it so the real
+              // answer doesn't read as a continuation of it.
+              answer = "";
+              setDraft("");
+            }
+            if (msg.tool) {
+              used.push(msg.tool);
+              setLookups([...used]);
+            }
+            if (msg.t) {
+              answer += msg.t;
+              setDraft(answer);
             }
           }
           sep = buffer.indexOf("\n\n");
