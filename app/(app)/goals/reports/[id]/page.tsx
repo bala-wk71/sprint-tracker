@@ -105,10 +105,15 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
       {proposalDraft?.success &&
         (proposal?.savedAt ? (
           <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-            Next quarter&apos;s plan from this review was saved on {d(proposal.savedAt)}.
+            Next quarter&apos;s plan from this review was saved on {d(proposal.savedAt)}.{" "}
+            <Link href="/goals" className="font-medium text-primary hover:underline">
+              See your goals
+            </Link>
           </p>
         ) : (
           <ProposalReview
+            // A rewrite brings a new proposal; start the review over from it.
+            key={report.updated_at}
             reportId={report.id}
             draft={proposalDraft.data}
             warnings={proposal?.warnings ?? []}

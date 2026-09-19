@@ -23,6 +23,7 @@ export function DraftReview({
   existingStreams,
   onChange,
   onSaved,
+  navigateOnSave = true,
 }: {
   draft: PlanDraft;
   warnings: string[];
@@ -31,6 +32,8 @@ export function DraftReview({
   existingStreams: string[];
   onChange: (d: PlanDraft) => void;
   onSaved: () => void;
+  /** Off where the page itself shows the result (a report's proposal). */
+  navigateOnSave?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +65,7 @@ export function DraftReview({
     actions: included.reduce((n, g) => n + g.levers.length, 0),
     steps: included.reduce((n, g) => n + g.steps.length, 0),
   };
+  const attached = included.filter((g) => g.existingId).length;
   const groups = [
     ...draft.streams.map((s) => ({ key: s.key, name: s.name, area: s.area as GoalArea, goals: draft.goals.filter((g) => g.streamKey === s.key) })),
     { key: "", name: "No stream", area: null, goals: draft.goals.filter((g) => !g.streamKey) },
@@ -73,6 +77,7 @@ export function DraftReview({
       const result = await savePlanDraft(draft, { saveNotes });
       if (!result.ok) return setError(result.error);
       onSaved();
+      if (!navigateOnSave) return router.refresh();
       router.push(result.data.firstGoalId && totals.goals === 1 ? `/goals/${result.data.firstGoalId}` : "/goals");
       router.refresh();
     });
@@ -83,12 +88,16 @@ export function DraftReview({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-foreground">Review your plan</h2>
         <p className="text-xs text-muted-foreground">
-          {[
-            [totals.goals, "goal", "goals"],
-            [totals.targets, "target", "targets"],
-            [totals.actions, "weekly action", "weekly actions"],
-            [totals.steps, "step", "steps"],
-          ]
+          {(
+            [
+              // Goals the plan only attaches to aren't created, so they aren't counted as new.
+              attached ? [totals.goals - attached, "new goal", "new goals"] : [totals.goals, "goal", "goals"],
+              [totals.targets, "target", "targets"],
+              [totals.actions, "weekly action", "weekly actions"],
+              [totals.steps, "step", "steps"],
+            ] as [number, string, string][]
+          )
+            .filter(([n], i) => i === 0 || n > 0)
             .map(([n, one, many]) => `${n} ${n === 1 ? one : many}`)
             .join(" · ")}
         </p>
@@ -147,29 +156,34 @@ export function DraftReview({
                     />
                     {joins && <p className="mt-0.5 text-xs text-muted-foreground">Joins your existing stream</p>}
                   </div>
-                  <select
-                    value={s.area}
-                    aria-label="Life area"
-                    onChange={(e) => onChange({ ...draft, streams: draft.streams.map((x, j) => (j === i ? { ...x, area: e.target.value as GoalArea } : x)) })}
-                    className={cn(SMALL, "col-start-2 sm:col-start-auto")}
-                  >
-                    {GOAL_AREAS.map((a) => (
-                      <option key={a.value} value={a.value}>{a.label}</option>
-                    ))}
-                  </select>
-                  <input
-                    inputMode="decimal"
-                    value={s.weeklyHours ?? ""}
-                    placeholder="h/week"
-                    aria-label="Hours a week"
-                    onChange={(e) => {
-                      const n = e.target.value.trim() === "" ? null : Number(e.target.value);
-                      if (n === null || (Number.isFinite(n) && n >= 0 && n <= 168)) {
-                        onChange({ ...draft, streams: draft.streams.map((x, j) => (j === i ? { ...x, weeklyHours: n } : x)) });
-                      }
-                    }}
-                    className={cn(SMALL, "col-start-2 sm:col-start-auto")}
-                  />
+                  {/* An existing stream keeps its own area and hours; saving changes neither. */}
+                  {!joins && (
+                    <>
+                      <select
+                        value={s.area}
+                        aria-label="Life area"
+                        onChange={(e) => onChange({ ...draft, streams: draft.streams.map((x, j) => (j === i ? { ...x, area: e.target.value as GoalArea } : x)) })}
+                        className={cn(SMALL, "col-start-2 sm:col-start-auto")}
+                      >
+                        {GOAL_AREAS.map((a) => (
+                          <option key={a.value} value={a.value}>{a.label}</option>
+                        ))}
+                      </select>
+                      <input
+                        inputMode="decimal"
+                        value={s.weeklyHours ?? ""}
+                        placeholder="h/week"
+                        aria-label="Hours a week"
+                        onChange={(e) => {
+                          const n = e.target.value.trim() === "" ? null : Number(e.target.value);
+                          if (n === null || (Number.isFinite(n) && n >= 0 && n <= 168)) {
+                            onChange({ ...draft, streams: draft.streams.map((x, j) => (j === i ? { ...x, weeklyHours: n } : x)) });
+                          }
+                        }}
+                        className={cn(SMALL, "col-start-2 sm:col-start-auto")}
+                      />
+                    </>
+                  )}
                 </li>
               );
             })}
@@ -229,7 +243,13 @@ export function DraftReview({
           disabled={pending || totals.goals === 0}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {pending ? "Saving…" : totals.goals === 1 ? "Save this goal" : `Save ${totals.goals} goals`}
+          {pending
+            ? "Saving…"
+            : attached
+              ? "Save plan"
+              : totals.goals === 1
+                ? "Save this goal"
+                : `Save ${totals.goals} goals`}
         </button>
         {pending && <span className="text-xs text-muted-foreground">Creating streams, goals and targets…</span>}
       </div>

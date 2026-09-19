@@ -61,6 +61,7 @@ export function ProposalReview({
           todayIso={todayIso}
           existingStreams={existingStreams}
           onChange={setDraft}
+          navigateOnSave={false}
           onSaved={() => {
             void markProposalSaved(reportId);
           }}
