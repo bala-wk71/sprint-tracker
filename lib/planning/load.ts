@@ -70,6 +70,7 @@ export async function loadMeasureSummaries(
       .select("measure_id, measured_on, value")
       .eq("owner_id", ownerId)
       .in("measure_id", measureIds)
+      .lte("measured_on", todayIso)
       .order("measured_on"),
     bodyColumns.length
       ? supabase
@@ -77,6 +78,7 @@ export async function loadMeasureSummaries(
           .select(`measured_on, ${bodyColumns.join(", ")}`)
           .eq("owner_id", ownerId)
           .gte("measured_on", bodySince)
+          .lte("measured_on", todayIso)
           .order("measured_on")
       : Promise.resolve({ data: [] as Record<string, unknown>[] }),
   ]);
@@ -192,33 +194,36 @@ export type LeverSummary = LeverRow & {
   doneToday: number;
 };
 
-/** Levers on the given goals with what's been done this week or month. */
-export async function loadLeverSummaries(
-  supabase: Client,
-  ownerId: string,
-  goalIds: string[],
-  allGoals: GoalNode[],
-  todayIso: string,
-  weekStart: string
-): Promise<LeverSummary[]> {
+const LEVER_COLUMNS = "id, goal_id, title, source, period, target, floor, position";
+
+/** Active levers on the given goals, in order. */
+export async function loadLevers(supabase: Client, ownerId: string, goalIds: string[]): Promise<LeverRow[]> {
   if (goalIds.length === 0) return [];
-  const { data: leverRows } = await supabase
+  const { data } = await supabase
     .from("goal_levers")
-    .select("id, goal_id, title, source, period, target, floor, position")
+    .select(LEVER_COLUMNS)
     .eq("owner_id", ownerId)
     .in("goal_id", goalIds)
     .is("archived_at", null)
     .order("position");
-  const levers = ((leverRows ?? []) as LeverRow[]).map((l) => ({
-    ...l,
-    target: Number(l.target),
-    floor: Number(l.floor),
-  }));
-  if (levers.length === 0) return [];
+  return ((data ?? []) as LeverRow[]).map((l) => ({ ...l, target: Number(l.target), floor: Number(l.floor) }));
+}
 
-  const monthStart = `${todayIso.slice(0, 8)}01`;
-  const startOf = (l: LeverRow) => (l.period === "month" ? monthStart : weekStart);
-  const since = [weekStart, monthStart].sort()[0];
+/**
+ * Each lever's count per day between two dates (inclusive): ticks, workouts
+ * logged in Health, or hours on work linked to the lever's goal and the goals
+ * under it.
+ */
+export async function loadLeverDaily(
+  supabase: Client,
+  ownerId: string,
+  levers: LeverRow[],
+  allGoals: GoalNode[],
+  fromIso: string,
+  toIso: string
+): Promise<Map<string, Map<string, number>>> {
+  const out = new Map<string, Map<string, number>>(levers.map((l) => [l.id, new Map()]));
+  if (levers.length === 0) return out;
   const needs = (source: LeverSource) => levers.some((l) => l.source === source);
 
   const [{ data: ticks }, { data: workouts }, hours] = await Promise.all([
@@ -228,38 +233,56 @@ export async function loadLeverSummaries(
           .select("lever_id, done_on, count")
           .eq("owner_id", ownerId)
           .in("lever_id", levers.map((l) => l.id))
-          .gte("done_on", since)
+          .gte("done_on", fromIso)
+          .lte("done_on", toIso)
       : Promise.resolve({ data: [] as { lever_id: string; done_on: string; count: number }[] }),
     needs("workouts")
-      ? supabase.from("workouts").select("log_date").eq("owner_id", ownerId).gte("log_date", since)
+      ? supabase.from("workouts").select("log_date").eq("owner_id", ownerId).gte("log_date", fromIso).lte("log_date", toIso)
       : Promise.resolve({ data: [] as { log_date: string }[] }),
-    needs("linked_hours") ? loadLinkedHours(supabase, ownerId, since) : Promise.resolve([] as LinkedHour[]),
+    needs("linked_hours") ? loadLinkedHours(supabase, ownerId, fromIso) : Promise.resolve([] as LinkedHour[]),
   ]);
 
-  return levers.map((lever) => {
-    const start = startOf(lever);
-    let done = 0;
-    let doneToday = 0;
+  const add = (leverId: string, date: string, n: number) => {
+    const days = out.get(leverId)!;
+    days.set(date, (days.get(date) ?? 0) + n);
+  };
+  for (const lever of levers) {
     if (lever.source === "tick") {
-      for (const t of ticks ?? []) {
-        if (t.lever_id !== lever.id || t.done_on < start) continue;
-        done += Number(t.count);
-        if (t.done_on === todayIso) doneToday += Number(t.count);
-      }
+      for (const t of ticks ?? []) if (t.lever_id === lever.id) add(lever.id, t.done_on, Number(t.count));
     } else if (lever.source === "workouts") {
-      for (const w of workouts ?? []) {
-        if (w.log_date < start) continue;
-        done += 1;
-        if (w.log_date === todayIso) doneToday += 1;
-      }
+      for (const w of workouts ?? []) add(lever.id, w.log_date, 1);
     } else {
       const ids = new Set(subtreeIds(lever.goal_id, allGoals));
-      for (const h of hours) {
-        if (!ids.has(h.goalId) || h.date < start) continue;
-        done += h.hours;
-        if (h.date === todayIso) doneToday += h.hours;
-      }
+      for (const h of hours) if (ids.has(h.goalId) && h.date <= toIso) add(lever.id, h.date, h.hours);
     }
-    return { ...lever, periodStart: start, done: Math.round(done * 10) / 10, doneToday };
+  }
+  return out;
+}
+
+/** Sum of a lever's daily counts from `fromIso` to `toIso` inclusive. */
+export function sumBetween(daily: Map<string, number> | undefined, fromIso: string, toIso: string): number {
+  let total = 0;
+  for (const [date, n] of daily ?? []) if (date >= fromIso && date <= toIso) total += n;
+  return Math.round(total * 10) / 10;
+}
+
+/** Levers on the given goals with what's been done this week or month. */
+export async function loadLeverSummaries(
+  supabase: Client,
+  ownerId: string,
+  goalIds: string[],
+  allGoals: GoalNode[],
+  todayIso: string,
+  weekStart: string
+): Promise<LeverSummary[]> {
+  const levers = await loadLevers(supabase, ownerId, goalIds);
+  if (levers.length === 0) return [];
+  const monthStart = `${todayIso.slice(0, 8)}01`;
+  const since = [weekStart, monthStart].sort()[0];
+  const daily = await loadLeverDaily(supabase, ownerId, levers, allGoals, since, todayIso);
+  return levers.map((lever) => {
+    const start = lever.period === "month" ? monthStart : weekStart;
+    const days = daily.get(lever.id);
+    return { ...lever, periodStart: start, done: sumBetween(days, start, todayIso), doneToday: days?.get(todayIso) ?? 0 };
   });
 }
