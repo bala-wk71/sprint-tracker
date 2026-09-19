@@ -59,6 +59,7 @@ Goals (follow this structure exactly; a typical roadmap gives 10–20 goals):
 - Company profit per year across "Year by Year" becomes one measure with a checkpoint on 31 December of each year.
 - Each checklist heading ("Next week (by Sep 27)", "By end of 2026") becomes one goal per stream it touches, level "project", ending on the heading's date. Every checkbox item becomes a step, even when it is also a checkpoint of a measure.
 - Dated milestones without a number ("2030: leave the IT job; buy the Hayabusa") become steps of ONE goal per stream titled like "Dad's company milestones", level "destination", ending at the plan's end, each step starting with its year ("2030: Join full-time"). This is the only place year sections become steps.
+- Put each lever on the destination goal of the outcome it moves, in the same stream: training, food, sleep and walks go on the body goal (weight/fat/waist); hours and sales work go on that business's goal. Never put a habit on a goal in another stream.
 - Set streamKey on every goal. Keys are short unique slugs.
 - why: one line from the file's own reasons when there is one, else "".
 

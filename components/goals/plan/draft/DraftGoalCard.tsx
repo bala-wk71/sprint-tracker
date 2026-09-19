@@ -19,12 +19,17 @@ export function DraftGoalCard({
   parentTitle,
   todayIso,
   onChange,
+  moveTargets,
+  onMoveLever,
 }: {
   goal: DraftGoal;
   streams: DraftStream[];
   parentTitle: string | null;
   todayIso: string;
   onChange: (g: DraftGoal) => void;
+  /** Other goals an action can be moved to, when it was put on the wrong one. */
+  moveTargets: { key: string; title: string }[];
+  onMoveLever: (index: number, toKey: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const set = (patch: Partial<DraftGoal>) => onChange({ ...goal, ...patch });
@@ -128,6 +133,19 @@ export function DraftGoalCard({
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
+                {moveTargets.length > 0 && (
+                  <select
+                    value=""
+                    aria-label={`Move ${l.title} to another goal`}
+                    onChange={(e) => e.target.value && onMoveLever(i, e.target.value)}
+                    className="h-7 max-w-full rounded border border-border bg-background px-1 text-xs text-muted-foreground"
+                  >
+                    <option value="">Move to another goal…</option>
+                    {moveTargets.map((t) => (
+                      <option key={t.key} value={t.key}>{t.title}</option>
+                    ))}
+                  </select>
+                )}
                 <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] gap-2 pr-9">
                   <select value={l.source} aria-label="Counted by" onChange={(e) => setLever(i, { source: e.target.value as LeverSource })} className={SMALL}>
                     {LEVER_SOURCES.map((s) => (

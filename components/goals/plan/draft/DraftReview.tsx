@@ -40,6 +40,20 @@ export function DraftReview({
 
   const setGoal = (key: string, next: DraftGoal) =>
     onChange({ ...draft, goals: draft.goals.map((g) => (g.key === key ? next : g)) });
+  const moveLever = (fromKey: string, index: number, toKey: string) => {
+    const lever = draft.goals.find((g) => g.key === fromKey)?.levers[index];
+    if (!lever) return;
+    onChange({
+      ...draft,
+      goals: draft.goals.map((g) =>
+        g.key === fromKey
+          ? { ...g, levers: g.levers.filter((_, i) => i !== index) }
+          : g.key === toKey
+            ? { ...g, levers: [...g.levers, lever] }
+            : g
+      ),
+    });
+  };
   const titleOf = new Map(draft.goals.map((g) => [g.key, g.title]));
   const included = draft.goals.filter((g) => g.include);
   const totals = {
@@ -173,6 +187,8 @@ export function DraftReview({
                   parentTitle={g.parentKey ? titleOf.get(g.parentKey) ?? null : null}
                   todayIso={todayIso}
                   onChange={(next) => setGoal(g.key, next)}
+                  moveTargets={draft.goals.filter((x) => x.key !== g.key && x.include).map((x) => ({ key: x.key, title: x.title }))}
+                  onMoveLever={(i, to) => moveLever(g.key, i, to)}
                 />
               ))}
             </ul>
