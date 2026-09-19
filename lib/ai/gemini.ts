@@ -31,12 +31,17 @@ const EXHAUSTED_FOR_MS = 60 * 60 * 1000;
 
 function routes(quality: Quality = "any"): Route[] {
   const primary = process.env.GEMINI_API_KEY;
-  const backup = process.env.GEMINI_API_KEY_BACKUP;
+  // Backup keys come from newer accounts (Gemini 3 only), each its own Google
+  // project with its own daily allowance.
+  const backups = [process.env.GEMINI_API_KEY_BACKUP, process.env.GEMINI_API_KEY_BACKUP_2].filter(
+    (k): k is string => Boolean(k)
+  );
+  const onBackups = (model: string, tier: Tier): Route[] => backups.map((key) => ({ key, model, gen: 3, tier }));
   const all: (Route | null)[] = [
     primary ? { key: primary, model: "gemini-2.5-flash", gen: 2, tier: 1 } : null,
-    backup ? { key: backup, model: "gemini-3.5-flash", gen: 3, tier: 1 } : null,
-    backup ? { key: backup, model: "gemini-3.6-flash", gen: 3, tier: 1 } : null,
-    backup ? { key: backup, model: "gemini-3.5-flash-lite", gen: 3, tier: 2 } : null,
+    ...onBackups("gemini-3.5-flash", 1),
+    ...onBackups("gemini-3.6-flash", 1),
+    ...onBackups("gemini-3.5-flash-lite", 2),
     primary ? { key: primary, model: "gemini-2.5-flash-lite", gen: 2, tier: 3 } : null,
   ];
   // GEMINI_ONLY_MODEL pins one model, for trying a prompt on each route in scripts.
