@@ -62,16 +62,23 @@ The heart of the plan: one row per number you want to track.
 | <Company profit (₹/month)> | <₹1 lakh> | | <₹1.4 lakh> | <₹2 lakh> | <₹15 lakh> | <monthly> |
 | <Emergency fund (₹)> | <₹1 lakh> | | <₹2.5 lakh> | <₹4 lakh> | | <monthly> |
 
-### Daily Habits
+### Daily Habits (what moves the numbers)
 
-<!-- Ranges to stay inside every week, not a path to climb. -->
+<!--
+The things you do each day or week that push the targets above, even
+indirectly. This is where your day-to-day progress comes from: big numbers
+move slowly, habits show up every day. "Moves" says which target the habit
+helps. Leave it blank and the app will suggest a link.
+-->
 
-| Habit | Target | Check |
+| Habit | Target | Moves |
 |---|---|---|
-| <Calories> | <2,100–2,400 kcal/day> | <weekly> |
-| <Protein> | <130–160 g/day> | <weekly> |
-| <Strength workouts> | <3–4 per week> | <weekly> |
-| <Sleep> | <7–8 hours> | <weekly> |
+| <Calories in range> | <2,100–2,400 kcal, 5 days a week> | <Weight> |
+| <Protein> | <130 g+, 5 days a week> | <Weight, body fat> |
+| <Strength workouts> | <3–4 per week> | <Weight, body fat> |
+| <Walk or run 30 min> | <3+ days a week> | <Weight, running> |
+| <Hours on company work> | <10+ per week> | <Company profit> |
+| <Emergency fund transfer> | <once a month> | <Emergency fund> |
 
 ---
 
