@@ -85,6 +85,16 @@ The heart of the plan: one row per number you want to track.
 | <Waist (cm)> | <to measure> | <down 4–5> | <under 94> | | <under 90> | <monthly> |
 | <Company profit (₹/month)> | <₹1 lakh> | | <₹1.4 lakh> | <₹2 lakh> | <₹15 lakh> | <monthly> |
 | <Emergency fund (₹)> | <₹1 lakh> | | <₹2.5 lakh> | <₹4 lakh> | | <monthly> |
+| <Embedded skill (level L1–L6)> | <L1> | <L2> | <L4> | <L5> | | <monthly> |
+| <Looks (self-rating 1–5)> | <2.2> | <3.0> | <3.8> | <hold 4+> | | <monthly> |
+
+<!--
+Not everything is a number. For a skill, write levels (L1, L2...) and describe
+each level, plus its proof, under Notes. For something like looks, rate a few
+criteria 1–5 each month (posture, skin, grooming, fit). The app can help you
+write both.
+-->
+
 
 ### Daily Habits (what moves the numbers)
 
