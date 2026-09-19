@@ -230,33 +230,49 @@ export async function planTurn(
       return { ok: true, data: { reply, draft: null, warnings: [] } };
     }
     const draft = draftParsed.data;
-    // The model sometimes copies goals from its context into the plan; saving
-    // those would duplicate goals the person already has.
+    // The plan is often for a goal they already have ("lose weight" when a
+    // weight goal exists), and the model reuses its title. Attach the plan to
+    // that goal instead of creating a duplicate; dropping it instead lost the
+    // plan's targets and actions and left only its quarter goal.
     const { data: activeGoals } = await ctx.supabase
       .from("goals")
-      .select("title")
+      .select("id, title, target_date")
       .eq("owner_id", ctx.userId)
       .in("status", ["active", "paused"]);
-    const taken = new Set(
-      (activeGoals ?? []).map((g) => g.title.trim().toLowerCase()).filter((t) => t !== existing?.title.trim().toLowerCase())
-    );
-    const isCopy = (title: string) => {
+    const candidates = (activeGoals ?? []).filter((g) => g.id !== existing?.id);
+    const matchOf = (title: string) => {
       const t = title.trim().toLowerCase();
-      if (taken.has(t)) return true;
-      // "run 10K without stopping" copied from "Verification goal: run 10K without stopping".
-      return t.length >= 12 && [...taken].some((x) => x.includes(t) || (x.length >= 12 && t.includes(x)));
+      return (
+        candidates.find((g) => g.title.trim().toLowerCase() === t) ??
+        // "run 10K without stopping" copied from "Verification goal: run 10K without stopping".
+        (t.length >= 12
+          ? candidates.find((g) => {
+              const x = g.title.trim().toLowerCase();
+              return x.includes(t) || (x.length >= 12 && t.includes(x));
+            })
+          : undefined)
+      );
     };
-    const copies = draft.goals.filter((g) => isCopy(g.title));
-    draft.goals = draft.goals.filter((g) => !copies.includes(g));
-    if (draft.goals.length === 0) return { ok: true, data: { reply, draft: null, warnings: [] } };
     if (existing) {
       // The first top-level goal is the existing one: attach to it instead of creating a copy.
       const top = draft.goals.find((g) => !g.parentKey) ?? draft.goals[0];
       top.existingId = existing.id;
       top.title = existing.title;
     }
+    const attachedTo: string[] = [];
+    for (const g of draft.goals) {
+      if (g.existingId) continue;
+      const match = matchOf(g.title);
+      if (!match || draft.goals.some((o) => o.existingId === match.id)) continue;
+      g.existingId = match.id;
+      g.title = match.title;
+      g.targetDate = match.target_date;
+      attachedTo.push(match.title);
+    }
     const { draft: clean, warnings } = normalizeDraft(draft, todayIso);
-    if (copies.length) warnings.unshift(`Left out ${copies.length === 1 ? "a goal" : `${copies.length} goals`} you already have (${copies.map((g) => `“${g.title}”`).join(", ")}).`);
+    for (const title of attachedTo) {
+      warnings.unshift(`This plan adds to your existing goal “${title}”. Targets and actions it already has are kept as they are.`);
+    }
     return { ok: true, data: { reply, draft: clean, warnings } };
   } catch (err) {
     return { ok: false, error: aiError(err, "The coach couldn't answer just now. Try again.") };
@@ -374,7 +390,26 @@ export async function savePlanDraft(
       added.steps.push(...(steps ?? []).map((r) => r.id));
     }
 
-    for (const [i, m] of g.measures.entries()) {
+    // On a goal that already exists, skip targets and actions it already has.
+    let knownMeasures: { label: string; source: string }[] = [];
+    let knownLevers: string[] = [];
+    if (g.existingId) {
+      const [{ data: ms }, { data: ls }] = await Promise.all([
+        ctx.supabase.from("goal_measures").select("label, source").eq("goal_id", goalId).eq("owner_id", ctx.userId),
+        ctx.supabase.from("goal_levers").select("title").eq("goal_id", goalId).eq("owner_id", ctx.userId).is("archived_at", null),
+      ]);
+      knownMeasures = ms ?? [];
+      knownLevers = (ls ?? []).map((l) => l.title.trim().toLowerCase());
+    }
+    const newMeasures = g.measures.filter(
+      (m) =>
+        !knownMeasures.some(
+          (k) => k.label.trim().toLowerCase() === m.label.trim().toLowerCase() || (m.source !== "manual" && k.source === m.source)
+        )
+    );
+    const newLevers = g.levers.filter((l) => !knownLevers.includes(l.title.trim().toLowerCase()));
+
+    for (const [i, m] of newMeasures.entries()) {
       const ladder = m.kind === "ladder";
       const { data: measure, error } = await ctx.supabase
         .from("goal_measures")
@@ -418,9 +453,9 @@ export async function savePlanDraft(
       }
     }
 
-    if (g.levers.length) {
+    if (newLevers.length) {
       const { data: levers, error } = await ctx.supabase.from("goal_levers").insert(
-        g.levers.map((l, i) => ({
+        newLevers.map((l, i) => ({
           goal_id: goalId,
           owner_id: ctx.userId,
           title: l.title,
