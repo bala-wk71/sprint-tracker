@@ -54,12 +54,15 @@ export type MeasureNumbers = {
 export type LeverNumbers = {
   id: string;
   title: string;
+  source: string;
   goalTitle: string;
   period: "week" | "month";
   target: number;
   floor: number;
-  counts: { start: string; done: number }[];
-  /** Weeks (or months) at target, and at least at the floor. */
+  /** `partial`: the week or month is still running, so it isn't judged yet. */
+  counts: { start: string; done: number; partial: boolean }[];
+  /** Finished weeks (or months), and how many were at target and at least at the floor. */
+  complete: number;
   kept: number;
   floorKept: number;
 };
@@ -189,18 +192,21 @@ function leverNumbers(
     .filter((start) => start <= range.asOf)
     .map((start) => {
       const end = lever.period === "week" ? addDaysIso(start, 6) : periodRange("month", start, 1).end;
-      return { start, done: sumBetween(daily, start, [end, range.asOf].sort()[0]) };
+      return { start, done: sumBetween(daily, start, [end, range.asOf].sort()[0]), partial: end > range.asOf };
     });
+  const finished = counts.filter((c) => !c.partial);
   return {
     id: lever.id,
     title: lever.title,
+    source: lever.source,
     goalTitle,
     period: lever.period,
     target: lever.target,
     floor: lever.floor,
     counts,
-    kept: counts.filter((c) => c.done >= lever.target).length,
-    floorKept: counts.filter((c) => c.done >= lever.floor).length,
+    complete: finished.length,
+    kept: finished.filter((c) => c.done >= lever.target).length,
+    floorKept: finished.filter((c) => c.done >= lever.floor).length,
   };
 }
 

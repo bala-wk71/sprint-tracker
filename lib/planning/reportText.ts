@@ -40,8 +40,12 @@ function measureLines(m: MeasureNumbers): string[] {
 
 function leverLine(l: LeverNumbers): string {
   const unit = l.period === "week" ? "week" : "month";
-  const counts = l.counts.map((c) => formatMeasure(c.done, null)).join(", ") || "none yet";
-  return `- ${l.title} (on “${l.goalTitle}”; target ${formatMeasure(l.target, null)} a ${unit}, minimum ${formatMeasure(l.floor, null)}): ${counts} → at target ${l.kept} of ${l.counts.length} ${unit}s, at least the minimum ${l.floorKept} of ${l.counts.length}.`;
+  const h = l.source === "linked_hours" ? " h" : "";
+  const counts = l.counts.map((c) => `${formatMeasure(c.done, null)}${h}${c.partial ? " so far" : ""}`).join(", ") || "none yet";
+  const judged = l.complete
+    ? ` → at target ${l.kept} of ${l.complete} finished ${unit}s, at least the minimum ${l.floorKept} of ${l.complete}`
+    : "";
+  return `- ${l.title} (on “${l.goalTitle}”; target ${formatMeasure(l.target, null)}${h} a ${unit}, minimum ${formatMeasure(l.floor, null)}${h}): ${counts}${judged}.`;
 }
 
 export function reportNumbersText(n: ReportNumbers): string {

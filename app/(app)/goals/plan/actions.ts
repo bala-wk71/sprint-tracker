@@ -105,7 +105,7 @@ const turnSchema = z.object({
 
 /** Only what planning needs: fronts, goals, and the latest body numbers. No journal text. */
 async function plannerContext(ctx: Ctx, todayIso: string): Promise<string> {
-  const [{ data: streams }, { data: goals }, { data: body }, { data: profile }] = await Promise.all([
+  const [{ data: streams }, { data: goals }, { data: body }, { data: profile }, { data: report }] = await Promise.all([
     ctx.supabase.from("streams").select("id, name, weekly_hours").eq("owner_id", ctx.userId).is("archived_at", null),
     ctx.supabase
       .from("goals")
@@ -125,6 +125,13 @@ async function plannerContext(ctx: Ctx, todayIso: string): Promise<string> {
       .from("health_profiles")
       .select("height_cm, sex, birth_date, goal_type, weekly_workout_goal")
       .eq("owner_id", ctx.userId)
+      .maybeSingle(),
+    ctx.supabase
+      .from("plan_reports")
+      .select("period, period_start, words")
+      .eq("owner_id", ctx.userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle(),
   ]);
   const nameOf = new Map((streams ?? []).map((s) => [s.id, s.name]));
@@ -158,6 +165,12 @@ async function plannerContext(ctx: Ctx, todayIso: string): Promise<string> {
       body.waist_cm !== null ? `waist ${body.waist_cm} cm` : null,
     ].filter(Boolean);
     if (parts.length) lines.push(`Latest body log (${body.measured_on}): ${parts.join(", ")}.`);
+  }
+  if (report) {
+    const w = report.words as { headline?: string; nextFocus?: string } | null;
+    if (w?.headline) {
+      lines.push(`Latest ${report.period} report (from ${report.period_start}): ${w.headline}${w.nextFocus ? ` Focus: ${w.nextFocus}` : ""}`);
+    }
   }
   return lines.join("\n");
 }

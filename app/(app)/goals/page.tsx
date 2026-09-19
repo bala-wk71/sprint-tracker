@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { addDays, format } from "date-fns";
-import { FileText, Layers, MessageSquare, Plus } from "lucide-react";
+import { BarChart3, FileText, Layers, MessageSquare, Plus } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
 import { effectiveStreams, loadStreamsOverview } from "@/lib/planning/streams";
+import { periodLabel, reportsDue } from "@/lib/planning/periods";
 import { StreamsOverview } from "@/components/goals/plan/StreamsOverview";
 import { ACTIVE_GOAL_SOFT_LIMIT } from "@/lib/goals/constants";
 import { PlanTabs } from "@/components/goals/PlanTabs";
@@ -29,8 +30,21 @@ export default async function GoalsPage() {
     todayIsoLocal(),
   ]);
   const goals: Row[] = data ?? [];
-  const weekStart = weekStartIsoOf(todayIso, await getWeekStartDay());
-  const streams = await loadStreamsOverview(supabase, user.id, todayIso, weekStart);
+  const weekStartDay = await getWeekStartDay();
+  const weekStart = weekStartIsoOf(todayIso, weekStartDay);
+  const due = reportsDue(todayIso, weekStartDay);
+  const [streams, { data: writtenDue }] = await Promise.all([
+    loadStreamsOverview(supabase, user.id, todayIso, weekStart),
+    supabase
+      .from("plan_reports")
+      .select("period, period_start")
+      .eq("owner_id", user.id)
+      .in("period_start", due.map((r) => r.start)),
+  ]);
+  // Only nudge once there's something to report on.
+  const unwritten = streams.some((s) => s.summaries.length > 0)
+    ? due.filter((r) => !(writtenDue ?? []).some((w) => w.period === r.period && w.period_start === r.start))
+    : [];
   const streamNameById = new Map(streams.map((s) => [s.id, s.name]));
   const streamOf = effectiveStreams(goals);
 
@@ -111,6 +125,13 @@ export default async function GoalsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
+            href="/goals/reports"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Reports
+          </Link>
+          <Link
             href="/goals/plan?mode=import"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
           >
@@ -133,6 +154,21 @@ export default async function GoalsPage() {
           </Link>
         </div>
       </div>
+
+      {unwritten.length > 0 && (
+        <Link
+          href="/goals/reports"
+          className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm hover:bg-primary/10"
+        >
+          <BarChart3 className="h-4 w-4 shrink-0 text-primary" />
+          <span className="text-foreground">
+            Ready to write:{" "}
+            {unwritten
+              .map((r) => `${r.period === "month" ? "" : r.period === "quarter" ? "review of " : "year review "}${periodLabel(r.period, r.start)}`)
+              .join(", ")}
+          </span>
+        </Link>
+      )}
 
       {streams.length > 0 ? (
         <section className="space-y-2">

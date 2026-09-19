@@ -44,9 +44,14 @@ export async function PlanWeekCard({ ownerId, todayIso, weekStart }: { ownerId: 
             </span>
           )}
         </div>
-        <Link href="/goals" className="text-xs font-medium text-primary hover:underline">
-          Streams &amp; goals
-        </Link>
+        <div className="flex shrink-0 gap-3">
+          <Link href="/goals/reports" className="text-xs font-medium text-primary hover:underline">
+            Weekly check
+          </Link>
+          <Link href="/goals" className="text-xs font-medium text-primary hover:underline">
+            Streams &amp; goals
+          </Link>
+        </div>
       </div>
 
       {due.length > 0 && (
