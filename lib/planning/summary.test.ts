@@ -116,3 +116,37 @@ describe("loanSeries", () => {
     expect(series.at(-1)!.value).toBe(50_000 - 13_000);
   });
 });
+
+describe("headline", () => {
+  it("leads with distance covered, then the next checkpoint", async () => {
+    const { headline, coveredLabel } = await import("./wording");
+    const s = summarizeMeasure({
+      measure: measure(),
+      checkpoints: [cp({ min_value: 89, max_value: 90 })],
+      points: [
+        { date: "2026-09-19", value: 95 },
+        { date: "2026-10-19", value: 93.4 },
+      ],
+      goalStart: "2026-09-19",
+      todayIso: "2026-10-19",
+    });
+    expect(headline(s, "2026-10-19")).toBe("1.6 kg down · on track for 89–90 kg by 31 Dec");
+    expect(coveredLabel(s)).toBe("32% of the way");
+  });
+
+  it("names the gap as something to catch up, never 'behind'", async () => {
+    const { headline } = await import("./wording");
+    const s = summarizeMeasure({
+      measure: measure({ source: "manual", direction: "up", unit: "inr", interpolate: "compound" }),
+      checkpoints: [cp({ target_date: "2027-12-31", min_value: 140000, max_value: 140000 })],
+      points: [
+        { date: "2026-12-31", value: 100000 },
+        { date: "2027-06-30", value: 105000 },
+      ],
+      goalStart: "2026-12-31",
+      todayIso: "2027-06-30",
+    });
+    expect(headline(s, "2027-06-30")).toMatch(/^₹5,000 up · ₹1\d,\d{3} to catch up for ₹1\.4 L by 31 Dec$/);
+    expect(headline(s, "2027-06-30")).not.toMatch(/behind/i);
+  });
+});

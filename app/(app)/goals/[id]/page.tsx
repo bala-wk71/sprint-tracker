@@ -19,6 +19,7 @@ import { GoalStatusActions } from "@/components/goals/GoalStatusActions";
 import { CheckInHistory } from "@/components/goals/CheckInHistory";
 import { LinkedWork } from "@/components/goals/LinkedWork";
 import { GoalReview } from "@/components/goals/GoalReview";
+import { PlanSection } from "@/components/goals/plan/PlanSection";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CARD = "rounded-xl border border-border bg-card p-4 sm:p-6";
@@ -51,7 +52,10 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
   ] = await Promise.all([
     supabase.from("goals").select("*").eq("id", id).eq("owner_id", user.id).maybeSingle(),
     supabase.from("goal_steps").select("id, title, done_at").eq("goal_id", id).order("position"),
-    supabase.from("goals").select("id, parent_id, title, status, area").eq("owner_id", user.id),
+    supabase
+      .from("goals")
+      .select("id, parent_id, title, status, area, level, start_date, target_date")
+      .eq("owner_id", user.id),
     supabase
       .from("journal_entries")
       .select("id, entry_date, title, body, kind, on_track, value")
@@ -202,6 +206,14 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
             />
             {goal.track_type === "steps" && <StepList goalId={goal.id} steps={stepRows} readOnly={closed} />}
           </section>
+
+          <PlanSection
+            goal={goal}
+            allGoals={allGoals ?? []}
+            ownerId={user.id}
+            todayIso={todayIso}
+            readOnly={closed}
+          />
 
           {!closed && (
             <section id="check-in" className={cn(CARD, "scroll-mt-20")}>

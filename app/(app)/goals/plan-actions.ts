@@ -414,7 +414,9 @@ export async function addQuarterGoal(goalId: string, which: "current" | "next"):
     .eq("owner_id", ctx.userId)
     .eq("parent_id", goalId)
     .eq("level", "quarter")
-    .eq("target_date", end)
+    .gte("target_date", quarterStartIso(quarter))
+    .lte("target_date", end)
+    .limit(1)
     .maybeSingle();
   if (existing) return { ok: true, data: { id: existing.id } };
 
