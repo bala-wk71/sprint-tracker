@@ -212,6 +212,25 @@ export async function planTurn(
       return { ok: true, data: { reply, draft: null, warnings: [] } };
     }
     const draft = draftParsed.data;
+    // The model sometimes copies goals from its context into the plan; saving
+    // those would duplicate goals the person already has.
+    const { data: activeGoals } = await ctx.supabase
+      .from("goals")
+      .select("title")
+      .eq("owner_id", ctx.userId)
+      .in("status", ["active", "paused"]);
+    const taken = new Set(
+      (activeGoals ?? []).map((g) => g.title.trim().toLowerCase()).filter((t) => t !== existing?.title.trim().toLowerCase())
+    );
+    const isCopy = (title: string) => {
+      const t = title.trim().toLowerCase();
+      if (taken.has(t)) return true;
+      // "run 10K without stopping" copied from "Verification goal: run 10K without stopping".
+      return t.length >= 12 && [...taken].some((x) => x.includes(t) || (x.length >= 12 && t.includes(x)));
+    };
+    const copies = draft.goals.filter((g) => isCopy(g.title));
+    draft.goals = draft.goals.filter((g) => !copies.includes(g));
+    if (draft.goals.length === 0) return { ok: true, data: { reply, draft: null, warnings: [] } };
     if (existing) {
       // The first top-level goal is the existing one: attach to it instead of creating a copy.
       const top = draft.goals.find((g) => !g.parentKey) ?? draft.goals[0];
@@ -219,6 +238,7 @@ export async function planTurn(
       top.title = existing.title;
     }
     const { draft: clean, warnings } = normalizeDraft(draft, todayIso);
+    if (copies.length) warnings.unshift(`Left out ${copies.length === 1 ? "a goal" : `${copies.length} goals`} you already have (${copies.map((g) => `“${g.title}”`).join(", ")}).`);
     return { ok: true, data: { reply, draft: clean, warnings } };
   } catch (err) {
     return { ok: false, error: aiError(err, "The coach couldn't answer just now. Try again.") };

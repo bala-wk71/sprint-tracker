@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { INPUT } from "@/components/goals/GoalFormParts";
+import { Markdown } from "@/components/shared/Markdown";
 import { SPECIALISTS, type Specialist } from "@/lib/planning/constants";
 import { planTurn } from "@/app/(app)/goals/plan/actions";
 import type { PlanDraft } from "@/lib/planning/draft";
@@ -112,14 +113,13 @@ export function PlannerChat({
         ) : (
           messages.map((m, i) => (
             <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-              <p
-                className={cn(
-                  "max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm",
-                  m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                )}
-              >
-                {m.text}
-              </p>
+              {m.role === "user" ? (
+                <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-primary px-3 py-2 text-sm text-primary-foreground">{m.text}</p>
+              ) : (
+                <div className="max-w-[85%] rounded-2xl bg-muted px-3 py-2 text-sm text-foreground">
+                  <Markdown content={m.text} />
+                </div>
+              )}
             </div>
           ))
         )}
