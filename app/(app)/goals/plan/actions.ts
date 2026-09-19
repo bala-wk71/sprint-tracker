@@ -25,6 +25,11 @@ export type DraftResult<T> = { ok: true; data: T } | { ok: false; error: string 
 
 const SIGNED_OUT = "You're signed out. Sign in and try again.";
 const MAX_MARKDOWN = 40_000;
+/**
+ * Unbounded, gemini-2.5-flash spent up to 5 minutes thinking over a full
+ * roadmap, past the function time limit. Extraction needs little reasoning.
+ */
+const IMPORT_THINKING_BUDGET = 2048;
 
 async function ctxOrNull() {
   const supabase = await createClient();
@@ -73,7 +78,7 @@ export async function importRoadmap(
       getImportPrompt(todayIso, await streamNames(ctx)),
       [{ role: "user", parts: [{ text }] }],
       PLAN_DRAFT_RESPONSE_SCHEMA,
-      { temperature: 0.1, maxOutputTokens: 32768 }
+      { temperature: 0.1, maxOutputTokens: 32768, thinkingBudget: IMPORT_THINKING_BUDGET }
     );
     const parsed = planDraftSchema.safeParse(raw);
     if (!parsed.success || parsed.data.goals.length === 0) {

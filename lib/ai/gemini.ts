@@ -43,6 +43,8 @@ type GenerationConfig = {
   maxOutputTokens: number;
   responseMimeType?: string;
   responseSchema?: ResponseSchema;
+  /** Caps gemini-2.5 "thinking" tokens; long extractions otherwise spend minutes thinking. */
+  thinkingConfig?: { thinkingBudget: number };
 };
 
 // gemini-2.5-flash thinks before it writes, and those tokens come out of this
@@ -84,6 +86,7 @@ async function callModel(
     generationConfig,
   };
 
+  const started = Date.now();
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -92,11 +95,15 @@ async function callModel(
 
   if (!res.ok) {
     const text = await res.text();
+    if (process.env.GEMINI_DEBUG) console.log(`[gemini] ${model} ${res.status} after ${Date.now() - started}ms`);
     throw new Error(`Gemini ${model} ${res.status}: ${text}`);
   }
 
   const data = (await res.json()) as GeminiResponse;
   const candidate = data.candidates?.[0];
+  if (process.env.GEMINI_DEBUG) {
+    console.log(`[gemini] ${model} ok after ${Date.now() - started}ms, ${candidate?.finishReason}`);
+  }
   return {
     text: candidate?.content?.parts?.[0]?.text ?? "",
     finishReason: candidate?.finishReason ?? "STOP",
@@ -191,7 +198,7 @@ export async function generateJson(
   systemInstruction: string,
   messages: GeminiMessage[],
   responseSchema: ResponseSchema,
-  options: { temperature?: number; maxOutputTokens?: number } = {}
+  options: { temperature?: number; maxOutputTokens?: number; thinkingBudget?: number } = {}
 ): Promise<unknown> {
   const { text: raw, finishReason } = await callWithFallback(
     systemInstruction,
@@ -201,6 +208,7 @@ export async function generateJson(
       maxOutputTokens: options.maxOutputTokens ?? 4096,
       responseMimeType: "application/json",
       responseSchema,
+      ...(options.thinkingBudget === undefined ? {} : { thinkingConfig: { thinkingBudget: options.thinkingBudget } }),
     }
   );
 

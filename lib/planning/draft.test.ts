@@ -116,3 +116,39 @@ describe("normalizeDraft", () => {
     );
   });
 });
+
+describe("loans and empty measures", () => {
+  const draft = planDraftSchema.parse({
+    streams: [],
+    goals: [
+      {
+        key: "debt",
+        title: "Debt-free",
+        area: "money",
+        targetDate: "2034-09-30",
+        steps: [],
+        levers: [],
+        measures: [
+          { label: "Bike loan", kind: "number", direction: "down", interpolate: "linear", source: "loan_schedule", cadence: "monthly", loanEmi: 13000, loanMonthsLeft: 13, checkpoints: [] },
+          { label: "Running", kind: "number", direction: "up", interpolate: "linear", source: "manual", cadence: "monthly", checkpoints: [] },
+        ],
+      },
+    ],
+    notes: "",
+    questions: [],
+  });
+  const { draft: clean, warnings } = normalizeDraft(draft, today);
+  const measures = clean.goals[0].measures;
+
+  it("works out the last EMI from the months left and ends the path at 0", () => {
+    expect(measures[0].loanLastEmiOn).toBe("2027-10-19");
+    expect(measures[0].checkpoints).toEqual([
+      { date: "2027-10-19", label: "Last EMI", min: 0, max: 0, relative: false, holdUntil: null },
+    ]);
+  });
+
+  it("leaves out a number with nothing dated to aim at", () => {
+    expect(measures.map((m) => m.label)).toEqual(["Bike loan"]);
+    expect(warnings.some((w) => w.includes("Running"))).toBe(true);
+  });
+});

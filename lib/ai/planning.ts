@@ -19,8 +19,9 @@ Today is ${todayIso}. Write every date as YYYY-MM-DD.
 
 Dates:
 - "End of 2026" → 2026-12-31. "Mid-2027" → 2027-06-30. "By Sep 27" → the next such date after today.
-- "Around October 2027" → 2027-10-31. A year heading like "2028 (Age 26)" → 2028-12-31 unless a month is given.
-- "Age N": work out the birth year from the plan (e.g. "Age 24" in 2026 → born 2002), then use the same month as the plan's own "Age 32" anchor if it gives one, else December of that year.
+- "Around October 2027" → 2027-10-31.
+- Whenever a year is written ("2027", "By end of 2026", a heading like "2028 (Age 26)"), use 31 December of that year unless a month is given. A target listed under a year heading is due at the end of that year.
+- Only when no year is written, turn "Age N" into a date: work out the birth year from the plan (e.g. "Age 24" in 2026 → born 2002) and use the month of the plan's own anchor (e.g. "Age 32 (September 2034)"), else December.
 
 Numbers:
 - Money is in rupees with unit "inr". 1 lakh = 100000; 1 crore (Cr) = 10000000; "k" = 1000. "₹1.4 lakh/month" → 140000 and say "per month" in the label.
@@ -32,8 +33,10 @@ Numbers:
 Measures (how a goal's progress is read):
 - Weight → source "body.weight_kg", unit "kg", direction "down", cadence "weekly".
 - Waist → "body.waist_cm" (cm, down, monthly). Body fat % → "body.body_fat_pct" (%, down, monthly). Muscle mass → "body.muscle_mass_kg" (kg, up, monthly).
-- A loan with an EMI and months left → source "loan_schedule", unit "inr", direction "down", loanEmi = the EMI, loanLastEmiOn = today plus the months left (same day of month). Its final checkpoint is 0 on that date.
-- Growth figures (profit, revenue, savings growing by a percentage) → interpolate "compound". Skill levels (L1, L2…) → kind "ladder", interpolate "step", direction "up", with one levels entry per level (title = what the level means, proof = how it's shown). Everything else → "linear".
+- A loan with an EMI and months left → source "loan_schedule", unit "inr", direction "down", loanEmi = the EMI, loanMonthsLeft = the months left, loanLastEmiOn null (the app works out the date), baseline null, and no checkpoints (the app adds the final 0).
+- Growth figures (profit, revenue, savings growing by a percentage) → interpolate "compound". Everything else with a number → "linear".
+- A progression that isn't one number (running: walk-run 3 km → 5K under 30 min → 10K comfortably; skill levels L1, L2…) → kind "ladder", interpolate "step", direction "up": one levels entry per stage in order (title = what it means, proof = how it's shown), and checkpoints whose min is the level number (1, 2, 3…) due by that stage's date.
+- Only create a measure when it has at least one dated target. Yes/no things (insurance active, agreement signed, exam done) are steps, never measures.
 - Profit, revenue, savings, investments, skill levels → direction "up". Weight, waist, fat, debt → "down". A range to stay inside every week → "band".
 - Anything else with a number → source "manual" with a sensible cadence.
 
@@ -41,7 +44,8 @@ Habits and weekly work are levers, not measures:
 - Calories, protein, workouts per week, walks, sleep, hours on a project, sales calls, transfers → a lever on the goal they move.
 - Workouts / strength sessions → source "workouts". "Hours on X" → source "linked_hours". Anything else → "tick".
 - target is per week (or per month for monthly things); floor is the stated minimum for a hard week, else null.
-- A daily habit "on N days a week" → target N per week.`;
+- A daily amount (protein 130–160 g a day, 7–8 h of sleep, 30-minute walks) → a "tick" lever with the amount in its title ("Protein 130 g+", "Sleep 7 h+") and target = days per week it should happen: 7 for "every day", or the number of days stated. Never put the daily amount itself in target.
+- "3–4 times a week" → target 4, floor 3.`;
 
 export function getImportPrompt(todayIso: string, existingStreams: string[]): string {
   return `You turn a person's long-range plan, written in Markdown, into a structured plan they will review before anything is saved. Be faithful to the file: extract, don't advise.
@@ -53,11 +57,13 @@ Streams (fronts of life that run at the same time):
 - ${existingStreams.length ? `The person already has these streams. Reuse a name exactly when it's the same front: ${existingStreams.map((s) => `"${s}"`).join(", ")}.` : "The person has no streams yet."}
 - Fronts they clearly live but the file says nothing about go in questions (e.g. "Learning has no targets in the file. Add one?").
 
-Goals:
-- One destination goal per outcome, level "destination", ending at its last checkpoint (e.g. "Weight 80–83 kg, held steady" with the weight measure and every checkpoint from all tables and years).
-- Company profit per year across "Year by Year" becomes one measure with a checkpoint at the end of each year.
-- Each checklist heading ("Next week (by Sep 27)", "By end of 2026") becomes one goal per stream it touches, level "project", its checkbox items as steps, ending on the heading's date.
-- Dated milestones without a number ("2030: leave the IT job; buy the Hayabusa") become steps of one goal per stream titled like "Dad's company milestones", level "destination", ending at the plan's end, each step starting with its year ("2030: Join full-time").
+Goals (follow this structure exactly; a typical roadmap gives 10–20 goals):
+- Each measure appears ONCE in the whole plan. Never create a goal per year, and never repeat a measure in two goals.
+- One destination goal per outcome, level "destination", ending at its last checkpoint (e.g. "Weight 80–83 kg, held steady" holding the weight measure). Every table, year section and checklist that mentions that outcome only adds checkpoints to this one measure.
+- "Now" / "today" / "where I am" values are baselines: baselineValue with baselineOn = today. Don't ask for a number the file gives.
+- Company profit per year across "Year by Year" becomes one measure with a checkpoint on 31 December of each year.
+- Each checklist heading ("Next week (by Sep 27)", "By end of 2026") becomes one goal per stream it touches, level "project", ending on the heading's date. Every checkbox item becomes a step, even when it is also a checkpoint of a measure.
+- Dated milestones without a number ("2030: leave the IT job; buy the Hayabusa") become steps of ONE goal per stream titled like "Dad's company milestones", level "destination", ending at the plan's end, each step starting with its year ("2030: Join full-time"). This is the only place year sections become steps.
 - Set streamKey on every goal. Keys are short unique slugs.
 - why: one line from the file's own reasons when there is one, else "".
 

@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import { GOAL_AREA_VALUES } from "@/lib/goals/constants";
+import { addMonths, format } from "date-fns";
 import { MEASURE_SOURCES } from "./constants";
 
 const AREAS = GOAL_AREA_VALUES;
@@ -42,6 +43,7 @@ const MEASURE_SCHEMA = {
     baselineValue: nullable({ type: "number" }),
     baselineOn: nullable({ type: "string" }),
     loanEmi: nullable({ type: "number" }),
+    loanMonthsLeft: nullable({ type: "number" }),
     loanLastEmiOn: nullable({ type: "string" }),
     levels: {
       type: "array",
@@ -139,6 +141,7 @@ const measureSchema = z.object({
   baselineValue: num,
   baselineOn: isoOrNull,
   loanEmi: num,
+  loanMonthsLeft: num,
   loanLastEmiOn: isoOrNull,
   levels: z
     .array(z.object({ title: z.string().trim().max(120), proof: z.string().trim().max(200).optional().catch("") }))
@@ -245,7 +248,12 @@ export function normalizeDraft(draft: PlanDraft, todayIso: string): { draft: Pla
         continue;
       }
     }
-    const measures = g.measures.map((m) => {
+    const measures = g.measures.flatMap((m) => {
+      // "36 months left" becomes a date here; models are unreliable at date arithmetic.
+      let lastEmiOn = m.loanLastEmiOn;
+      if (m.source === "loan_schedule" && !lastEmiOn && m.loanMonthsLeft && m.loanMonthsLeft > 0) {
+        lastEmiOn = format(addMonths(new Date(`${todayIso}T00:00:00`), Math.round(m.loanMonthsLeft)), "yyyy-MM-dd");
+      }
       const byDate = new Map<string, DraftCheckpoint>();
       for (const c of m.checkpoints) {
         let { min, max } = c;
@@ -254,16 +262,28 @@ export function normalizeDraft(draft: PlanDraft, todayIso: string): { draft: Pla
         const holdUntil = c.holdUntil && c.holdUntil >= c.date ? c.holdUntil : null;
         byDate.set(c.date, { ...c, min, max, holdUntil });
       }
-      const loanOk = m.source !== "loan_schedule" || (m.loanEmi !== null && m.loanLastEmiOn !== null);
+      const loanOk = m.source !== "loan_schedule" || (m.loanEmi !== null && lastEmiOn !== null);
       if (!loanOk) warnings.push(`“${m.label}” is a loan without an EMI and end date, so it's tracked as a typed number.`);
+      // A loan's path is its schedule, whatever else came with it: it ends at 0 on the last EMI.
+      if (m.source === "loan_schedule" && loanOk && lastEmiOn) {
+        byDate.clear();
+        byDate.set(lastEmiOn, { date: lastEmiOn, label: "Last EMI", min: 0, max: 0, relative: false, holdUntil: null });
+      }
+      if (byDate.size === 0 && m.kind === "number" && (m.source === "manual" || !loanOk)) {
+        warnings.push(`Left out “${m.label}” on “${g.title}”: it has no dated target to track.`);
+        return [];
+      }
       const hasBaseline = m.baselineValue !== null && m.baselineOn !== null;
-      return {
-        ...m,
-        source: loanOk ? m.source : "manual",
-        baselineValue: hasBaseline ? m.baselineValue : null,
-        baselineOn: hasBaseline ? m.baselineOn : null,
-        checkpoints: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
-      };
+      return [
+        {
+          ...m,
+          source: loanOk ? m.source : "manual",
+          loanLastEmiOn: loanOk ? lastEmiOn : null,
+          baselineValue: hasBaseline ? m.baselineValue : null,
+          baselineOn: hasBaseline ? m.baselineOn : null,
+          checkpoints: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+        },
+      ];
     });
     const levers = g.levers.map((l) => {
       const floor = l.floor === null ? Math.ceil(l.target / 2) : Math.min(l.floor, l.target);
