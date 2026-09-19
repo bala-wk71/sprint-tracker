@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
       `${getGoalReviewPrompt(persona, todayIso, readJournal)}\n\n## The goal and its data\n${context}`,
       [{ role: "user", parts: [{ text: "How am I doing on this goal?" }] }],
       GOAL_REVIEW_RESPONSE_SCHEMA,
-      { temperature: 0.3 }
+      { temperature: 0.3, quality: "good" }
     );
     const result = goalReviewResultSchema.safeParse(raw);
     if (!result.success) {

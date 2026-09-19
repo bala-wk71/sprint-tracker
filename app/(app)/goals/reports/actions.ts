@@ -143,12 +143,17 @@ export async function writeReport(input: { period: WrittenPeriod; start: string 
       temperature: 0.4,
       maxOutputTokens: 8192,
       thinkingBudget: REPORT_THINKING_BUDGET,
+      quality: "good",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
     return {
       ok: false,
-      error: /429|quota|rate/i.test(message) ? "The AI is busy right now. Wait a minute and try again." : "Writing the report failed. Try again.",
+      error: /free allowance/i.test(message)
+        ? message
+        : /429|quota|rate/i.test(message)
+          ? "The AI is busy right now. Wait a minute and try again."
+          : "Writing the report failed. Try again.",
     };
   }
   const words = reportWordsSchema.safeParse(raw);

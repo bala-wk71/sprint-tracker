@@ -52,7 +52,7 @@ export async function POST() {
           parts: [{ text: "How is my progress going?" }],
         },
       ],
-      { temperature: 0.5, failOnTruncation: true }
+      { temperature: 0.5, failOnTruncation: true, quality: "good" }
     );
 
     return NextResponse.json({ report });

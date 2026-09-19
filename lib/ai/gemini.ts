@@ -2,11 +2,23 @@
 // with its own free-tier quota (20 requests a day per model on the primary),
 // so when one runs out the next route takes over. The backup key belongs to a
 // newer account: Google no longer serves the 2.5 models to new users, so it
-// runs Gemini 3. The strong model on each key comes before either lite model,
-// because the lite models write noticeably worse reports and plans.
+// runs Gemini 3. Every strong model comes before any lite one, and
+// gemini-2.5-flash-lite is last: tested on the planning coach it ignored the
+// person's logged numbers and asked the same question twice, while
+// gemini-3.5-flash-lite is slow (~25s) but sound.
 // Check every model still responds before changing this: a retired model
 // answers 404 (this list once held gemini-2.0-flash long after it was gone).
-type Route = { key: string; model: string; gen: 2 | 3 };
+type Route = { key: string; model: string; gen: 2 | 3; tier: Tier };
+
+/**
+ * How good a model a call needs. "best": the full models only; the importer,
+ * which on a lite model read a 16-goal roadmap as 4 goals. "good": adds
+ * gemini-3.5-flash-lite, fine for the coach and reports. "any": adds
+ * gemini-2.5-flash-lite, enough for short, well-bounded jobs.
+ */
+export type Quality = "best" | "good" | "any";
+type Tier = 1 | 2 | 3;
+const MAX_TIER: Record<Quality, Tier> = { best: 1, good: 2, any: 3 };
 
 const routeId = (r: Route) => `${r.key.slice(-6)}:${r.model}`;
 
@@ -17,16 +29,21 @@ const routeId = (r: Route) => `${r.key.slice(-6)}:${r.model}`;
 const exhaustedUntil = new Map<string, number>();
 const EXHAUSTED_FOR_MS = 60 * 60 * 1000;
 
-function routes(): Route[] {
+function routes(quality: Quality = "any"): Route[] {
   const primary = process.env.GEMINI_API_KEY;
   const backup = process.env.GEMINI_API_KEY_BACKUP;
   const all: (Route | null)[] = [
-    primary ? { key: primary, model: "gemini-2.5-flash", gen: 2 } : null,
-    backup ? { key: backup, model: "gemini-3.6-flash", gen: 3 } : null,
-    primary ? { key: primary, model: "gemini-2.5-flash-lite", gen: 2 } : null,
-    backup ? { key: backup, model: "gemini-3.5-flash-lite", gen: 3 } : null,
+    primary ? { key: primary, model: "gemini-2.5-flash", gen: 2, tier: 1 } : null,
+    backup ? { key: backup, model: "gemini-3.5-flash", gen: 3, tier: 1 } : null,
+    backup ? { key: backup, model: "gemini-3.6-flash", gen: 3, tier: 1 } : null,
+    backup ? { key: backup, model: "gemini-3.5-flash-lite", gen: 3, tier: 2 } : null,
+    primary ? { key: primary, model: "gemini-2.5-flash-lite", gen: 2, tier: 3 } : null,
   ];
-  const list = all.filter((r): r is Route => r !== null);
+  // GEMINI_ONLY_MODEL pins one model, for trying a prompt on each route in scripts.
+  const only = process.env.GEMINI_ONLY_MODEL;
+  const list = all.filter(
+    (r): r is Route => r !== null && r.tier <= MAX_TIER[quality] && (!only || r.model === only)
+  );
   if (list.length === 0) throw new Error("GEMINI_API_KEY not configured");
   // If every route is marked used up, try them all anyway: the marks are guesses.
   const live = list.filter((r) => (exhaustedUntil.get(routeId(r)) ?? 0) < Date.now());
@@ -39,8 +56,9 @@ function noteFailure(route: Route, status: number, body: string) {
   if (isDailyLimit(status, body)) exhaustedUntil.set(routeId(route), Date.now() + EXHAUSTED_FOR_MS);
 }
 
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
+/** Rounds through the whole route list; a second round waits this long first. */
+const ROUNDS = 2;
+const ROUND_DELAY_MS = 2000;
 
 /**
  * A part is text, a function the model wants called, or the result we hand
@@ -168,6 +186,9 @@ async function callModel(
  * passed through unchanged rather than flattened into a vague apology.
  */
 function readableFailure(msg: string, err: unknown): Error {
+  // Free-tier allowances reset at midnight Pacific: 12:30 pm India time (1:30 pm in winter).
+  if (msg.includes("429") && /PerDay/i.test(msg))
+    return new Error("The AI has used up today's free allowance. It resets around 12:30 pm India time.");
   if (msg.includes("429"))
     return new Error("The AI is over its rate limit. Try again in a minute.");
   if (msg.includes("503"))
@@ -178,26 +199,27 @@ function readableFailure(msg: string, err: unknown): Error {
 async function callWithFallback(
   systemInstruction: string,
   messages: GeminiMessage[],
-  generationConfig: GenerationConfig
+  generationConfig: GenerationConfig,
+  quality: Quality = "any"
 ): Promise<ModelResult> {
   let lastError: unknown = new Error("All Gemini models failed");
-  for (const route of routes()) {
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  // Any failure moves straight to the next route: each has its own quota, and
+  // an overloaded model (503, common on gemini-3.6-flash) rarely recovers in
+  // the second or two a retry would wait. Only when every route has failed
+  // is the list tried once more.
+  for (let round = 0; round < ROUNDS; round++) {
+    if (round > 0) await new Promise((r) => setTimeout(r, ROUND_DELAY_MS));
+    let allUsedUp = true;
+    for (const route of routes(quality)) {
       try {
         return await callModel(route, systemInstruction, messages, generationConfig);
       } catch (err) {
         lastError = err;
-        const status = err instanceof GeminiHttpError ? err.status : 0;
-        const body = err instanceof GeminiHttpError ? err.body : "";
-        // A per-minute limit or a brief outage is worth waiting out; a used-up
-        // day, a retired model or a refused key means moving to the next route.
-        const transient = (status === 429 && !isDailyLimit(status, body)) || status === 503;
-        if (!transient) break;
-        if (attempt < MAX_RETRIES - 1) {
-          await new Promise((r) => setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt)));
-        }
+        if (!(err instanceof GeminiHttpError && isDailyLimit(err.status, err.body))) allUsedUp = false;
       }
     }
+    // A used-up day won't come back in two seconds.
+    if (allUsedUp) break;
   }
   const msg = lastError instanceof Error ? lastError.message : String(lastError);
   throw readableFailure(msg, lastError);
@@ -215,6 +237,7 @@ export async function generateResponse(
      * chat, where a partial reply is still readable, leaves this off.
      */
     failOnTruncation?: boolean;
+    quality?: Quality;
   } = {}
 ): Promise<string> {
   const { text, finishReason } = await callWithFallback(
@@ -223,7 +246,8 @@ export async function generateResponse(
     {
       temperature: options.temperature ?? DEFAULT_CONFIG.temperature,
       maxOutputTokens: options.maxOutputTokens ?? DEFAULT_CONFIG.maxOutputTokens,
-    }
+    },
+    options.quality
   );
 
   if (options.failOnTruncation && finishReason === "MAX_TOKENS")
@@ -241,7 +265,7 @@ export async function generateJson(
   systemInstruction: string,
   messages: GeminiMessage[],
   responseSchema: ResponseSchema,
-  options: { temperature?: number; maxOutputTokens?: number; thinkingBudget?: number } = {}
+  options: { temperature?: number; maxOutputTokens?: number; thinkingBudget?: number; quality?: Quality } = {}
 ): Promise<unknown> {
   const { text: raw, finishReason } = await callWithFallback(
     systemInstruction,
@@ -252,7 +276,8 @@ export async function generateJson(
       responseMimeType: "application/json",
       responseSchema,
       ...(options.thinkingBudget === undefined ? {} : { thinkingConfig: { thinkingBudget: options.thinkingBudget } }),
-    }
+    },
+    options.quality
   );
 
   // Truncated JSON will not parse, so say why rather than "unreadable".

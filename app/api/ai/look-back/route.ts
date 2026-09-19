@@ -122,7 +122,7 @@ export async function POST() {
     const letter = await generateResponse(
       `${getLookBackPrompt(persona, monthLabel)}\n\n## What they wrote\n${context}`,
       [{ role: "user", parts: [{ text: `Write my look-back for ${monthLabel}.` }] }],
-      { temperature: 0.6 }
+      { temperature: 0.6, quality: "good" }
     );
     if (!letter.trim()) {
       return NextResponse.json({ error: "The coach came back empty-handed. Try again." }, { status: 502 });

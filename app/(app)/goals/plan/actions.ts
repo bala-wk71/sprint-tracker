@@ -54,6 +54,7 @@ async function streamNames(ctx: Ctx) {
 function aiError(err: unknown, fallback: string) {
   const message = err instanceof Error ? err.message : "";
   if (/too much/i.test(message)) return "That plan is too long to read in one go. Try splitting it into two files.";
+  if (/free allowance/i.test(message)) return message;
   if (/429|quota|rate/i.test(message)) return "The AI is busy right now. Wait a minute and try again.";
   return fallback;
 }
@@ -78,7 +79,7 @@ export async function importRoadmap(
       getImportPrompt(todayIso, await streamNames(ctx)),
       [{ role: "user", parts: [{ text }] }],
       PLAN_DRAFT_RESPONSE_SCHEMA,
-      { temperature: 0.1, maxOutputTokens: 32768, thinkingBudget: IMPORT_THINKING_BUDGET }
+      { temperature: 0.1, maxOutputTokens: 32768, thinkingBudget: IMPORT_THINKING_BUDGET, quality: "best" }
     );
     const parsed = planDraftSchema.safeParse(raw);
     if (!parsed.success || parsed.data.goals.length === 0) {
@@ -215,12 +216,16 @@ export async function planTurn(
       ),
       history,
       PLANNER_TURN_SCHEMA,
-      { temperature: 0.5, maxOutputTokens: 16384, thinkingBudget: IMPORT_THINKING_BUDGET }
+      { temperature: 0.5, maxOutputTokens: 16384, thinkingBudget: IMPORT_THINKING_BUDGET, quality: "good" }
     )) as { reply?: unknown; draft?: unknown };
     const reply = typeof raw?.reply === "string" && raw.reply.trim() ? raw.reply.trim() : null;
     if (!reply) return { ok: false, error: "The coach's answer came back empty. Try again." };
 
-    const draftParsed = raw.draft ? planDraftSchema.safeParse(raw.draft) : null;
+    // A plan only comes after the three options were offered (or while one is
+    // being edited). Weaker models jump ahead and draft a plan from the first
+    // message, before knowing the person's limits.
+    const optionsShown = v.messages.some((m) => m.role === "model" && /steady/i.test(m.text) && /stretch/i.test(m.text));
+    const draftParsed = raw.draft && (optionsShown || (current?.success && current.data.goals.length > 0)) ? planDraftSchema.safeParse(raw.draft) : null;
     if (!draftParsed?.success || draftParsed.data.goals.length === 0) {
       return { ok: true, data: { reply, draft: null, warnings: [] } };
     }
