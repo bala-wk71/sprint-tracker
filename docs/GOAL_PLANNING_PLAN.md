@@ -557,6 +557,24 @@ Two things differ from the design below:
 `scripts/try-import.ts` reruns the importer against any Markdown file without
 touching the database.
 
+**Phase 3 (built on branch `goal-reports`):** `/goals/reports` has the weekly
+check (code only, this week or last) and the written reports. Differences from
+the design:
+- Weekly checks are recomputed on demand, not stored; `plan_reports` holds only
+  month, quarter and year reports (one per period, rewritable), with the numbers
+  as they were, the AI's words, and a quarterly review's proposal.
+- Reports are offered when due (last month; the quarter in its last or first
+  three weeks; the year in December or January) and written on demand; no cron.
+- The quarterly review isn't a chat: it writes the review and proposes quarter
+  goals with projects under the existing destinations, which open in the usual
+  plan review. "Talk it over with the coach" links to the planner, which reads
+  the latest report.
+- "What moved it" compares weekly-read targets (Health) with weekly actions over
+  the last 12 finished weeks; monthly-read targets get no driver line yet.
+- Replans move one checkpoint to where the pace arrives; `shifted_days` keeps
+  the original. Pulling a plan forward is suggested in words only.
+- `scripts/try-report.ts` writes a report from sample numbers.
+
 **Phase 1: the goal shape, planned by hand**
 - Migration: `streams`, `goal_measures`, `measure_checkpoints`,
   `measure_readings`, `goal_levers`, `lever_ticks`, goal columns
