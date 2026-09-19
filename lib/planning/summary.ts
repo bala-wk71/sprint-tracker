@@ -20,6 +20,7 @@ import {
   type Point,
 } from "./projection";
 import type { SummaryStatus } from "./constants";
+import { forecastMeasure, type Forecast } from "./forecast";
 
 export type MeasureRow = {
   id: string;
@@ -66,6 +67,8 @@ export type MeasureSummary = {
   due: boolean;
   /** The next checkpoint still ahead, for "on track for 89–90 by 31 Dec". */
   next: Checkpoint | null;
+  /** Where the recent pace lands on the next checkpoint. */
+  forecast: Forecast | null;
 };
 
 export type LoanParams = { emi: number; lastEmiOn: string };
@@ -160,6 +163,19 @@ export function summarizeMeasure(input: {
   }
 
   const auto = measure.source !== "manual";
+  const next = resolved.find((c) => c.date > todayIso) ?? null;
+  // A pace means nothing for ladders (they jump) or loan schedules (fixed by the EMI).
+  const forecast =
+    measure.kind === "number" && measure.source !== "loan_schedule"
+      ? forecastMeasure({
+          points: sincePlan,
+          direction,
+          cadence: measure.cadence as Cadence,
+          compound: measure.interpolate === "compound",
+          next,
+          todayIso,
+        })
+      : null;
   return {
     measure,
     checkpoints: input.checkpoints,
@@ -173,6 +189,7 @@ export function summarizeMeasure(input: {
     covered: distanceCovered(path, direction, sincePlan),
     needsBaseline,
     due: !auto && readingDue(measure.cadence as Cadence, latest?.date ?? null, todayIso),
-    next: resolved.find((c) => c.date > todayIso) ?? null,
+    next,
+    forecast,
   };
 }
