@@ -53,3 +53,48 @@ export function headline(s: MeasureSummary, todayIso: string): string {
 export function coveredLabel(s: MeasureSummary): string | null {
   return s.covered === null ? null : `${Math.round(s.covered * 100)}% of the way`;
 }
+
+/** "0.4 kg a week", "₹6,000 a month": weekly readings talk in weeks, the rest in months. */
+export function formatRate(perDay: number, unit: string | null, cadence: string): string {
+  const days = cadence === "weekly" ? 7 : 30;
+  return `${formatMeasure(Math.abs(perDay * days), unit)} a ${cadence === "weekly" ? "week" : "month"}`;
+}
+
+export type ForecastRead = { text: string; replan: boolean };
+
+/**
+ * The forecast in one sentence. When it's late, it names the pace that gets
+ * there and, if you've held that pace before, says so.
+ */
+export function forecastLine(s: MeasureSummary, todayIso: string): ForecastRead | null {
+  const f = s.forecast;
+  if (!f || f.verdict === "there") return null;
+  const unit = s.measure.unit;
+  const cadence = s.measure.cadence;
+  const target = formatBand(f.target.min, f.target.max, unit);
+  const on = shortDate(f.target.date, todayIso);
+  const landing = `At this pace: ${formatMeasure(f.projected, unit)} on ${on}.`;
+  const needed = formatRate(f.neededPerDay, unit, cadence);
+  const best = f.bestPerDay !== null && f.bestPerDay > 0 ? formatRate(f.bestPerDay, unit, cadence) : null;
+  switch (f.verdict) {
+    case "early":
+      return {
+        text: f.arrives
+          ? `At this pace you reach ${target} around ${shortDate(f.arrives, todayIso)}, ahead of ${on}.`
+          : landing,
+        replan: false,
+      };
+    case "on_pace":
+      return { text: landing, replan: false };
+    case "recoverable":
+      return {
+        text: `${landing} ${needed} from here gets you to ${target}${best ? `; you've held ${best} before` : ""}.`,
+        replan: false,
+      };
+    case "replan":
+      return {
+        text: `${f.arrives ? `At this pace you reach ${target} around ${shortDate(f.arrives, todayIso)}.` : landing} ${on} needs ${needed}${best ? `; your best so far is ${best}` : ""}.`,
+        replan: true,
+      };
+  }
+}

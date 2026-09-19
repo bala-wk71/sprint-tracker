@@ -30,7 +30,7 @@ const PALETTES = {
 const emptySubscribe = () => () => {};
 const ts = (iso: string) => Date.parse(`${iso}T00:00:00`);
 
-type Row = { t: number; band?: [number, number]; plan?: string; actual?: number };
+type Row = { t: number; band?: [number, number]; plan?: string; actual?: number; forecast?: number };
 
 export function MeasureChart({
   path,
@@ -38,12 +38,15 @@ export function MeasureChart({
   unit,
   todayIso,
   label,
+  forecast = null,
 }: {
   path: Path;
   points: Point[];
   unit: string | null;
   todayIso: string;
   label: string;
+  /** Latest reading → where the current pace lands on the next checkpoint. */
+  forecast?: Point[] | null;
 }) {
   const { resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
@@ -74,8 +77,15 @@ export function MeasureChart({
       row.actual = Number(p.value.toFixed(2));
       rows.set(ts(p.date), row);
     }
+    for (const p of forecast ?? []) {
+      if (p.date < start || p.date > end) continue;
+      const row = rows.get(ts(p.date)) ?? { t: ts(p.date) };
+      row.forecast = Number(p.value.toFixed(2));
+      rows.set(ts(p.date), row);
+    }
     return [...rows.values()].sort((a, b) => a.t - b.t);
-  }, [path, points, start, end, unit]);
+  }, [path, points, forecast, start, end, unit]);
+  const showForecast = data.filter((r) => r.forecast !== undefined).length === 2;
 
   if (data.length < 2) return null;
 
@@ -95,6 +105,12 @@ export function MeasureChart({
             <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: c.actual }} aria-hidden />
             Actual
           </span>
+          {showForecast && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-4 border-t-2 border-dashed" style={{ borderColor: c.actual }} aria-hidden />
+              At this pace
+            </span>
+          )}
           <span className="sr-only">for {label}</span>
         </figcaption>
         {canToggle && (
@@ -147,7 +163,7 @@ export function MeasureChart({
               formatter={(value, name) =>
                 name === "band"
                   ? [Array.isArray(value) ? formatBand(Number(value[0]), Number(value[1]), unit) : "", "Plan"]
-                  : [formatMeasure(Number(value), unit), "Actual"]
+                  : [formatMeasure(Number(value), unit), name === "forecast" ? "At this pace" : "Actual"]
               }
             />
             {todayIso >= start && todayIso <= end && (
@@ -176,6 +192,21 @@ export function MeasureChart({
               connectNulls
               isAnimationActive={false}
             />
+            {showForecast && (
+              <Line
+                dataKey="forecast"
+                name="forecast"
+                type="linear"
+                stroke={c.actual}
+                strokeWidth={2}
+                strokeDasharray="5 4"
+                strokeOpacity={0.7}
+                dot={false}
+                activeDot={{ r: 4, stroke: c.surface, strokeWidth: 2 }}
+                connectNulls
+                isAnimationActive={false}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>

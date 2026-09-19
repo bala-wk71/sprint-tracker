@@ -10,7 +10,7 @@ import { goalArea } from "@/lib/goals/constants";
 import { goalLevelLabel } from "@/lib/planning/constants";
 import { loadStreamsOverview } from "@/lib/planning/streams";
 import { loadLeverSummaries } from "@/lib/planning/load";
-import { coveredLabel, headline } from "@/lib/planning/wording";
+import { coveredLabel, forecastLine, headline } from "@/lib/planning/wording";
 import { HoursBar } from "@/components/goals/plan/StreamsOverview";
 import { StatusChip } from "@/components/goals/plan/MeasureCard";
 import { LeverRow } from "@/components/goals/plan/LeverList";
@@ -99,6 +99,9 @@ export default async function StreamPage({ params }: { params: Promise<{ id: str
                       )}
                     </div>
                     <p className="text-sm text-foreground/80">{headline(s, todayIso)}</p>
+                    {forecastLine(s, todayIso) && (
+                      <p className="text-xs text-muted-foreground">{forecastLine(s, todayIso)!.text}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {[s.goalTitle, coveredLabel(s)].filter(Boolean).join(" · ")}
                     </p>

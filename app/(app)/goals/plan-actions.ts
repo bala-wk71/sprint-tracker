@@ -229,6 +229,54 @@ export async function deleteMeasure(id: string, goalId: string): Promise<PlanRes
   return { ok: true };
 }
 
+/**
+ * Move one checkpoint to a new date when the forecast says the old one isn't
+ * realistic. Nothing moves on its own; shifted_days keeps the original on record.
+ */
+export async function moveCheckpoint(input: {
+  measureId: string;
+  goalId: string;
+  fromDate: string;
+  toDate: string;
+}): Promise<PlanResult> {
+  const parsed = z.object({ measureId: uuid, goalId: uuid, fromDate: isoDate, toDate: isoDate }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Pick a valid date." };
+  const v = parsed.data;
+  const ctx = await ctxOrNull();
+  if (!ctx) return { ok: false, error: SIGNED_OUT };
+  if (v.toDate <= (await todayIsoLocal())) return { ok: false, error: "Pick a date after today." };
+
+  const { data: rows } = await ctx.supabase
+    .from("measure_checkpoints")
+    .select("id, target_date, hold_until, shifted_days")
+    .eq("measure_id", v.measureId)
+    .eq("owner_id", ctx.userId)
+    .order("target_date");
+  const checkpoints = rows ?? [];
+  const moving = checkpoints.find((c) => c.target_date === v.fromDate);
+  if (!moving) return { ok: false, error: "That checkpoint has changed. Reload and try again." };
+  const after = checkpoints.find((c) => c.target_date > v.fromDate);
+  if (after && v.toDate >= after.target_date) {
+    return { ok: false, error: "That's past the next checkpoint. Edit the path to move both." };
+  }
+  if (checkpoints.some((c) => c.id !== moving.id && c.target_date === v.toDate)) {
+    return { ok: false, error: "There's already a checkpoint on that date." };
+  }
+  const shift = Math.round((Date.parse(`${v.toDate}T00:00:00Z`) - Date.parse(`${v.fromDate}T00:00:00Z`)) / 86_400_000);
+  const { error } = await ctx.supabase
+    .from("measure_checkpoints")
+    .update({
+      target_date: v.toDate,
+      shifted_days: moving.shifted_days + shift,
+      hold_until: moving.hold_until && moving.hold_until >= v.toDate ? moving.hold_until : null,
+    })
+    .eq("id", moving.id)
+    .eq("owner_id", ctx.userId);
+  if (error) return { ok: false, error: "Couldn't move the checkpoint. Try again." };
+  revalidatePlan(v.goalId);
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Readings
 

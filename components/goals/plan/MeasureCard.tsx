@@ -12,6 +12,7 @@ import type { MeasureSummary } from "@/lib/planning/summary";
 import { MeasureChart } from "./MeasureChart";
 import { MeasureEditor } from "./MeasureEditor";
 import { LogReadingForm } from "./LogReadingForm";
+import { ForecastNote } from "./ForecastNote";
 
 function levelsOf(scale: unknown): LadderLevel[] {
   if (!Array.isArray(scale)) return [];
@@ -97,7 +98,15 @@ export function MeasureCard({
         )}
       </header>
 
-      <MeasureChart path={summary.path} points={summary.points} unit={measure.unit} todayIso={todayIso} label={measure.label} />
+      <MeasureChart
+        path={summary.path}
+        points={summary.points}
+        unit={measure.unit}
+        todayIso={todayIso}
+        label={measure.label}
+        forecast={summary.forecast?.line}
+      />
+      <ForecastNote summary={summary} todayIso={todayIso} readOnly={readOnly} />
 
       {levels && levels.length > 0 && (
         <ol className="grid gap-1 text-xs sm:grid-cols-2">
