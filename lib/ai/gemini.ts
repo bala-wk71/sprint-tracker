@@ -1,11 +1,44 @@
-// The second entry is what runs when the first is rate limited, which on the
-// free tier is routine — so it has to be a model that still exists. This list
-// had gemini-2.0-flash in it long after Google retired it, which meant every
-// fallback answered 404: a request that hit the quota died with a raw "Gemini
-// gemini-2.0-flash 404" naming a model the user has never heard of, instead of
-// quietly succeeding on the second model. Check both still respond before
-// changing this.
-const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
+// Which key and model answer, in order. Each key is a separate Google project
+// with its own free-tier quota (20 requests a day per model on the primary),
+// so when one runs out the next route takes over. The backup key belongs to a
+// newer account: Google no longer serves the 2.5 models to new users, so it
+// runs Gemini 3. The strong model on each key comes before either lite model,
+// because the lite models write noticeably worse reports and plans.
+// Check every model still responds before changing this: a retired model
+// answers 404 (this list once held gemini-2.0-flash long after it was gone).
+type Route = { key: string; model: string; gen: 2 | 3 };
+
+const routeId = (r: Route) => `${r.key.slice(-6)}:${r.model}`;
+
+/**
+ * A route that used up its daily quota stays skipped for an hour, so later
+ * requests on the same warm instance don't each spend retries rediscovering it.
+ */
+const exhaustedUntil = new Map<string, number>();
+const EXHAUSTED_FOR_MS = 60 * 60 * 1000;
+
+function routes(): Route[] {
+  const primary = process.env.GEMINI_API_KEY;
+  const backup = process.env.GEMINI_API_KEY_BACKUP;
+  const all: (Route | null)[] = [
+    primary ? { key: primary, model: "gemini-2.5-flash", gen: 2 } : null,
+    backup ? { key: backup, model: "gemini-3.6-flash", gen: 3 } : null,
+    primary ? { key: primary, model: "gemini-2.5-flash-lite", gen: 2 } : null,
+    backup ? { key: backup, model: "gemini-3.5-flash-lite", gen: 3 } : null,
+  ];
+  const list = all.filter((r): r is Route => r !== null);
+  if (list.length === 0) throw new Error("GEMINI_API_KEY not configured");
+  // If every route is marked used up, try them all anyway: the marks are guesses.
+  const live = list.filter((r) => (exhaustedUntil.get(routeId(r)) ?? 0) < Date.now());
+  return live.length ? live : list;
+}
+
+const isDailyLimit = (status: number, body: string) => status === 429 && /PerDay/i.test(body);
+
+function noteFailure(route: Route, status: number, body: string) {
+  if (isDailyLimit(status, body)) exhaustedUntil.set(routeId(route), Date.now() + EXHAUSTED_FOR_MS);
+}
+
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
@@ -16,8 +49,10 @@ const BASE_DELAY_MS = 1000;
  */
 type GeminiPart = {
   text?: string;
-  functionCall?: { name: string; args?: Record<string, unknown> };
-  functionResponse?: { name: string; response: Record<string, unknown> };
+  functionCall?: { id?: string; name: string; args?: Record<string, unknown> };
+  functionResponse?: { id?: string; name: string; response: Record<string, unknown> };
+  /** Gemini 3 attaches this to a function call; it must go back with it. */
+  thoughtSignature?: string;
 };
 
 type GeminiMessage = {
@@ -57,6 +92,13 @@ const DEFAULT_CONFIG: GenerationConfig = {
   maxOutputTokens: 8192,
 };
 
+/** Gemini 3 takes a thinking level instead of a token budget. */
+function configFor(route: Route, config: GenerationConfig): Record<string, unknown> {
+  if (route.gen === 2 || !config.thinkingConfig) return config;
+  const { thinkingConfig, ...rest } = config;
+  return { ...rest, thinkingConfig: { thinkingLevel: thinkingConfig.thinkingBudget <= 1024 ? "low" : "medium" } };
+}
+
 type GeminiResponse = {
   candidates: {
     content: {
@@ -69,43 +111,52 @@ type GeminiResponse = {
 /** What a model returned, plus why it stopped — "MAX_TOKENS" means cut off. */
 type ModelResult = { text: string; finishReason: string };
 
+class GeminiHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: string,
+    model: string
+  ) {
+    super(`Gemini ${model} ${status}: ${body}`);
+  }
+}
+
 async function callModel(
-  model: string,
+  route: Route,
   systemInstruction: string,
   messages: GeminiMessage[],
   generationConfig: GenerationConfig
 ): Promise<ModelResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${route.model}:generateContent`;
 
   const body = {
     system_instruction: { parts: [{ text: systemInstruction }] },
     contents: messages,
-    generationConfig,
+    generationConfig: configFor(route, generationConfig),
   };
 
   const started = Date.now();
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": route.key },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    if (process.env.GEMINI_DEBUG) console.log(`[gemini] ${model} ${res.status} after ${Date.now() - started}ms`);
-    throw new Error(`Gemini ${model} ${res.status}: ${text}`);
+    if (process.env.GEMINI_DEBUG) console.log(`[gemini] ${route.model} ${res.status} after ${Date.now() - started}ms`);
+    noteFailure(route, res.status, text);
+    throw new GeminiHttpError(res.status, text, route.model);
   }
 
   const data = (await res.json()) as GeminiResponse;
   const candidate = data.candidates?.[0];
   if (process.env.GEMINI_DEBUG) {
-    console.log(`[gemini] ${model} ok after ${Date.now() - started}ms, ${candidate?.finishReason}`);
+    console.log(`[gemini] ${route.model} ok after ${Date.now() - started}ms, ${candidate?.finishReason}`);
   }
   return {
-    text: candidate?.content?.parts?.[0]?.text ?? "",
+    // Gemini 3 can split an answer across parts; signature-only parts carry no text.
+    text: (candidate?.content?.parts ?? []).map((p) => p.text ?? "").join(""),
     finishReason: candidate?.finishReason ?? "STOP",
   };
 }
@@ -129,35 +180,27 @@ async function callWithFallback(
   messages: GeminiMessage[],
   generationConfig: GenerationConfig
 ): Promise<ModelResult> {
-  for (const model of MODELS) {
+  let lastError: unknown = new Error("All Gemini models failed");
+  for (const route of routes()) {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        return await callModel(
-          model,
-          systemInstruction,
-          messages,
-          generationConfig
-        );
+        return await callModel(route, systemInstruction, messages, generationConfig);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        const isRetryable = msg.includes("429") || msg.includes("503");
-
-        if (isRetryable && attempt < MAX_RETRIES - 1) {
-          await new Promise((r) =>
-            setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt))
-          );
-          continue;
-        }
-
-        if (!isRetryable || model === MODELS[MODELS.length - 1]) {
-          if (model !== MODELS[MODELS.length - 1]) break;
-          throw readableFailure(msg, err);
+        lastError = err;
+        const status = err instanceof GeminiHttpError ? err.status : 0;
+        const body = err instanceof GeminiHttpError ? err.body : "";
+        // A per-minute limit or a brief outage is worth waiting out; a used-up
+        // day, a retired model or a refused key means moving to the next route.
+        const transient = (status === 429 && !isDailyLimit(status, body)) || status === 503;
+        if (!transient) break;
+        if (attempt < MAX_RETRIES - 1) {
+          await new Promise((r) => setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt)));
         }
       }
     }
   }
-
-  throw new Error("All Gemini models failed");
+  const msg = lastError instanceof Error ? lastError.message : String(lastError);
+  throw readableFailure(msg, lastError);
 }
 
 export async function generateResponse(
@@ -257,28 +300,24 @@ async function* openStream(
   generationConfig: GenerationConfig,
   tools: GeminiTool[]
 ): AsyncGenerator<GeminiResponse, void, unknown> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
-
-  const body: Record<string, unknown> = {
-    system_instruction: { parts: [{ text: systemInstruction }] },
-    contents: messages,
-    generationConfig,
-  };
-  if (tools.length > 0) body.tools = [{ function_declarations: tools }];
-
   let lastError = "";
 
-  for (const model of MODELS) {
+  for (const route of routes()) {
+    const body: Record<string, unknown> = {
+      system_instruction: { parts: [{ text: systemInstruction }] },
+      contents: messages,
+      generationConfig: configFor(route, generationConfig),
+    };
+    if (tools.length > 0) body.tools = [{ function_declarations: tools }];
     const url =
       `https://generativelanguage.googleapis.com/v1beta/models/` +
-      `${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+      `${route.model}:streamGenerateContent?alt=sse`;
 
     let res: Response;
     try {
       res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": route.key },
         body: JSON.stringify(body),
       });
     } catch (err) {
@@ -287,7 +326,9 @@ async function* openStream(
     }
 
     if (!res.ok || !res.body) {
-      lastError = `Gemini ${model} ${res.status}: ${await res.text()}`;
+      const text = await res.text();
+      noteFailure(route, res.status, text);
+      lastError = `Gemini ${route.model} ${res.status}: ${text}`;
       continue;
     }
 
@@ -387,7 +428,10 @@ export async function* streamWithTools(
     // The last pass drops the tools, so the model has to produce prose.
     const hopTools = hop < maxHops ? tools : [];
 
-    const calls: { name: string; args: Record<string, unknown> }[] = [];
+    const calls: { id?: string; name: string; args: Record<string, unknown> }[] = [];
+    // The model's call parts go back exactly as received: Gemini 3 needs the
+    // thought signature on them, and each response must carry its call's id.
+    const callParts: GeminiPart[] = [];
     let emittedText = false;
 
     for await (const chunk of openStream(
@@ -398,7 +442,9 @@ export async function* streamWithTools(
     )) {
       for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
         if (part.functionCall?.name) {
+          callParts.push(part);
           calls.push({
+            id: part.functionCall.id,
             name: part.functionCall.name,
             args: part.functionCall.args ?? {},
           });
@@ -414,12 +460,7 @@ export async function* streamWithTools(
     // This hop was a lookup after all; anything already shown was preamble.
     if (emittedText) yield { type: "reset" };
 
-    convo.push({
-      role: "model",
-      parts: calls.map((c) => ({
-        functionCall: { name: c.name, args: c.args },
-      })),
-    });
+    convo.push({ role: "model", parts: callParts });
 
     const responses: GeminiPart[] = [];
     for (const call of calls) {
@@ -427,6 +468,7 @@ export async function* streamWithTools(
       yield { type: "tool", name: call.name, summary: result.summary };
       responses.push({
         functionResponse: {
+          ...(call.id ? { id: call.id } : {}),
           name: call.name,
           response: { result: result.text },
         },
