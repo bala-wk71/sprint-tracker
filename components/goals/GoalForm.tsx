@@ -21,6 +21,7 @@ import {
   type TrackType,
 } from "@/lib/goals/constants";
 import { saveGoal } from "@/app/(app)/goals/actions";
+import type { StreamOption } from "@/lib/planning/streams";
 import { FIELD_HINT, FIELD_LABEL, INPUT, NumberFields, PillGroup, StepsEditor } from "./GoalFormParts";
 
 export type EditableGoal = {
@@ -36,6 +37,7 @@ export type EditableGoal = {
   targetValue: number | null;
   unit: string | null;
   parentId: string | null;
+  streamId: string | null;
   isPrivate: boolean;
   checkinEveryDays: number;
 };
@@ -46,6 +48,8 @@ type Props = {
   activeCount: number;
   initialParentId?: string | null;
   goal?: EditableGoal;
+  streams?: StreamOption[];
+  initialStreamId?: string | null;
 };
 
 const HORIZON_OPTIONS = [
@@ -55,11 +59,21 @@ const HORIZON_OPTIONS = [
 
 const toNumber = (text: string) => (text.trim() === "" ? null : Number(text));
 
-export function GoalForm({ todayIso, parentOptions, activeCount, initialParentId = null, goal }: Props) {
+export function GoalForm({
+  todayIso,
+  parentOptions,
+  activeCount,
+  initialParentId = null,
+  goal,
+  streams = [],
+  initialStreamId = null,
+}: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(goal?.title ?? "");
   const [why, setWhy] = useState(goal?.why ?? "");
-  const [area, setArea] = useState<GoalArea | null>(goal?.area ?? null);
+  const initialStream = streams.find((s) => s.id === (goal ? goal.streamId : initialStreamId)) ?? null;
+  const [area, setArea] = useState<GoalArea | null>(goal?.area ?? initialStream?.area ?? null);
+  const [streamId, setStreamId] = useState(initialStream?.id ?? "");
   const [horizon, setHorizon] = useState<GoalHorizon>(goal?.horizon ?? "3m");
   const [customDate, setCustomDate] = useState(goal?.horizon === "custom" ? goal.targetDate : "");
   const [trackType, setTrackType] = useState<TrackType>(goal?.trackType ?? "steps");
@@ -110,6 +124,7 @@ export function GoalForm({ todayIso, parentOptions, activeCount, initialParentId
         unit: numbers.unit,
         steps: goal ? [] : steps,
         parentId: parentId || null,
+        streamId: streams.length ? streamId || null : undefined,
         isPrivate,
         checkinEveryDays: checkinDays,
       });
@@ -153,6 +168,32 @@ export function GoalForm({ todayIso, parentOptions, activeCount, initialParentId
         />
         <p className={FIELD_HINT}>The coach reads this to keep its advice personal.</p>
       </div>
+
+      {streams.length > 0 && (
+        <div>
+          <label htmlFor="goal_stream" className={FIELD_LABEL}>
+            Stream
+          </label>
+          <select
+            id="goal_stream"
+            value={streamId}
+            onChange={(e) => {
+              setStreamId(e.target.value);
+              const picked = streams.find((s) => s.id === e.target.value);
+              if (picked) setArea(picked.area);
+            }}
+            className={INPUT}
+          >
+            <option value="">No stream</option>
+            {streams.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <p className={FIELD_HINT}>Which front of your life this belongs to. Its hours and progress roll up there.</p>
+        </div>
+      )}
 
       <PillGroup label="Life area" value={area} options={GOAL_AREAS} onChange={setArea} />
 

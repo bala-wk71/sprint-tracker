@@ -12,6 +12,7 @@ import {
   type TrackType,
 } from "@/lib/goals/constants";
 import { GoalForm } from "@/components/goals/GoalForm";
+import { loadStreamOptions } from "@/lib/planning/streams";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -27,7 +28,7 @@ export default async function EditGoalPage({ params }: { params: Promise<{ id: s
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: goal }, { data: others }, todayIso] = await Promise.all([
+  const [{ data: goal }, { data: others }, todayIso, streams] = await Promise.all([
     supabase.from("goals").select("*").eq("id", id).eq("owner_id", user.id).maybeSingle(),
     supabase
       .from("goals")
@@ -37,6 +38,7 @@ export default async function EditGoalPage({ params }: { params: Promise<{ id: s
       .neq("id", id)
       .order("target_date", { ascending: false }),
     todayIsoLocal(),
+    loadStreamOptions(supabase, user.id),
   ]);
   if (!goal) notFound();
 
@@ -57,6 +59,7 @@ export default async function EditGoalPage({ params }: { params: Promise<{ id: s
           todayIso={todayIso}
           parentOptions={others ?? []}
           activeCount={0}
+          streams={streams}
           goal={{
             id: goal.id,
             title: goal.title,
@@ -70,6 +73,7 @@ export default async function EditGoalPage({ params }: { params: Promise<{ id: s
             targetValue: goal.target_value,
             unit: goal.unit,
             parentId: goal.parent_id,
+            streamId: goal.stream_id,
             isPrivate: goal.is_private,
             checkinEveryDays: goal.checkin_every_days,
           }}

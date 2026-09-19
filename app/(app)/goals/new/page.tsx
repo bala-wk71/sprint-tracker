@@ -3,25 +3,27 @@ import { ChevronLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { todayIsoLocal } from "@/lib/dates";
 import { GoalForm } from "@/components/goals/GoalForm";
+import { loadStreamOptions } from "@/lib/planning/streams";
 
 export default async function NewGoalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ parent?: string }>;
+  searchParams: Promise<{ parent?: string; stream?: string }>;
 }) {
-  const { parent } = await searchParams;
+  const { parent, stream } = await searchParams;
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data }, todayIso] = await Promise.all([
+  const [{ data }, todayIso, streams] = await Promise.all([
     supabase
       .from("goals")
-      .select("id, title, status")
+      .select("id, title, status, stream_id")
       .eq("owner_id", user.id)
       .in("status", ["active", "paused"])
       .order("target_date", { ascending: false }),
     todayIsoLocal(),
+    loadStreamOptions(supabase, user.id),
   ]);
   const options = data ?? [];
   const parentGoal = options.find((g) => g.id === parent) ?? null;
@@ -53,6 +55,8 @@ export default async function NewGoalPage({
           parentOptions={options.map(({ id, title }) => ({ id, title }))}
           activeCount={options.filter((g) => g.status === "active").length}
           initialParentId={parentGoal?.id ?? null}
+          streams={streams}
+          initialStreamId={parentGoal?.stream_id ?? stream ?? null}
         />
       </section>
     </div>

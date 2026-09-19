@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { addDays, format } from "date-fns";
-import { Plus } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
-import { todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { weekStartIsoOf } from "@/lib/week";
+import { effectiveStreams, loadStreamsOverview } from "@/lib/planning/streams";
+import { StreamsOverview } from "@/components/goals/plan/StreamsOverview";
 import { ACTIVE_GOAL_SOFT_LIMIT } from "@/lib/goals/constants";
 import { PlanTabs } from "@/components/goals/PlanTabs";
 import { GoalRow, type GoalRowData } from "@/components/goals/GoalRow";
 
-type Row = GoalRowData & { parent_id: string | null; goal_steps: { done_at: string | null }[] };
+type Row = GoalRowData & { parent_id: string | null; stream_id: string | null; goal_steps: { done_at: string | null }[] };
 
 export default async function GoalsPage() {
   const supabase = await createClient();
@@ -18,7 +21,7 @@ export default async function GoalsPage() {
     supabase
       .from("goals")
       .select(
-        "id, parent_id, title, area, horizon, start_date, target_date, track_type, start_value, target_value, current_value, unit, status, pinned, is_private, checkin_every_days, last_checkin_on, completed_at, goal_steps(done_at)"
+        "id, parent_id, stream_id, title, area, horizon, start_date, target_date, track_type, start_value, target_value, current_value, unit, status, pinned, is_private, checkin_every_days, last_checkin_on, completed_at, goal_steps(done_at)"
       )
       .eq("owner_id", user.id)
       .order("pinned", { ascending: false })
@@ -26,6 +29,10 @@ export default async function GoalsPage() {
     todayIsoLocal(),
   ]);
   const goals: Row[] = data ?? [];
+  const weekStart = weekStartIsoOf(todayIso, await getWeekStartDay());
+  const streams = await loadStreamsOverview(supabase, user.id, todayIso, weekStart);
+  const streamNameById = new Map(streams.map((s) => [s.id, s.name]));
+  const streamOf = effectiveStreams(goals);
 
   const feelingIds = goals.filter((g) => g.track_type === "feeling").map((g) => g.id);
   const { data: ratings } = feelingIds.length
@@ -84,6 +91,7 @@ export default async function GoalsPage() {
           feelings={feelings.get(g.id) ?? []}
           parentTitle={g.parent_id ? titleById.get(g.parent_id) ?? null : null}
           todayIso={todayIso}
+          streamName={streamNameById.get(streamOf.get(g.id) ?? "") ?? null}
         />
       ))}
     </ul>
@@ -109,6 +117,36 @@ export default async function GoalsPage() {
           New goal
         </Link>
       </div>
+
+      {streams.length > 0 ? (
+        <section className="space-y-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Streams</h2>
+              <p className="text-xs text-muted-foreground">Every front of your life, with its targets and this week&apos;s hours.</p>
+            </div>
+            <Link href="/goals/streams" className="shrink-0 text-xs font-medium text-primary hover:underline">
+              Manage
+            </Link>
+          </div>
+          <StreamsOverview streams={streams} />
+        </section>
+      ) : (
+        goals.length > 0 && (
+          <Link
+            href="/goals/streams"
+            className="flex items-start gap-3 rounded-xl border border-dashed border-border p-4 text-sm hover:border-primary/50"
+          >
+            <Layers className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span>
+              <span className="font-medium text-foreground">Group your goals into streams</span>
+              <span className="block text-muted-foreground">
+                A job, a business, a startup, health, learning: see each one&apos;s targets and hours at a glance.
+              </span>
+            </span>
+          </Link>
+        )
+      )}
 
       {active.length > ACTIVE_GOAL_SOFT_LIMIT && (
         <p className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">

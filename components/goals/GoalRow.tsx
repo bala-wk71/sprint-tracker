@@ -38,6 +38,8 @@ type Props = {
   hrefBase?: string;
   /** Reviewers see where a goal stands, never the check-in button. */
   readOnly?: boolean;
+  /** The stream the goal counts towards, shown in place of the bare life area. */
+  streamName?: string | null;
 };
 
 export function GoalRow({
@@ -49,6 +51,7 @@ export function GoalRow({
   todayIso,
   hrefBase = "/goals",
   readOnly = false,
+  streamName = null,
 }: Props) {
   const href = `${hrefBase}/${goal.id}`;
   const area = goalArea(goal.area);
@@ -73,7 +76,7 @@ export function GoalRow({
           )}
         </div>
         <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          <span>{area.label}</span>
+          <span>{streamName ?? area.label}</span>
           <span>{horizonLabel(goal.horizon, goal.start_date, goal.target_date)}</span>
           <span>
             {closed && goal.completed_at
