@@ -20,6 +20,7 @@ import {
 } from "@/lib/planning/draft";
 import { defaultCheckinDays, lengthInDays } from "@/lib/goals/constants";
 import { formatMeasure } from "@/lib/planning/format";
+import { quarterLabel, quarterOf } from "@/lib/planning/quarters";
 
 export type DraftResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -236,7 +237,7 @@ export async function planTurn(
     // plan's targets and actions and left only its quarter goal.
     const { data: activeGoals } = await ctx.supabase
       .from("goals")
-      .select("id, title, target_date")
+      .select("id, title, target_date, parent_id, level")
       .eq("owner_id", ctx.userId)
       .in("status", ["active", "paused"]);
     const candidates = (activeGoals ?? []).filter((g) => g.id !== existing?.id);
@@ -268,6 +269,22 @@ export async function planTurn(
       g.title = match.title;
       g.targetDate = match.target_date;
       attachedTo.push(match.title);
+    }
+    // One goal per quarter under a destination: a new quarter goal under an
+    // existing goal that already has one for that quarter joins it instead.
+    for (const g of draft.goals) {
+      if (g.existingId || !g.parentKey) continue;
+      const parentId = draft.goals.find((p) => p.key === g.parentKey)?.existingId;
+      if (!parentId) continue;
+      const q = quarterLabel(quarterOf(g.targetDate));
+      const sibling = candidates.find(
+        (x) => x.parent_id === parentId && x.level === "quarter" && quarterLabel(quarterOf(x.target_date)) === q
+      );
+      if (!sibling || draft.goals.some((o) => o.existingId === sibling.id)) continue;
+      g.existingId = sibling.id;
+      g.title = sibling.title;
+      g.targetDate = sibling.target_date;
+      attachedTo.push(sibling.title);
     }
     const { draft: clean, warnings } = normalizeDraft(draft, todayIso);
     for (const title of attachedTo) {
