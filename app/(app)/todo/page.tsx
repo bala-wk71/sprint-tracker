@@ -1,5 +1,7 @@
 import { createClient, getUser } from "@/lib/supabase/server";
-import { getWeekStartDay } from "@/lib/dates";
+import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { loadStreamOptions } from "@/lib/planning/streams";
+import { groupGoalOptions } from "@/lib/planning/goalOptions";
 import { GoalOptionsProvider } from "@/components/goals/GoalOptions";
 import { TodoShell } from "./TodoShell";
 import type { TodoSection, TodoTask } from "./types";
@@ -9,7 +11,7 @@ export default async function TodoPage() {
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: sectionsRaw }, { data: tasksRaw }, { data: goalRows }] = await Promise.all([
+  const [{ data: sectionsRaw }, { data: tasksRaw }, { data: goalRows }, streams, todayIso] = await Promise.all([
     supabase
       .from("todo_sections")
       .select("id, parent_id, name, position, is_collapsed, archived_at, source_page_id")
@@ -24,10 +26,12 @@ export default async function TodoPage() {
       .order("position"),
     supabase
       .from("goals")
-      .select("id, title")
+      .select("id, title, parent_id, stream_id, level, start_date, target_date")
       .eq("owner_id", user.id)
       .in("status", ["active", "paused"])
       .order("target_date"),
+    loadStreamOptions(supabase, user.id),
+    todayIsoLocal(),
   ]);
 
   const sections = sectionsRaw ?? [];
@@ -79,7 +83,7 @@ export default async function TodoPage() {
           Organise tasks by section and subsection.
         </p>
       </div>
-      <GoalOptionsProvider goals={goalRows ?? []}>
+      <GoalOptionsProvider goals={groupGoalOptions(goalRows ?? [], streams, todayIso)}>
         <TodoShell sections={tree} weekStartDay={await getWeekStartDay()} />
       </GoalOptionsProvider>
     </div>

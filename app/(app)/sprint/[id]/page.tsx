@@ -5,6 +5,9 @@ import { ArrowLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { WEEK_HOURS, type TaskCategory } from "@/lib/constants";
 import { weekEndIsoOf } from "@/lib/week";
+import { todayIsoLocal } from "@/lib/dates";
+import { loadStreamOptions } from "@/lib/planning/streams";
+import { groupGoalOptions } from "@/lib/planning/goalOptions";
 import { TasksEditor, type EditableTask } from "./TasksEditor";
 import { DeleteSprintButton } from "./DeleteSprintButton";
 
@@ -18,7 +21,7 @@ export default async function SprintDetailPage({
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: sprint }, { data: taskRows }, { data: goalRows }] = await Promise.all([
+  const [{ data: sprint }, { data: taskRows }, { data: goalRows }, streams, todayIso] = await Promise.all([
     supabase
       .from("sprints")
       .select("id, week_start_date, notes, owner_id")
@@ -32,9 +35,11 @@ export default async function SprintDetailPage({
       .order("position", { ascending: true }),
     supabase
       .from("goals")
-      .select("id, title, status")
+      .select("id, title, status, parent_id, stream_id, level, start_date, target_date")
       .eq("owner_id", user.id)
       .order("target_date", { ascending: true }),
+    loadStreamOptions(supabase, user.id),
+    todayIsoLocal(),
   ]);
 
   if (!sprint) {
@@ -52,14 +57,16 @@ export default async function SprintDetailPage({
 
   // Open goals are offered for new links; a closed goal stays listed only
   // while a task still points at it, so an existing link never goes blank.
-  const goals = (goalRows ?? [])
-    .filter(
+  const goals = groupGoalOptions(
+    (goalRows ?? []).filter(
       (g) =>
         g.status === "active" ||
         g.status === "paused" ||
         tasks.some((t) => t.goal_id === g.id)
-    )
-    .map(({ id: goalId, title }) => ({ id: goalId, title }));
+    ),
+    streams,
+    todayIso
+  );
   const linkedCount = tasks.filter((t) => t.goal_id).length;
 
   const totalTarget = tasks.reduce((sum, t) => sum + t.target_hours, 0);

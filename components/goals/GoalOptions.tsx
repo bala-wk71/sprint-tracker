@@ -4,7 +4,8 @@ import { createContext, useContext, type ReactNode } from "react";
 import { Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type GoalOption = { id: string; title: string };
+/** `group` is the stream; options arrive already ordered by it. */
+export type GoalOption = { id: string; title: string; group?: string | null };
 
 /**
  * The goals a piece of work can be linked to. Provided once at the top of a
@@ -24,6 +25,18 @@ export function GoalOptionsProvider({
 
 export function useGoalOptions() {
   return useContext(GoalOptionsContext);
+}
+
+/** Consecutive runs of the same group, keeping the incoming order. */
+function groupsOf(goals: GoalOption[]) {
+  const runs: { group: string | null; items: GoalOption[] }[] = [];
+  for (const g of goals) {
+    const group = g.group ?? null;
+    const last = runs.at(-1);
+    if (last && last.group === group) last.items.push(g);
+    else runs.push({ group, items: [g] });
+  }
+  return runs;
 }
 
 /** "Helps a goal: [None / goal…]". Renders nothing when there are no goals to pick. */
@@ -57,11 +70,23 @@ export function GoalSelect({
         className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 sm:max-w-xs sm:text-sm"
       >
         <option value="">None</option>
-        {goals.map((g) => (
-          <option key={g.id} value={g.id}>
-            {g.title}
-          </option>
-        ))}
+        {groupsOf(goals).map(({ group, items }) =>
+          group ? (
+            <optgroup key={group} label={group}>
+              {items.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.title}
+                </option>
+              ))}
+            </optgroup>
+          ) : (
+            items.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.title}
+              </option>
+            ))
+          )
+        )}
       </select>
     </div>
   );
