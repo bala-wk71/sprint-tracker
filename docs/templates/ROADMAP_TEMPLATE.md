@@ -21,6 +21,30 @@ How to use this template
 
 ---
 
+## My Streams
+
+<!--
+Every front of your life that runs at the same time: jobs, businesses, side
+projects, health, money, family, learning, day-to-day. Each one gets its own
+progress, and together they make one weekly score.
+- Hours/week: how much time you plan to give it (leave blank if it isn't time-boxed).
+- Matters now: 1–5, how much this stream counts in your weekly score right now.
+  You can change it any time.
+-->
+
+| Stream | What it is | Hours/week | Matters now |
+|---|---|---|---|
+| <IT job> | <Day job; pays the bills until the business can> | <45> | <2> |
+| <Dad's company> | <Family business: sales and operations> | <10> | <5> |
+| <Drone startup> | <3 partners, in incubation> | <5> | <3> |
+| <Health> | <Weight, fitness, eyes> | <5> | <4> |
+| <Money> | <Loans, savings, insurance> | | <4> |
+| <Family & home> | <Parents, marriage, home> | | <3> |
+| <Learning> | <Skills, courses, reading> | <3> | <2> |
+| <Daily life> | <Check-ins, sleep, routine> | | <2> |
+
+---
+
 ## Where I Am Today
 
 <!-- Your starting point. Each row becomes the first reading of a metric. -->
@@ -67,18 +91,23 @@ The heart of the plan: one row per number you want to track.
 <!--
 The things you do each day or week that push the targets above, even
 indirectly. This is where your day-to-day progress comes from: big numbers
-move slowly, habits show up every day. "Moves" says which target the habit
-helps. Leave it blank and the app will suggest a link.
+move slowly, habits show up every day.
+- Moves: which target the habit helps. Leave it blank and the app will suggest a link.
+- Minimum: what still counts in a hard week (sick, crunch at work, travelling).
+  Hitting the minimum keeps the week solid. Leave it blank and it defaults to half the target.
 -->
 
-| Habit | Target | Moves |
-|---|---|---|
-| <Calories in range> | <2,100–2,400 kcal, 5 days a week> | <Weight> |
-| <Protein> | <130 g+, 5 days a week> | <Weight, body fat> |
-| <Strength workouts> | <3–4 per week> | <Weight, body fat> |
-| <Walk or run 30 min> | <3+ days a week> | <Weight, running> |
-| <Hours on company work> | <10+ per week> | <Company profit> |
-| <Emergency fund transfer> | <once a month> | <Emergency fund> |
+| Habit | Target | Minimum | Moves |
+|---|---|---|---|
+| <Calories in range> | <2,100–2,400 kcal, 5 days a week> | <3 days> | <Weight> |
+| <Protein> | <130 g+, 5 days a week> | <3 days> | <Weight, body fat> |
+| <Strength workouts> | <3–4 per week> | <2> | <Weight, body fat> |
+| <Walk or run 30 min> | <3+ days a week> | <2> | <Weight, running> |
+| <Hours on company work> | <10+ per week> | <4> | <Company profit> |
+| <Hours on the startup> | <5 per week> | <2> | <Drone startup> |
+| <Job-switch prep> | <2 hours per week> | <1> | <IT job> |
+| <Learning> | <3 hours per week> | <1> | <Learning> |
+| <Emergency fund transfer> | <once a month> | <once a month> | <Emergency fund> |
 
 ---
 

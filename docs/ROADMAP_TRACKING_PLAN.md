@@ -90,7 +90,7 @@ Save  ──►  roadmap + metrics + targets + goals/steps + gates in one transa
   kids" become milestone steps, not metrics.
 - **Branching outcomes**: "₹5–10 Cr revenue *or* wound down by 28" becomes a
   gate/decision, not a single target line.
-- **Scenarios**: "aggressive" (base) vs "maxxed" (stretch). Phase 3; for now
+- **Scenarios**: "aggressive" (base) vs "maxxed" (stretch). Phase 4; for now
   import the base scenario and keep the other as a note.
 
 ---
@@ -118,19 +118,29 @@ the test fixture.
 | Personal investments | ₹ | up | manual | yearly | → 75 L–1.5 Cr (2034-09-30) |
 
 Six health metrics fill in from data the app already collects (four in Phase 1,
-workouts and meals in Phase 2). The loans compute themselves from the EMI
+workouts and meals in Phase 3). The loans compute themselves from the EMI
 schedule, and a typed balance overrides the schedule after a prepayment. The
 rest are one number typed in weekly or monthly.
 
-### Levers (what moves each metric, see §6)
+### Streams (every front of life, see §7)
 
-| Outcome | Levers | Source |
-|---|---|---|
-| Weight, waist, body fat | 3–4 strength sessions/week · protein 130 g+ on 5 of 7 days · calories in range on 5 of 7 days · a 30-min walk or run on 3+ days (the file's "8,000 steps") | workouts, meals (auto) · walk: tick |
-| Company profit | Hours on company work each week · sales conversations each week | sprint tasks linked to the roadmap (auto) · tick |
-| Monthly cash balance, emergency fund | Monthly transfer to the emergency fund made · credit card paid in full | tick |
-| Drone startup | Hours on startup work each week · leads contacted | linked tasks (auto) · tick |
-| Running ladder | Runs this week | workouts with a Running set (auto) |
+Eight fronts run at once (the file covers six; Learning and Daily life come from the user). Each becomes a **stream** with its own
+outcomes, levers (§6), milestones and weekly hours:
+
+| Stream | Outcomes | Levers (weekly unless noted) | Milestones & gates |
+|---|---|---|---|
+| **IT job** | Salary (₹79k/month) | Hours on job-switch prep (resume, interviews, skills) | Resume updated (by Sep 27) · switch for a better salary (2027) · **quit gate** (2030) |
+| **Dad's company** | Monthly profit (₹1 L → ₹15 L) | Hours on company work · sales conversations · target-customer list growing | 20 target customers (end 2026) · 3 months of orders before the move (Apr 2027) · company starts paying the EMI (2028) · written ownership share · full-time + Hayabusa (2030) · second shift (2031) |
+| **Drone startup** | Revenue, paying customers | Hours on startup work · leads contacted | Founders' agreement signed · DPIIT + grants · first order delivered with testimonial · 2–3 leads (end 2026) · grant/seed or ₹25–50 L revenue (2027) · **continue-or-wind-down gate** (2028) |
+| **Health** | Weight, waist, body fat, running ladder | Strength 3–4 · protein 130 g+ on 5 days · calories in range on 5 days · walk/run 30 min on 3+ days (the file's "8,000 steps") · sleep 7–8 h | Blood test + eye exam (by Sep 27, then yearly) · walk-run 3 km → 5K < 30 min → 10K |
+| **Money** | Monthly balance, emergency fund, loans (computed), investments | Emergency-fund transfer (monthly) · card paid in full (monthly) · SIP running (monthly) | Term plan + parents' insurance (end 2026) · bike loan cleared (Oct 2027) · debt-free (Sep 2029) · ₹50k+/month invested (2030) |
+| **Family & home** | *(milestones only)* | *(none in file: importer suggests e.g. family time, optional)* | Parents insured · marriage window (2029) · first child + education SIP (2031) · land near Pollachi (2032) · second child, home build (2033) · move in (2034) |
+| **Learning** | *(nothing in the file)* | *(importer asks: "Learning has no targets yet. Add one?")* | — |
+| **Daily life** | Days tracked per week, mood/energy trend | Morning check-in + evening wrap-up (existing daily log) | — |
+
+Health, Daily life and the loans fill in from data the app already has; so do
+the hours levers, via sprint tasks and todos linked to a stream (§7.2). The
+rest are one-tap ticks or one number a month.
 
 ### Checklists (→ `goals` with `track_type = 'steps'`)
 
@@ -171,7 +181,7 @@ rest are one number typed in weekly or monthly.
 ## 4. Data model
 
 New tables, all owner-only RLS by default (money figures are sensitive).
-Reviewers see nothing until the owner shares an area (Phase 3). One active
+Reviewers see nothing until the owner shares an area (Phase 4). One active
 roadmap per user; importing a new one archives the old.
 
 ```sql
@@ -194,11 +204,42 @@ create table public.roadmaps (
 create unique index roadmaps_one_active
   on public.roadmaps (owner_id) where status = 'active';
 
+-- A front of life: "IT job", "Dad's company", "Health". Everything below
+-- (metrics, levers, gates, goals) belongs to one stream. See §7.
+create table public.roadmap_streams (
+  id            uuid primary key default gen_random_uuid(),
+  roadmap_id    uuid not null references public.roadmaps(id) on delete cascade,
+  owner_id      uuid not null references public.users(id) on delete cascade,
+  name          text not null,
+  area          text not null,            -- GOAL_AREA_VALUES: colour + reviewer sharing
+  weight        numeric not null default 1 check (weight >= 0),  -- share of the weekly score
+  weekly_hours  numeric,                  -- planned hours per week; null = not time-boxed
+  -- Auto-created goal ("Dad's company: ongoing work") so any sprint task or todo
+  -- can link to the stream without first inventing a milestone.
+  ongoing_goal_id uuid references public.goals(id) on delete set null,
+  position      integer not null default 0,
+  unique (roadmap_id, name)
+);
+
+-- A rough patch: illness, a job crunch, a wedding, exams. While it lasts, the
+-- stream's weekly targets drop to their floors and effort checkpoints shift.
+create table public.roadmap_hurdles (
+  id          uuid primary key default gen_random_uuid(),
+  roadmap_id  uuid not null references public.roadmaps(id) on delete cascade,
+  owner_id    uuid not null references public.users(id) on delete cascade,
+  stream_id   uuid references public.roadmap_streams(id) on delete cascade,  -- null = every stream
+  reason      text not null,
+  starts_on   date not null,
+  ends_on     date,                        -- null = ongoing until "I'm back"
+  check (ends_on is null or ends_on >= starts_on)
+);
+
 -- One trackable number. `source` decides where actual values come from.
 create table public.roadmap_metrics (
   id           uuid primary key default gen_random_uuid(),
   roadmap_id   uuid not null references public.roadmaps(id) on delete cascade,
   owner_id     uuid not null references public.users(id) on delete cascade,
+  stream_id    uuid not null references public.roadmap_streams(id) on delete cascade,
   key          text not null,        -- stable slug ("weight", "company_profit"); survives re-import
   label        text not null,
   area         text not null,        -- reuses GOAL_AREA_VALUES
@@ -228,6 +269,10 @@ create table public.roadmap_targets (
   relative     boolean not null default false,  -- values are deltas from the baseline reading
   hold_until   date,                 -- "held steady": band continues flat to this date
   approximate  boolean not null default false,  -- "around October"
+  -- 'effort' checkpoints (weight, profit) shift when a hurdle pauses the
+  -- stream; 'calendar' ones (last EMI, age-based events) never move.
+  kind         text not null default 'effort' check (kind in ('effort', 'calendar')),
+  shifted_days integer not null default 0,     -- total hurdle shift applied, for the audit line
   check (min_value is not null or max_value is not null)
 );
 
@@ -253,6 +298,7 @@ create table public.roadmap_gates (
   id           uuid primary key default gen_random_uuid(),
   roadmap_id   uuid not null references public.roadmaps(id) on delete cascade,
   owner_id     uuid not null references public.users(id) on delete cascade,
+  stream_id    uuid references public.roadmap_streams(id) on delete set null,
   title        text not null,
   conditions   jsonb not null,
   manual_ticks jsonb not null default '{}',   -- { "Orders booked 6 months ahead": "2030-02-01" }
@@ -261,7 +307,8 @@ create table public.roadmap_gates (
 
 -- Checklists and milestones reuse goals + goal_steps.
 alter table public.goals
-  add column roadmap_id uuid references public.roadmaps(id) on delete set null;
+  add column roadmap_id uuid references public.roadmaps(id) on delete set null,
+  add column stream_id  uuid references public.roadmap_streams(id) on delete set null;
 
 -- Levers: the actions you control that move an outcome (§6). This is where
 -- daily and weekly progress comes from.
@@ -269,15 +316,16 @@ create table public.roadmap_levers (
   id           uuid primary key default gen_random_uuid(),
   roadmap_id   uuid not null references public.roadmaps(id) on delete cascade,
   owner_id     uuid not null references public.users(id) on delete cascade,
-  metric_id    uuid references public.roadmap_metrics(id) on delete set null,  -- null = area-level
-  area         text not null,
+  stream_id    uuid not null references public.roadmap_streams(id) on delete cascade,
+  metric_id    uuid references public.roadmap_metrics(id) on delete set null,  -- null = stream-level
   title        text not null,          -- "Strength session", "Protein 130 g+"
   source       text not null default 'tick',
     -- 'tick' | 'workouts.strength' | 'workouts.running' | 'meals.protein_min'
-    -- | 'meals.kcal_band' | 'linked_hours'
+    -- | 'meals.kcal_band' | 'linked_hours' | 'daily_log.tracked_days'
   source_params jsonb not null default '{}',   -- { "min": 130 } / { "min": 2100, "max": 2400 }
   period       text not null check (period in ('day', 'week', 'month')),
   target       numeric not null,       -- per period: 4 sessions/week, 5 days/week, 1/month
+  floor        numeric not null,       -- the minimum that still counts in a hard week; default ceil(target / 2)
   position     integer not null default 0
 );
 
@@ -299,7 +347,7 @@ is how the long view reaches daily work.
 
 Yearly recurring checks ("every January") become a steps goal that re-opens
 each January (a small `recurs` column on goals, or re-created by a cron job:
-decide in Phase 2).
+decide in Phase 3).
 
 ---
 
@@ -374,7 +422,7 @@ one missed day costs nothing on its own.
 | Scale | Question it answers | What fills it |
 |---|---|---|
 | **Today** | "Did I move the plan today?" | Levers done today, e.g. *Protein ✓ · Walk ✓ · Workout: not yet* |
-| **This week** | "Was this a solid week?" | Share of weekly lever targets met. **70% or more = a solid week** (not 100%) |
+| **This week** | "Was this a solid week?" | The **week score** across every stream (§7.3). **70 or more = a solid week** (not 100) |
 | **This month** | "Where am I really?" | The monthly check-in: log manual values, see outcomes move |
 | **This chapter** | "How's 2026 going?" | Checkpoints hit plus checklist steps done for the current year |
 | **The journey** | "How far have I come since I started?" | Distance covered across all outcomes and milestones |
@@ -388,9 +436,11 @@ strip, even when the journey bar hasn't visibly moved in a month.
   covered and stays covered. If you bounce back to 89.6, the card shows *"Best
   88.9 · now 89.6"*, but the journey bar keeps the 6.1 kg.
 - **Milestones and checklist steps** add distance once and never take it away.
-- **Journey %** = average across areas of (distance covered ÷ distance planned).
-  Each area is the average of its outcomes and its milestone share. The full
-  formula lives in `lib/roadmap/progress.ts`.
+- **Journey %** = weighted average across streams (stream `weight`) of each
+  stream's distance covered ÷ distance planned. A stream's figure is the average
+  of its outcomes' best distance and its milestone share. Streams with no
+  outcomes (Family) count milestones only. The full formula lives in
+  `lib/roadmap/progress.ts`.
 
 This is deliberately different from XP. Since 2026-09-16 **XP decays** so that it
 tracks *recent* effort, and that's the right number for "am I showing up?".
@@ -426,24 +476,153 @@ journey % milestones (10 / 25 / 50 / 75 / 100).
 
 ---
 
-## 7. Screens
+## 7. The whole life in one score, built to survive hurdles
+
+An IT job, a family business, a startup, health, money, family and learning all
+run at once and compete for the same ~110 waking hours a week. Something will
+always be slipping: a release crunch at the IT job, a big order at the
+workshop, a fever, a wedding. The plan has to expect that. **A hard stretch
+should cost pace, never progress,** and the numbers should show you getting
+better even in a year when you're not on the original schedule.
+
+### 7.1 Streams
+
+Each front is a stream (§3 has the example mapped). A stream has:
+- **Outcomes**: the slow numbers (profit, weight, emergency fund)
+- **Levers**: weekly actions, each with a **target** and a **floor** (the
+  minimum that still counts in a hard week, e.g. strength 4 / floor 2)
+- **Milestones**: checklist goals and dated steps
+- **A weight**: its share of the week score. Equal by default; the user
+  changes it on the review screen or any time later ("this year the
+  company matters most")
+- **Planned hours per week** (optional): e.g. IT 45 · company 10 ·
+  startup 5 · health 5 · learning 3
+
+The importer creates the streams from the file's own headings ("Money and
+Work", "Health", "Year by Year" bullets) and splits mixed sections by subject.
+It proposes the streams the user mentioned but the file doesn't cover
+(**Learning**, **Daily life**) as empty streams to fill in or delete.
+
+### 7.2 Where the week's time went
+
+The IT job is a stream like any other, but it mostly *uses up* time. Everything
+else fits in what's left. The roadmap page shows one bar per week: **planned
+hours by stream vs logged hours**, from the existing daily time log. A time
+entry counts towards a stream when its sprint task or todo is linked to one
+of the stream's goals. Every stream has an auto-created "ongoing work" goal,
+so linking is one tap and needs no specific milestone.
+
+This makes trade-offs visible instead of guilty: *"IT took 58 h this week
+(planned 45), so the company got 4 h instead of 10."* When that happens two
+weeks running, the app offers to mark it as a hurdle (§7.4).
+
+### 7.3 The week score
+
+One number per week, 0–100. It's the "daily/weekly progress" the whole plan
+reports.
+
+```
+stream score =  60 × levers     average over levers of min(1, done ÷ this week's target)
+             +  25 × direction  outcome trend, last 4 weeks vs the 4 before:
+                                 improving 1 · holding 0.6 · slipping 0.3 · already at target 1
+             +  15 × milestones a step done this week 1 · one due in ≤ 30 days but untouched 0.5
+
+week score   =  Σ (stream score × stream weight) ÷ Σ weights
+```
+
+- A part with nothing to measure (no outcome readings in the window, no
+  milestone due within 90 days) has its weight moved to levers, so a stream
+  is never marked down for having no data.
+- **Slipping still scores 0.3, not 0.** A bad month on the scale can't
+  wipe out a week of kept habits.
+- Solid week ≥ 70. Streams are listed under the score, so it's clear which one
+  carried the week and which one needs attention.
+
+**Improving** is judged against your past self, not only against the plan: the
+4-week average of the week score vs the previous 4 weeks gives **Improving /
+Steady / Dipping**. This is the headline under the score. You can be behind
+the original schedule and still see *"Improving: 4 weeks better than the 4
+before."*
+
+### 7.4 Hurdles
+
+A hurdle is declared (or accepted when the app suggests it) for one stream or
+for everything: *"Release crunch at work, 2 weeks"*, *"Fever"*, *"Sister's
+wedding"*.
+
+While a hurdle is active:
+- **Levers in that stream use their floor as the target.** Two walks during a
+  fever is a full-marks week, so doing the minimum keeps the week solid.
+- **Effort checkpoints in that stream shift right by the hurdle's length.** The
+  plan clock pauses, so time spent in the hurdle doesn't count against pace.
+  Calendar checkpoints (the last EMI, age-based events) never move. Each shift is
+  recorded (`shifted_days`) and shown: *"End-2026 weight moved to 14 Jan:
+  2-week hurdle (fever)."*
+- **Journey % is untouched.** It's distance covered, which a hurdle can't undo.
+- The other streams carry on normally, so an IT crunch doesn't pause health.
+
+When it ends ("I'm back" or the end date), the first solid week after it earns
+a **Comeback** (the existing badge idea, applied per stream).
+
+**Guardrails, so hurdles don't become a way to never be behind:**
+- The app suggests a hurdle; it never declares one itself. Two weeks under
+  40 in a stream prompts: *"Rough patch in the startup? Mark it as a hurdle
+  and the plan will adjust."*
+- Shifts are capped at **8 weeks per stream per year**. Past that, the app
+  switches to the file's own rule, *"Missed two years in a row? Rethink the
+  strategy"*, and offers a replan (§7.5) instead of more shifting.
+
+### 7.5 Forecast and replanning
+
+Every outcome gets a **forecast line** next to the plan line: your recent
+pace, fitted over the last 8 weeks (a straight line, or a log fit for
+compounding metrics), extended forward.
+
+- *"At your last 8 weeks' pace you reach 89–90 kg on 2 Jan, 2 days after
+  the checkpoint."*
+- A stream's forecast is the median of its outcomes: **ahead / on schedule /
+  N weeks late**.
+
+When a forecast is late, the card gives one of two answers:
+1. **Recoverable:** the pace needed is at or below your best 8-week pace so far.
+   It names the lever: *"Add one strength session a week; you did that pace in
+   October."*
+2. **Not realistic right now:** it offers a **replan** that moves the checkpoint
+   to the forecast date. The user accepts or edits it; nothing moves silently.
+   The old target stays on record, so history is still judged against the
+   plan as it was.
+
+It also works the other way, from the file: *"Beat the target? Move the plan
+forward a year"* becomes an offer to pull checkpoints earlier when a stream's
+forecast is ahead for 3 months.
+
+---
+
+## 8. Screens
 
 Roadmaps join the existing Plan tabs: **This week · Goals · Roadmap**.
 
-0. **Dashboard strip**: "Roadmap today" with today's levers (auto ones already
-   ticked), this week's solid-week bar, and the journey %. It sits next to the
-   existing Today card and is the thing seen every day.
+0. **Dashboard strip**: "Roadmap today" with today's levers across all streams
+   (auto ones already ticked), this week's score so far with Improving / Steady /
+   Dipping, and the journey %. It sits next to the existing Today card and is
+   the thing seen every day. An active hurdle shows as a quiet line: *"Health
+   on minimums: fever, day 3."*
 
 1. **`/roadmap/import`**: paste or upload `.md` → "Reading your plan…" → review
    screen (§2). A "Download blank template" link sits above the box.
 2. **`/roadmap/[id]`**: the main view
    - **Header**: title, journey bar ("12% of the way · year 1 of 8"), chapter
      bar ("2026 chapter: 40%"), pill: *7 on track · 2 catching up · 3 need a reading*
-   - **Metric cards** grouped by area: small Recharts chart with the expected
-     band shaded, the actual line on top, checkpoint dots labelled "End of
-     2026". One line underneath: *"6.1 kg down: on track for 89–90 by 31 Dec."*
-     Under that, the card's levers for this week. Manual metrics have an
-     inline "Log value" button.
+   - **Week score**: a 12-week sparkline of week scores with solid weeks
+     marked and hurdle weeks shaded. Beneath it, one row per stream: its
+     score, planned vs logged hours, and a "Mark a hurdle" action.
+   - **Stream sections** (one per stream, collapsible), each holding:
+     - **Metric cards**: small Recharts chart with the expected band shaded, the
+       actual line, a dashed forecast line (§7.5), and checkpoint dots labelled
+       "End of 2026". One line underneath: *"6.1 kg down: on track for 89–90
+       by 31 Dec."* Then the card's levers for this week. Manual metrics have an
+       inline "Log value" button.
+     - **Checklists and milestones** for the stream
    - **Timeline**: horizontal years 2026 → 2034, milestones and checkpoints on
      it, today marked, past items green or red
    - **Gates**: each condition with ✓/✗ and its current value ("Profit ≥ ₹3.5 L
@@ -458,32 +637,40 @@ Roadmaps join the existing Plan tabs: **This week · Goals · Roadmap**.
 
 ---
 
-## 8. Phases
+## 9. Phases
 
-**Phase 1: import, compare, and see progress** (the core loop)
-- Migration: `roadmaps`, `roadmap_metrics`, `roadmap_targets`, `roadmap_readings`,
-  `roadmap_levers`, `roadmap_lever_ticks`, `goals.roadmap_id`
-- `lib/roadmap/extract.ts`: Gemini schema and prompt, plus lakh/crore and date
-  normalisation; suggests levers for outcomes that have none
-- `lib/roadmap/projection.ts` (expected band, status) and `lib/roadmap/progress.ts`
-  (journey %, chapter %, solid week), with tests against the example fixture
-- Import + review screen; roadmap page with metric cards, levers, checklists
-- Dashboard "Roadmap today" strip
-- Auto sources: weight, waist, body fat, loan schedule. Levers: workouts,
-  meals, linked hours; everything else a tick.
+**Phase 1: import and streams**
+- Migration: `roadmaps`, `roadmap_streams`, `roadmap_metrics`, `roadmap_targets`,
+  `roadmap_readings`, `roadmap_levers`, `roadmap_lever_ticks`, `goals.roadmap_id`,
+  `goals.stream_id`
+- `lib/roadmap/extract.ts`: Gemini schema and prompt; lakh/crore and date
+  normalisation; groups everything into streams; suggests levers (with
+  floors) and the streams the file is missing
+- `lib/roadmap/projection.ts`: expected band and status, tested against the example
+- Import + review screen (streams, weights, metrics, levers, checklists)
+- Roadmap page: stream sections, metric cards, checklists
+- Auto sources: weight, waist, body fat, loan schedule
 
-**Phase 2: make it run itself**
-- Gates + evaluation
-- Workouts and meals as outcome sources
-- Due-reading prompts on the dashboard; yearly recurring checklist
-- "Catching up" recovery lines; stall / beat / miss rules
-- XP + achievement tie-ins (§6.5); coach tool
+**Phase 2: daily progress and hurdles** (the motivation loop)
+- `lib/roadmap/progress.ts`: lever completion, week score, Improving / Steady /
+  Dipping, journey % and chapter %, all tested against the example fixture
+- Lever sources: workouts, meals, linked hours (via each stream's
+  "ongoing work" goal), daily-log tracked days; ticks for the rest
+- Dashboard "Roadmap today" strip; week-score sparkline
+- `roadmap_hurdles`: floors, effort-checkpoint shifts, the 8-week cap,
+  suggested hurdles, Comeback
 
-**Phase 3: living plan**
-- Re-import an edited `.md`: diff by metric `key`, keep readings, show
-  what changed before applying
-- Plan versions: when targets move, keep the old ones so history is still
-  judged against the plan as it was ("rebaselined Jan 2028: moved forward a year")
+**Phase 3: forecast and adapt**
+- Forecast lines; recoverable-vs-replan suggestions; replans with the old
+  target kept on record; "beat it, pull it forward" offers
+- Planned vs logged hours per stream
+- Gates + evaluation; workouts and meals as outcome sources
+- Due-reading prompts; yearly recurring checklist
+- XP + achievement tie-ins (§6.5); coach tool `get_roadmap_status`
+
+**Phase 4: living plan**
+- Re-import an edited `.md`: diff by stream + metric `key`, keep readings,
+  show what changed before applying
 - Scenarios: base + stretch lines on the same chart
 - Cash-flow block: budget lines with end dates (bike EMI ends Oct 2027)
   project the monthly balance automatically
@@ -491,7 +678,7 @@ Roadmaps join the existing Plan tabs: **This week · Goals · Roadmap**.
 
 ---
 
-## 9. Decisions (2026-09-19)
+## 10. Decisions (2026-09-19)
 
 1. **One active roadmap per user.** Importing a new one archives the old
    (enforced by a partial unique index).
@@ -503,3 +690,10 @@ Roadmaps join the existing Plan tabs: **This week · Goals · Roadmap**.
    from levers every day, a solid-week bar every week, and a journey bar that
    only goes up (§6). The file's literal "8,000 steps a day" becomes a
    walk/run lever you tick. No step counter needed.
+5. **Every front of life counts.** The IT job, Dad's company, the startup,
+   health, money, family, learning and daily life are separate streams, all
+   feeding one weighted week score (§7.3).
+6. **Hurdles cost pace, never progress.** Floors keep a hard week solid, effort
+   checkpoints shift by the hurdle's length (capped at 8 weeks per stream per
+   year), and the journey bar is untouched (§7.4). "Improving" is measured
+   against your own last 4 weeks, not only the plan.
