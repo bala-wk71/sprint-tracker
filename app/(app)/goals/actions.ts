@@ -37,6 +37,8 @@ const goalSchema = z.object({
   /** Only used when creating; steps are managed on the goal page after that. */
   steps: z.array(z.string().trim().max(200, "Keep each step under 200 characters.")).max(30),
   parentId: uuid.nullable(),
+  /** Undefined leaves the stream as it is; null takes the goal out of its stream. */
+  streamId: uuid.nullable().optional(),
   isPrivate: z.boolean(),
   checkinEveryDays: z.number().int().min(1).max(120),
 });
@@ -127,6 +129,16 @@ export async function saveGoal(input: GoalInput): Promise<GoalResult<{ id: strin
     const problem = await parentProblem(ctx, v.parentId, v.id);
     if (problem) return { ok: false, error: problem };
   }
+  if (v.streamId) {
+    const { data: stream } = await ctx.supabase
+      .from("streams")
+      .select("id")
+      .eq("id", v.streamId)
+      .eq("owner_id", ctx.user.id)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (!stream) return { ok: false, error: "That stream doesn't exist anymore." };
+  }
 
   const fields = {
     title: v.title,
@@ -141,6 +153,7 @@ export async function saveGoal(input: GoalInput): Promise<GoalResult<{ id: strin
     parent_id: v.parentId,
     is_private: v.isPrivate,
     checkin_every_days: v.checkinEveryDays,
+    ...(v.streamId === undefined ? {} : { stream_id: v.streamId }),
   };
 
   if (v.id) {
