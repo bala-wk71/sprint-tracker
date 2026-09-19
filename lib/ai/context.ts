@@ -2,6 +2,9 @@ import { format, subDays } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { gatherHealthContext } from "./healthContext";
+import { loadMeasureSummaries } from "@/lib/planning/load";
+import { headline } from "@/lib/planning/wording";
+import { STATUS_COPY } from "@/lib/planning/constants";
 import {
   DEFAULT_WEEK_START_DAY,
   addDaysIso,
@@ -146,6 +149,10 @@ async function getGoalsSummary(supabase: Client, userId: string): Promise<string
     if (list.length < 4) list.push(r.on_track);
     feelings.set(r.goal_id, list);
   }
+  // Plan vs actual per measure, in the same words the goal page uses. The
+  // server clock's date is close enough here; this also runs outside requests.
+  const today = format(new Date(), "yyyy-MM-dd");
+  const plans = await loadMeasureSummaries(supabase, userId, goals, today);
 
   return goals
     .map((g) => {
@@ -160,6 +167,9 @@ async function getGoalsSummary(supabase: Client, userId: string): Promise<string
       const recent = feelings.get(g.id);
       if (recent?.length) parts.push(`recent on-track ratings (newest first): ${recent.join(", ")}/10`);
       parts.push(g.last_checkin_on ? `last check-in ${g.last_checkin_on}` : "no check-ins yet");
+      for (const m of plans.get(g.id) ?? []) {
+        parts.push(`target "${m.measure.label}": ${STATUS_COPY[m.status].label.toLowerCase()}, ${headline(m, today)}`);
+      }
       return parts.join("; ");
     })
     .join("\n");
