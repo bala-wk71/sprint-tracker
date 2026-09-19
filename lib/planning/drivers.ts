@@ -53,8 +53,10 @@ export function whatMovedIt(
     const kept: number[] = [];
     const other: number[] = [];
     for (const [week, change] of changes) {
-      if (change === null) continue;
-      ((lever.byWeek.get(week) ?? 0) >= lever.target ? kept : other).push(change);
+      // A week missing from byWeek is one before the action existed: not a missed week.
+      const done = lever.byWeek.get(week);
+      if (change === null || done === undefined) continue;
+      (done >= lever.target ? kept : other).push(change);
     }
     if (kept.length < MIN_WEEKS_EACH_SIDE || other.length < MIN_WEEKS_EACH_SIDE) continue;
     const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;

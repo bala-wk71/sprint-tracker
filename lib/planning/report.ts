@@ -188,10 +188,13 @@ function leverNumbers(
     lever.period === "week"
       ? weeks
       : [...new Set(weeks.map((w) => `${w.slice(0, 7)}-01`).concat(`${range.start.slice(0, 7)}-01`))].sort();
+  // Weeks before the action existed say nothing about keeping it.
+  const since = lever.created_at.slice(0, 10);
+  const endOf = (start: string) => (lever.period === "week" ? addDaysIso(start, 6) : periodRange("month", start, 1).end);
   const counts = starts
-    .filter((start) => start <= range.asOf)
+    .filter((start) => start <= range.asOf && endOf(start) >= since)
     .map((start) => {
-      const end = lever.period === "week" ? addDaysIso(start, 6) : periodRange("month", start, 1).end;
+      const end = endOf(start);
       return { start, done: sumBetween(daily, start, [end, range.asOf].sort()[0]), partial: end > range.asOf };
     });
   const finished = counts.filter((c) => !c.partial);
@@ -235,7 +238,7 @@ export async function buildReportNumbers(
   const [{ data: streamRows }, { data: goalRows }] = await Promise.all([
     supabase
       .from("streams")
-      .select("id, name, area, weekly_hours")
+      .select("id, name, area, weekly_hours, created_at")
       .eq("owner_id", ownerId)
       .is("archived_at", null)
       .order("position")
@@ -276,29 +279,37 @@ export async function buildReportNumbers(
       : Promise.resolve({ data: [] as { goal_id: string | null }[] }),
   ]);
 
-  const byWeekOf = (leverId: string) => {
-    const days = daily.get(leverId);
-    return new Map(driverWeeks.map((w) => [w, sumBetween(days, w, addDaysIso(w, 6))]));
+  const byWeekOf = (lever: LeverRow) => {
+    const days = daily.get(lever.id);
+    const since = lever.created_at.slice(0, 10);
+    return new Map(
+      driverWeeks.filter((w) => addDaysIso(w, 6) >= since).map((w) => [w, sumBetween(days, w, addDaysIso(w, 6))])
+    );
   };
 
-  const buckets: { id: string | null; name: string; area: GoalArea; weeklyHours: number | null }[] = [
+  const buckets: { id: string | null; name: string; area: GoalArea; weeklyHours: number | null; since: string }[] = [
     ...(streamRows ?? []).map((s) => ({
       id: s.id as string | null,
       name: s.name,
       area: toArea(s.area),
       weeklyHours: s.weekly_hours === null ? null : Number(s.weekly_hours),
+      since: s.created_at.slice(0, 10),
     })),
-    { id: null, name: "Goals without a stream", area: "self", weeklyHours: null },
+    { id: null, name: "Goals without a stream", area: "self", weeklyHours: null, since: start },
   ];
 
-  const weeksElapsed = Math.max(1, Math.round(((Date.parse(asOf) - Date.parse(start)) / 86_400_000 + 1) / 7));
+  // Planned hours count from when the stream began, not from the start of a long period.
+  const weeksElapsed = (since: string) => {
+    const from = since > start ? since : start;
+    return Math.max(1, Math.round(((Date.parse(asOf) - Date.parse(from)) / 86_400_000 + 1) / 7));
+  };
   const streams: StreamNumbers[] = buckets.map((bucket) => {
     const inBucket = goals.filter((g) => (streamOf.get(g.id) ?? null) === bucket.id);
     const ids = new Set(inBucket.map((g) => g.id));
     const bucketLevers = levers.filter((l) => ids.has(l.goal_id));
     const driverLevers = bucketLevers
       .filter((l) => l.period === "week")
-      .map((l) => ({ id: l.id, title: l.title, target: l.target, byWeek: byWeekOf(l.id) }));
+      .map((l) => ({ id: l.id, title: l.title, target: l.target, byWeek: byWeekOf(l) }));
     const stepsHere = (steps ?? []).filter((s) => ids.has(s.goal_id));
     const doneInPeriod = stepsHere.filter((s) => s.done_at && s.done_at.slice(0, 10) >= start && s.done_at.slice(0, 10) <= asOf);
     const liveProjects = inBucket.filter(
@@ -314,7 +325,7 @@ export async function buildReportNumbers(
         Math.round(
           hours.filter((h) => ids.has(h.goalId) && h.date <= asOf).reduce((sum, h) => sum + h.hours, 0) * 10
         ) / 10,
-      hoursPlanned: bucket.weeklyHours === null ? null : bucket.weeklyHours * weeksElapsed,
+      hoursPlanned: bucket.weeklyHours === null ? null : bucket.weeklyHours * weeksElapsed(bucket.since),
       measures: inBucket.flatMap((g) =>
         (summaries.get(g.id) ?? []).map((s) =>
           measureNumbers(s, g.title, range, inProgress, driverWeeks, driverLevers)

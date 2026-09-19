@@ -95,7 +95,9 @@ async function nextQuarterContext(ctx: Ctx, quarterStart: string, todayIso: stri
 
     const paths = (summaries.get(g.id) ?? []).flatMap((s) => {
       const band = expectedBand(s.path, nextEnd);
-      return band ? [`${s.measure.label} ${formatBand(band.min, band.max, s.measure.unit)}`] : [];
+      // Round to what a person would aim for: ₹47,254 → ₹47,300.
+      const round = (v: number | null) => (v === null ? null : Number(v.toPrecision(3)));
+      return band ? [`${s.measure.label} ${formatBand(round(band.min), round(band.max), s.measure.unit)}`] : [];
     });
     const openNow = children
       .filter((c) => c.target_date >= quarterStart && c.target_date <= thisEnd)

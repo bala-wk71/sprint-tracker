@@ -45,6 +45,15 @@ describe("whatMovedIt", () => {
     expect(moved.gain).toBeCloseTo(0.6, 5);
   });
 
+  it("ignores weeks before the action existed", () => {
+    // Only the last four weeks are known: two kept, two not, same as before.
+    const recent = new Map(weeks.slice(4).map((w) => [w, sessions.get(w)!]));
+    const [moved] = whatMovedIt(weeklyChanges(weight(), weeks), "down", [
+      { id: "l1", title: "Strength sessions", target: 4, byWeek: recent },
+    ]);
+    expect(moved.keptWeeks + moved.otherWeeks).toBe(4);
+  });
+
   it("leaves out a lever with no gain or too few weeks on one side", () => {
     const always = new Map(weeks.map((w) => [w, 5]));
     const backwards = new Map(weeks.map((w, i) => [w, i % 2 === 0 ? 0 : 3]));

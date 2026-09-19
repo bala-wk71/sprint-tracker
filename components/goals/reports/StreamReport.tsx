@@ -79,7 +79,7 @@ function LeverLine({ l }: { l: LeverNumbers }) {
         </p>
       </div>
       {!single && (
-        <ol className="flex shrink-0 gap-1" aria-label={`${l.title} per ${unit}`}>
+        <ol className="flex max-w-full flex-wrap gap-1" aria-label={`${l.title} per ${unit}`}>
           {l.counts.map((c) => (
             <li
               key={c.start}
@@ -129,7 +129,7 @@ export function StreamReport({
             stream.name
           )}
         </h2>
-        {(stream.hoursDone > 0 || stream.hoursPlanned) && (
+        {(stream.hoursDone > 0 || stream.hoursPlanned) && !(period === "week" && stream.hoursPlanned) && (
           <span className="text-xs text-muted-foreground">
             {fmt(stream.hoursDone)}h{stream.hoursPlanned ? ` of ${fmt(stream.hoursPlanned)}h planned` : " on linked work"}
           </span>
@@ -199,7 +199,8 @@ export function StreamReport({
                   <Link href={`/goals/${p.id}`} className="text-foreground hover:text-primary">
                     {p.title}
                   </Link>
-                  {p.stepsTotal > 0 && ` · ${p.stepsDone} of ${p.stepsTotal} steps`} · ends {short(p.targetDate)}
+                  {p.stepsTotal > 0 && ` · ${p.stepsDone} of ${p.stepsTotal} ${p.stepsTotal === 1 ? "step" : "steps"}`} · ends{" "}
+                  {short(p.targetDate)}
                 </li>
               ))}
             </ul>

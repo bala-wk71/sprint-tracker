@@ -66,7 +66,7 @@ export function reportNumbersText(n: ReportNumbers): string {
     if (s.projects.length) {
       out.push(
         `Quarter goals and projects: ${s.projects
-          .map((p) => `“${p.title}” (ends ${d(p.targetDate)}, ${p.stepsDone} of ${p.stepsTotal} steps)`)
+          .map((p) => `“${p.title}” (ends ${d(p.targetDate)}, ${p.stepsDone} of ${p.stepsTotal} ${p.stepsTotal === 1 ? "step" : "steps"})`)
           .join("; ")}.`
       );
     }

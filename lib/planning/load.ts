@@ -186,6 +186,7 @@ export type LeverRow = {
   target: number;
   floor: number;
   position: number;
+  created_at: string;
 };
 
 export type LeverSummary = LeverRow & {
@@ -194,7 +195,7 @@ export type LeverSummary = LeverRow & {
   doneToday: number;
 };
 
-const LEVER_COLUMNS = "id, goal_id, title, source, period, target, floor, position";
+const LEVER_COLUMNS = "id, goal_id, title, source, period, target, floor, position, created_at";
 
 /** Active levers on the given goals, in order. */
 export async function loadLevers(supabase: Client, ownerId: string, goalIds: string[]): Promise<LeverRow[]> {
