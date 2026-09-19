@@ -478,6 +478,261 @@ export type Database = {
           },
         ]
       }
+      goal_levers: {
+        Row: {
+          id: string
+          goal_id: string
+          owner_id: string
+          title: string
+          source: string
+          period: string
+          target: number
+          floor: number
+          position: number
+          archived_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          goal_id: string
+          owner_id: string
+          title: string
+          source?: string
+          period?: string
+          target: number
+          floor: number
+          position?: number
+          archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          goal_id?: string
+          owner_id?: string
+          title?: string
+          source?: string
+          period?: string
+          target?: number
+          floor?: number
+          position?: number
+          archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      goal_measures: {
+        Row: {
+          id: string
+          goal_id: string
+          owner_id: string
+          label: string
+          kind: string
+          role: string
+          parent_measure_id: string | null
+          unit: string | null
+          direction: string
+          interpolate: string
+          source: string
+          source_params: Json
+          cadence: string
+          baseline_value: number | null
+          baseline_on: string | null
+          scale: Json
+          position: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          goal_id: string
+          owner_id: string
+          label: string
+          kind?: string
+          role?: string
+          parent_measure_id?: string | null
+          unit?: string | null
+          direction?: string
+          interpolate?: string
+          source?: string
+          source_params?: Json
+          cadence?: string
+          baseline_value?: number | null
+          baseline_on?: string | null
+          scale?: Json
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          goal_id?: string
+          owner_id?: string
+          label?: string
+          kind?: string
+          role?: string
+          parent_measure_id?: string | null
+          unit?: string | null
+          direction?: string
+          interpolate?: string
+          source?: string
+          source_params?: Json
+          cadence?: string
+          baseline_value?: number | null
+          baseline_on?: string | null
+          scale?: Json
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lever_ticks: {
+        Row: {
+          lever_id: string
+          owner_id: string
+          done_on: string
+          count: number
+          created_at: string
+        }
+        Insert: {
+          lever_id: string
+          owner_id: string
+          done_on: string
+          count?: number
+          created_at?: string
+        }
+        Update: {
+          lever_id?: string
+          owner_id?: string
+          done_on?: string
+          count?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      measure_checkpoints: {
+        Row: {
+          id: string
+          measure_id: string
+          owner_id: string
+          target_date: string
+          label: string | null
+          min_value: number | null
+          max_value: number | null
+          relative: boolean
+          hold_until: string | null
+          kind: string
+          shifted_days: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          measure_id: string
+          owner_id: string
+          target_date: string
+          label?: string | null
+          min_value?: number | null
+          max_value?: number | null
+          relative?: boolean
+          hold_until?: string | null
+          kind?: string
+          shifted_days?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          measure_id?: string
+          owner_id?: string
+          target_date?: string
+          label?: string | null
+          min_value?: number | null
+          max_value?: number | null
+          relative?: boolean
+          hold_until?: string | null
+          kind?: string
+          shifted_days?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      measure_readings: {
+        Row: {
+          id: string
+          measure_id: string
+          owner_id: string
+          measured_on: string
+          value: number
+          detail: Json | null
+          proof_url: string | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          measure_id: string
+          owner_id: string
+          measured_on: string
+          value: number
+          detail?: Json | null
+          proof_url?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          measure_id?: string
+          owner_id?: string
+          measured_on?: string
+          value?: number
+          detail?: Json | null
+          proof_url?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      streams: {
+        Row: {
+          id: string
+          owner_id: string
+          name: string
+          area: string
+          weekly_hours: number | null
+          weight: number
+          position: number
+          archived_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          name: string
+          area: string
+          weekly_hours?: number | null
+          weight?: number
+          position?: number
+          archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          name?: string
+          area?: string
+          weekly_hours?: number | null
+          weight?: number
+          position?: number
+          archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       goal_reviews: {
         Row: {
           id: string
@@ -585,6 +840,8 @@ export type Database = {
           checkin_every_days: number
           last_checkin_on: string | null
           completed_at: string | null
+          stream_id: string | null
+          level: string | null
           created_at: string
           updated_at: string
         }
@@ -609,6 +866,8 @@ export type Database = {
           checkin_every_days?: number
           last_checkin_on?: string | null
           completed_at?: string | null
+          stream_id?: string | null
+          level?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -633,6 +892,8 @@ export type Database = {
           checkin_every_days?: number
           last_checkin_on?: string | null
           completed_at?: string | null
+          stream_id?: string | null
+          level?: string | null
           created_at?: string
           updated_at?: string
         }
