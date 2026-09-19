@@ -658,6 +658,48 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_reports: {
+        Row: {
+          id: string
+          owner_id: string
+          period: string
+          period_start: string
+          period_end: string
+          as_of: string
+          numbers: Json
+          words: Json
+          proposal: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          period: string
+          period_start: string
+          period_end: string
+          as_of: string
+          numbers: Json
+          words: Json
+          proposal?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          period?: string
+          period_start?: string
+          period_end?: string
+          as_of?: string
+          numbers?: Json
+          words?: Json
+          proposal?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       measure_readings: {
         Row: {
           id: string
