@@ -20,7 +20,7 @@ async function main() {
     getImportPrompt(today, []),
     [{ role: "user", parts: [{ text: readFileSync(file, "utf8") }] }],
     PLAN_DRAFT_RESPONSE_SCHEMA,
-    { temperature: 0.1, maxOutputTokens: 32768, thinkingBudget: Number(process.env.THINKING ?? 2048) }
+    { temperature: 0.1, maxOutputTokens: 32768, thinkingBudget: Number(process.env.THINKING ?? 2048), quality: "best" }
   );
   const { draft, warnings } = normalizeDraft(planDraftSchema.parse(raw), today);
   writeFileSync(file.replace(/\.md$/, ".draft.json"), JSON.stringify(draft, null, 2));
