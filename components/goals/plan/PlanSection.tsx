@@ -2,7 +2,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { getWeekStartDay } from "@/lib/dates";
-import { weekStartIsoOf } from "@/lib/week";
+import { addDaysIso, weekStartIsoOf } from "@/lib/week";
 import { goalLevelLabel } from "@/lib/planning/constants";
 import { expectedBand } from "@/lib/planning/projection";
 import { formatBand } from "@/lib/planning/format";
@@ -13,6 +13,8 @@ import { LeverList } from "./LeverList";
 import { AddMeasure, AddQuarterGoal } from "./PlanActions";
 
 const CARD = "rounded-xl border border-border bg-card p-4 sm:p-6";
+/** With less than this left in a quarter, planning it is too late; offer the next one. */
+const MIN_QUARTER_DAYS_LEFT = 21;
 
 type GoalLite = {
   id: string;
@@ -161,7 +163,7 @@ export async function PlanSection({
                 A quarter goal holds the 1–3 projects that move this one. Link the week&apos;s sprint tasks to it and the hours add up here.
               </p>
               <div className="flex flex-wrap gap-2">
-                {!hasThisQuarter && (
+                {!hasThisQuarter && addDaysIso(todayIso, MIN_QUARTER_DAYS_LEFT) <= thisQuarterEnd && (
                   <AddQuarterGoal goalId={goal.id} which="current" label={`Plan ${quarterLabel(quarterOf(todayIso))}`} />
                 )}
                 {!hasNextQuarter && quarterStartIso(next) <= goal.target_date && (

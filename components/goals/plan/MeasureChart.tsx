@@ -171,7 +171,7 @@ export function MeasureChart({
               type="linear"
               stroke={c.actual}
               strokeWidth={2}
-              dot={points.length <= 40 ? { r: 3, strokeWidth: 2, stroke: c.surface, fill: c.actual } : false}
+              dot={points.length <= 40 ? { r: 4, strokeWidth: 2, stroke: c.surface, fill: c.actual } : false}
               activeDot={{ r: 5, stroke: c.surface, strokeWidth: 2 }}
               connectNulls
               isAnimationActive={false}

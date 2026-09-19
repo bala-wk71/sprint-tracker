@@ -75,7 +75,7 @@ export default async function StreamPage({ params }: { params: Promise<{ id: str
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-6">
           <section className={CARD}>
             <h2 className="mb-3 text-lg font-semibold text-foreground">Targets</h2>
