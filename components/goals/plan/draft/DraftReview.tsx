@@ -83,7 +83,14 @@ export function DraftReview({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-foreground">Review your plan</h2>
         <p className="text-xs text-muted-foreground">
-          {totals.goals} goals · {totals.targets} targets · {totals.actions} weekly actions · {totals.steps} steps
+          {[
+            [totals.goals, "goal", "goals"],
+            [totals.targets, "target", "targets"],
+            [totals.actions, "weekly action", "weekly actions"],
+            [totals.steps, "step", "steps"],
+          ]
+            .map(([n, one, many]) => `${n} ${n === 1 ? one : many}`)
+            .join(" · ")}
         </p>
       </div>
       <p className="-mt-3 text-sm text-muted-foreground">

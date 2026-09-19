@@ -74,6 +74,8 @@ export async function PlanSection({
   const next = nextQuarter(quarterOf(todayIso));
   const hasNextQuarter = quarters.some((q) => q.target_date >= quarterStartIso(next) && q.target_date <= quarterEndIso(next));
   const canCascade = !readOnly && goal.level !== "quarter" && goal.level !== "project" && goal.target_date > thisQuarterEnd;
+  const offerThis = !hasThisQuarter && addDaysIso(todayIso, MIN_QUARTER_DAYS_LEFT) <= thisQuarterEnd;
+  const offerNext = !hasNextQuarter && quarterStartIso(next) <= goal.target_date;
   const level = goalLevelLabel(goal.level);
 
   return (
@@ -147,7 +149,7 @@ export async function PlanSection({
         <LeverList goalId={goal.id} levers={levers} readOnly={readOnly} />
       </div>
 
-      {(quarters.length > 0 || canCascade) && (
+      {(quarters.length > 0 || (canCascade && (offerThis || offerNext))) && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-foreground">Quarters</h3>
           {quarters.length > 0 && (
@@ -164,16 +166,16 @@ export async function PlanSection({
               ))}
             </ul>
           )}
-          {canCascade && (
+          {canCascade && (offerThis || offerNext) && (
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground">
                 A quarter goal holds the 1–3 projects that move this one. Link the week&apos;s sprint tasks to it and the hours add up here.
               </p>
               <div className="flex flex-wrap gap-2">
-                {!hasThisQuarter && addDaysIso(todayIso, MIN_QUARTER_DAYS_LEFT) <= thisQuarterEnd && (
+                {offerThis && (
                   <AddQuarterGoal goalId={goal.id} which="current" label={`Plan ${quarterLabel(quarterOf(todayIso))}`} />
                 )}
-                {!hasNextQuarter && quarterStartIso(next) <= goal.target_date && (
+                {offerNext && (
                   <AddQuarterGoal goalId={goal.id} which="next" label={`Plan ${quarterLabel(next)}`} />
                 )}
               </div>
