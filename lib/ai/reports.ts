@@ -41,15 +41,29 @@ export function reportResponseSchema(period: WrittenPeriod): ResponseSchema {
   };
 }
 
-const text = (max: number) => z.string().trim().min(1).max(max);
+/**
+ * Report fields are single paragraphs, yet the model sometimes returns a
+ * line break where it meant "–" or "₹" (seen as "89\n90 kg", "up \n13,000").
+ * Money in plans is always rupees and ranges always use an en dash, so each
+ * break is put back as the character it replaced, or else a space.
+ */
+export function repairGlyphs(value: string): string {
+  return value
+    .replace(/(\d)[ \t]*\n[ \t]*(\d)/g, "$1–$2")
+    .replace(/\n(?=\d)/g, "₹")
+    .replace(/\s*\n\s*/g, " ");
+}
+
+const text = (max: number) => z.string().transform(repairGlyphs).pipe(z.string().trim().min(1).max(max));
+const optionalText = (max: number) => z.string().transform(repairGlyphs).pipe(z.string().trim().max(max)).catch("");
 
 export const reportWordsSchema = z.object({
   headline: text(400),
   streams: z
-    .array(z.object({ name: text(80), summary: text(1500), nextFocus: z.string().trim().max(400).catch("") }))
+    .array(z.object({ name: text(80), summary: text(1500), nextFocus: optionalText(400) }))
     .max(20)
     .catch([]),
-  nextFocus: z.string().trim().max(400).catch(""),
+  nextFocus: optionalText(400),
 });
 
 export type ReportWords = z.output<typeof reportWordsSchema>;
@@ -63,8 +77,10 @@ export const proposalSchema = z
         .array(z.unknown())
         .max(6)
         .catch([])
-        .transform((items) => items.flatMap((s) => (typeof s === "string" && s.trim() ? [s.trim().slice(0, 200)] : []))),
-      why: z.string().trim().max(300).optional().catch("").transform((v) => v ?? ""),
+        .transform((items) =>
+          items.flatMap((s) => (typeof s === "string" && s.trim() ? [repairGlyphs(s).trim().slice(0, 200)] : []))
+        ),
+      why: optionalText(300),
     })
   )
   .max(12)
@@ -81,9 +97,11 @@ Rules:
 - If a forecast says moving the date is worth offering, say so plainly and kindly: the path can change, the goal stays.
 - Plain, warm, specific. Write like a sharp friend who read the numbers, not a coach doing a pep talk. No headings, no emoji, no bullet lists inside summaries.
 
+The numbers are shown right beside your words, so interpret them rather than recite them: pick the two or three that matter most and say what they mean. Don't list every figure.
+
 Output:
-- headline: one sentence on the whole period.
-- streams: one entry per stream in the numbers, same names, same order. summary: 2–4 sentences. nextFocus: one concrete action for the coming period, or "" if there's nothing to add.
+- headline: one specific sentence on the whole period, with its most telling number (not "a few areas to focus on").
+- streams: one entry per stream in the numbers, same names, same order. summary: 2–4 sentences, under 70 words. nextFocus: one concrete action for the coming period, or "" if there's nothing to add.
 - nextFocus: the single most useful thing across everything, one sentence.`;
 
 const BY_PERIOD: Record<WrittenPeriod, string> = {
