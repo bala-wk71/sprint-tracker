@@ -547,6 +547,16 @@ become an outcome measure with one checkpoint and one reading.
 
 ## 10. Phases
 
+**Status (2026-09-19):** Phases 1 and 2 are live and were checked on production.
+Two things differ from the design below:
+- Drafts live in the browser (kept across a refresh) and are saved in one server
+  action, so there is no `plan_drafts` table yet.
+- A roadmap's reference notes are saved as a page in Notes instead of on a
+  `roadmaps` row.
+
+`scripts/try-import.ts` reruns the importer against any Markdown file without
+touching the database.
+
 **Phase 1: the goal shape, planned by hand**
 - Migration: `streams`, `goal_measures`, `measure_checkpoints`,
   `measure_readings`, `goal_levers`, `lever_ticks`, goal columns
