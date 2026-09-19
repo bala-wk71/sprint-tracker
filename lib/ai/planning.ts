@@ -4,14 +4,9 @@
 // writes to the database.
 
 import { PLAN_DRAFT_RESPONSE_SCHEMA } from "@/lib/planning/draft";
+import type { Specialist } from "@/lib/planning/constants";
 
-export type Specialist = "health" | "business" | "skills";
-
-export const SPECIALISTS: { value: Specialist; label: string; blurb: string }[] = [
-  { value: "health", label: "Health coach", blurb: "Weight, muscle, fitness, looks" },
-  { value: "business", label: "Business advisor", blurb: "Company, startup, money" },
-  { value: "skills", label: "Skills mentor", blurb: "Embedded, career, anything you're learning" },
-];
+export type { Specialist };
 
 /** Shared rules for reading numbers and dates, so both paths agree. */
 const READING_RULES = (todayIso: string) => `
@@ -112,6 +107,8 @@ You are planning ONE goal with the person, in a short conversation, and you prod
 ${existingGoal ? `They are planning an existing goal: "${existingGoal.title}" (ends ${existingGoal.targetDate}). The destination in your plan is that goal; keep its title and end date unless they ask to change them.` : ""}
 
 Replies: plain, warm and short (under 120 words), no headings, at most a few bullets. Never say "behind"; talk about what moves the number.
+Until the plan is written, every reply ends with either one question or the three options to choose from. Never skip step 5: always show the options before writing a plan, even if they ask you to just decide.
+Steps are plain actions a person does ("Bare-metal LED blink on the STM32"), never keys or ids; link quarter goals with parentKey, not steps.
 Set draft to null until step 6. From then on, always return the full current plan in draft.
 ${READING_RULES(todayIso)}
 

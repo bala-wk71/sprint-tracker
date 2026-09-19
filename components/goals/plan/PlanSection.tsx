@@ -89,7 +89,14 @@ export async function PlanSection({
             Give this goal a target and the path to it: where you are now, where you want to be, and the checkpoints
             in between. Weight and body numbers fill in from Health; anything else, like profit or a skill level, you log.
           </p>
-          {!readOnly && <AddMeasure goalId={goal.id} todayIso={todayIso} prominent />}
+          {!readOnly && (
+            <div className="flex flex-wrap items-center gap-3">
+              <AddMeasure goalId={goal.id} todayIso={todayIso} prominent />
+              <Link href={`/goals/plan?goal=${goal.id}`} className="text-sm font-medium text-primary hover:underline">
+                Or plan it with the coach
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

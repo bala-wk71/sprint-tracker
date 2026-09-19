@@ -39,6 +39,13 @@ export default async function StreamsPage() {
         </p>
       </div>
       <StreamManager streams={streams} />
+      <p className="text-sm text-muted-foreground">
+        Already have a written plan?{" "}
+        <Link href="/goals/plan?mode=import" className="font-medium text-primary hover:underline">
+          Import your roadmap
+        </Link>{" "}
+        and its streams are set up for you.
+      </p>
     </div>
   );
 }

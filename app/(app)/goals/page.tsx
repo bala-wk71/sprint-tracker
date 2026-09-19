@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { addDays, format } from "date-fns";
-import { Layers, Plus } from "lucide-react";
+import { FileText, Layers, MessageSquare, Plus } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
@@ -109,13 +109,29 @@ export default async function GoalsPage() {
             longer the goal, the less often it asks you to check in.
           </p>
         </div>
-        <Link
-          href="/goals/new"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          New goal
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/goals/plan?mode=import"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+          >
+            <FileText className="h-4 w-4" />
+            Import roadmap
+          </Link>
+          <Link
+            href="/goals/plan"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Plan with the coach
+          </Link>
+          <Link
+            href="/goals/new"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            New goal
+          </Link>
+        </div>
       </div>
 
       {streams.length > 0 ? (

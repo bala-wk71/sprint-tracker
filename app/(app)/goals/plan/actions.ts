@@ -202,7 +202,7 @@ export async function planTurn(
       ),
       history,
       PLANNER_TURN_SCHEMA,
-      { temperature: 0.5, maxOutputTokens: 16384 }
+      { temperature: 0.5, maxOutputTokens: 16384, thinkingBudget: IMPORT_THINKING_BUDGET }
     )) as { reply?: unknown; draft?: unknown };
     const reply = typeof raw?.reply === "string" && raw.reply.trim() ? raw.reply.trim() : null;
     if (!reply) return { ok: false, error: "The coach's answer came back empty. Try again." };
@@ -229,8 +229,9 @@ export async function planTurn(
 // Save a reviewed draft
 
 export async function savePlanDraft(
-  input: unknown
-): Promise<DraftResult<{ goals: number; firstGoalId: string | null }>> {
+  input: unknown,
+  options: { saveNotes?: boolean } = {}
+): Promise<DraftResult<{ goals: number; firstGoalId: string | null; notePageId: string | null }>> {
   const parsed = planDraftSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "The plan couldn't be read. Try again." };
   const ctx = await ctxOrNull();
@@ -397,8 +398,21 @@ export async function savePlanDraft(
     }
   }
 
+  // The reference parts of a roadmap (decision rules, protection, reasons)
+  // aren't tracked, so they're kept as a page in Notes rather than lost.
+  let notePageId: string | null = null;
+  if (options.saveNotes && draft.notes.trim()) {
+    const { data } = await ctx.supabase
+      .from("note_pages")
+      .insert({ owner_id: ctx.userId, title: `Roadmap notes (${todayIso})`, body: draft.notes.trim() })
+      .select("id")
+      .single();
+    notePageId = data?.id ?? null;
+    revalidatePath("/notes");
+  }
+
   revalidatePath("/goals", "layout");
   revalidatePath("/dashboard");
   const first = goals.find((g) => !g.parentKey) ?? goals[0];
-  return { ok: true, data: { goals: goals.length, firstGoalId: goalIdByKey.get(first.key) ?? null } };
+  return { ok: true, data: { goals: goals.length, firstGoalId: goalIdByKey.get(first.key) ?? null, notePageId } };
 }

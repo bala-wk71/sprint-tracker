@@ -100,6 +100,15 @@ export function goalLevelLabel(level: string | null | undefined) {
   return GOAL_LEVELS.find((l) => l.value === level)?.label ?? null;
 }
 
+/** The planning team: one model, a different brief for each kind of goal. */
+export type Specialist = "health" | "business" | "skills";
+
+export const SPECIALISTS: { value: Specialist; label: string; blurb: string }[] = [
+  { value: "health", label: "Health coach", blurb: "Weight, muscle, fitness, looks" },
+  { value: "business", label: "Business advisor", blurb: "Company, startup, money" },
+  { value: "skills", label: "Skills mentor", blurb: "Embedded, career, anything you're learning" },
+];
+
 /** Status words. The UI never says "behind". */
 export const STATUS_COPY = {
   ahead: { label: "Ahead", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },

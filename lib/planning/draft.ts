@@ -187,7 +187,12 @@ const goalSchema = z.object({
   level: z.enum(LEVELS).nullable().optional().transform((v) => v ?? null).catch(null),
   startDate: isoOrNull,
   targetDate: z.string().regex(ISO),
-  steps: z.array(z.string().trim().min(1).max(200)).max(30).catch([]),
+  // Blank or odd entries are skipped one by one rather than costing the whole list.
+  steps: z
+    .array(z.unknown())
+    .max(30)
+    .catch([])
+    .transform((items) => items.flatMap((s) => (typeof s === "string" && s.trim() ? [s.trim().slice(0, 200)] : []))),
   measures: listOf(measureSchema, 8),
   levers: listOf(leverSchema, 10),
   /** Set by the app, never the model: attach the plan to a goal that already exists. */
@@ -235,6 +240,7 @@ export function normalizeDraft(draft: PlanDraft, todayIso: string): { draft: Pla
   });
 
   const goalKeys = new Set<string>();
+  const draftKeys = new Set(draft.goals.map((g) => g.key));
   const goals: DraftGoal[] = [];
   for (const g of draft.goals) {
     if (goalKeys.has(g.key)) continue;
@@ -291,6 +297,8 @@ export function normalizeDraft(draft: PlanDraft, todayIso: string): { draft: Pla
     });
     goals.push({
       ...g,
+      // Models sometimes list child goals' keys as steps; those aren't actions.
+      steps: g.steps.filter((s) => !draftKeys.has(s)),
       startDate: start,
       streamKey: g.streamKey && streamKeys.has(g.streamKey) ? g.streamKey : null,
       measures,
