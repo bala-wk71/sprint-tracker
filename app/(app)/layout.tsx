@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { QuickLog } from "@/components/health/QuickLog";
+import { FocusTimerProvider } from "@/components/timer/FocusTimerProvider";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { levelFromXp } from "@/lib/gamification";
 
@@ -44,20 +45,24 @@ export default async function AppLayout({
   };
 
   return (
-    <div className="flex min-h-dvh">
-      <Sidebar user={sidebarUser} isReviewer={(reviewingCount ?? 0) > 0} />
-      {/* min-w-0: without it this flex child cannot shrink below the widest
-          row inside it, so one wide table or button cluster drags the entire
-          page sideways on a phone instead of wrapping.
-          --sidebar-w is set by Sidebar so collapsing it doesn't leave a gap. */}
-      <div className="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 md:ml-[var(--sidebar-w,15rem)]">
-        <Header />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+    // The focus timer lives above every page so it keeps running, alerting
+    // and logging while you move around the app.
+    <FocusTimerProvider>
+      <div className="flex min-h-dvh">
+        <Sidebar user={sidebarUser} isReviewer={(reviewingCount ?? 0) > 0} />
+        {/* min-w-0: without it this flex child cannot shrink below the widest
+            row inside it, so one wide table or button cluster drags the entire
+            page sideways on a phone instead of wrapping.
+            --sidebar-w is set by Sidebar so collapsing it doesn't leave a gap. */}
+        <div className="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 md:ml-[var(--sidebar-w,15rem)]">
+          <Header />
+          <main className="flex-1 p-4 sm:p-6">{children}</main>
+        </div>
+        {/* Logging water or a weight has to be possible from wherever you are —
+            having to navigate to the Health tab first is the friction that turns
+            a daily habit into a weekly one. */}
+        <QuickLog />
       </div>
-      {/* Logging water or a weight has to be possible from wherever you are —
-          having to navigate to the Health tab first is the friction that turns
-          a daily habit into a weekly one. */}
-      <QuickLog />
-    </div>
+    </FocusTimerProvider>
   );
 }

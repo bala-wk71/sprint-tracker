@@ -14,6 +14,7 @@ import {
   type DisplayTimeEntry,
   type SprintTaskOption,
 } from "./TimeEntries";
+import { FocusTimerPanel } from "@/components/timer/FocusTimerPanel";
 import { EveningWrapUp, type EveningPriority } from "./EveningWrapUp";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { loadComments } from "@/components/comments/loadComments";
@@ -228,6 +229,11 @@ export default async function DailyPage({
           subtitle="Where the hours actually went"
           done={steps.timeLogged}
         />
+        {date === todayIso && (
+          <div className="mb-5">
+            <FocusTimerPanel tasks={sprintTasks} loggedHours={hoursLogged} />
+          </div>
+        )}
         <TimeEntries date={date} tasks={sprintTasks} initialEntries={timeEntries} />
       </section>
 

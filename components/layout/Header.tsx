@@ -3,6 +3,7 @@
 import { Moon, Palette, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
+import { TimerPill } from "@/components/timer/TimerPill";
 
 const emptySubscribe = () => () => {};
 
@@ -40,7 +41,8 @@ export function Header() {
           </>
         )}
       </p>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <TimerPill />
         {mounted && (() => {
           const cycle = { light: "dark", dark: "colourful", colourful: "light" } as const;
           const current = (theme as string) in cycle ? (theme as keyof typeof cycle) : "light";
