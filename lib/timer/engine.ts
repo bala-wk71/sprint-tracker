@@ -114,6 +114,11 @@ export const PHASE_LABEL: Record<Phase, string> = {
   long: "Long break",
 };
 
+/** What a run is called in the title and header: a plain timer isn't a "Focus" phase. */
+export function runLabel(run: Pick<Run, "mode" | "phase">): string {
+  return run.mode === "timer" ? "Timer" : PHASE_LABEL[run.phase];
+}
+
 export function localDate(ms: number): string {
   return format(new Date(ms), "yyyy-MM-dd");
 }

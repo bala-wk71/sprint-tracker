@@ -157,7 +157,7 @@ export function FocusTimerPanel({
             aria-label="What are you working on?"
             value={currentNotes}
             onChange={(e) => (run ? timer.setTask({ notes: e.target.value }) : setNotes(e.target.value))}
-            placeholder="What are you working on? (optional)"
+            placeholder="What are you working on?"
             maxLength={500}
             className={inputClass}
           />

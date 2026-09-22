@@ -34,6 +34,7 @@ import {
   type TimerMode,
   type TimerSettings,
   type TimerState,
+  runLabel,
 } from "@/lib/timer/engine";
 
 const KEY = "sprint-tracker:focus-timer:v1";
@@ -268,10 +269,13 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
       const last = completions[completions.length - 1];
       const { title, body } = describe(last, next);
       if (soundOn) chime();
-      try {
-        navigator.vibrate?.([200, 100, 200]);
-      } catch {
-        // Not every browser exposes vibrate.
+      // Chrome refuses (and logs) vibration before the page has been tapped.
+      if (navigator.userActivation?.hasBeenActive) {
+        try {
+          navigator.vibrate?.([200, 100, 200]);
+        } catch {
+          // Not every browser exposes vibrate.
+        }
       }
       void notify(title, body);
     },
@@ -345,7 +349,7 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
   const remaining = state.run ? remainingMs(state.run, now) : 0;
   const titleText =
     state.run && state.run.status !== "ready"
-      ? `${state.run.status === "paused" ? "Paused " : ""}${formatClock(remaining)} · ${PHASE_LABEL[state.run.phase]}`
+      ? `${state.run.status === "paused" ? "Paused " : ""}${formatClock(remaining)} · ${runLabel(state.run)}`
       : null;
   useEffect(() => {
     if (titleText) {

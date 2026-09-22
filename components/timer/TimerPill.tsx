@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Coffee, Pause, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PHASE_LABEL, formatClock } from "@/lib/timer/engine";
+import { PHASE_LABEL, formatClock, runLabel } from "@/lib/timer/engine";
 import { useFocusTimer } from "./FocusTimerProvider";
 
 /** Header indicator so a running timer is visible from every page. */
@@ -20,8 +20,8 @@ export function TimerPill() {
   return (
     <Link
       href="/daily#time"
-      title={`${PHASE_LABEL[run.phase]}${run.taskName ? ` · ${run.taskName}` : ""}`}
-      aria-label={`Focus timer: ${PHASE_LABEL[run.phase]}, ${label}`}
+      title={`${runLabel(run)}${run.taskName ? ` · ${run.taskName}` : ""}`}
+      aria-label={`Focus timer: ${runLabel(run)}, ${label}`}
       data-testid="timer-pill"
       className={cn(
         "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium tabular-nums transition-colors",
