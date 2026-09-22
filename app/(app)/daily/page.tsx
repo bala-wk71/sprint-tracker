@@ -15,6 +15,7 @@ import {
   type SprintTaskOption,
 } from "./TimeEntries";
 import { FocusTimerPanel } from "@/components/timer/FocusTimerPanel";
+import type { TimerTaskProgress } from "@/components/timer/TaskProgress";
 import { EveningWrapUp, type EveningPriority } from "./EveningWrapUp";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { loadComments } from "@/components/comments/loadComments";
@@ -128,6 +129,8 @@ export default async function DailyPage({
   // Sprint tasks most behind their weekly pace — shown only when viewing
   // today, as suggestions for where the day's hours should go.
   let focusTasks: FocusTask[] = [];
+  // Per-task hours for the focus timer: today and so far this week.
+  const timerTasks: TimerTaskProgress[] = [];
   if (date === todayIso && sprint && (sprint.tasks ?? []).length > 0) {
     const elapsedDays = elapsedDaysInWeek(weekStart, todayIso);
     const { data: weekEntries } = await supabase
@@ -144,6 +147,18 @@ export default async function DailyPage({
         e.task_id,
         (hoursByTask.get(e.task_id) ?? 0) + Number(e.duration_hours || 0)
       );
+    }
+
+    for (const t of sprint.tasks ?? []) {
+      timerTasks.push({
+        id: t.id,
+        targetHours: Number(t.target_hours || 0),
+        weekHours: hoursByTask.get(t.id) ?? 0,
+        todayHours: timeEntries
+          .filter((e) => e.task_id === t.id)
+          .reduce((sum, e) => sum + e.duration_hours, 0),
+        expectedHours: expectedByNow(Number(t.target_hours || 0), elapsedDays),
+      });
     }
 
     focusTasks = (sprint.tasks ?? [])
@@ -175,6 +190,11 @@ export default async function DailyPage({
     ),
   };
   const hoursLogged = timeEntries.reduce((sum, e) => sum + e.duration_hours, 0);
+  // The timer's daily target is about work: sleep, exercise and other
+  // Personal-category entries, and entries with no task, don't count toward it.
+  const workHoursToday = timeEntries
+    .filter((e) => e.task_category !== null && e.task_category !== "personal")
+    .reduce((sum, e) => sum + e.duration_hours, 0);
 
   return (
     <div className="space-y-6">
@@ -231,7 +251,11 @@ export default async function DailyPage({
         />
         {date === todayIso && (
           <div className="mb-5">
-            <FocusTimerPanel tasks={sprintTasks} loggedHours={hoursLogged} />
+            <FocusTimerPanel
+              tasks={sprintTasks}
+              workHours={workHoursToday}
+              taskProgress={timerTasks}
+            />
           </div>
         )}
         <TimeEntries date={date} tasks={sprintTasks} initialEntries={timeEntries} />
