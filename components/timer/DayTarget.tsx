@@ -27,7 +27,7 @@ export function DayTarget({
         <span className="font-medium text-foreground">
           {counted.toFixed(1)}h of {target}h today
           {settings.countBreaks && breakHours > 0 && (
-            <span className="font-normal text-muted-foreground"> · incl. {breakHours.toFixed(1)}h breaks</span>
+            <span className="font-normal text-muted-foreground"> · incl. {breakHours < 1 ? `${Math.round(breakHours * 60)} min` : `${breakHours.toFixed(1)}h`} breaks</span>
           )}
         </span>
         <span className="text-muted-foreground">
