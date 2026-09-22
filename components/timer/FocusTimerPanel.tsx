@@ -8,6 +8,7 @@ import type { SprintTaskOption } from "@/app/(app)/daily/TimeEntries";
 import { useFocusTimer } from "./FocusTimerProvider";
 import { TimerSettingsForm } from "./TimerSettingsForm";
 import { DayTarget } from "./DayTarget";
+import { TaskProgress, type TimerTaskProgress } from "./TaskProgress";
 
 const PRESETS = [15, 25, 45, 60, 90];
 const inputClass =
@@ -15,10 +16,13 @@ const inputClass =
 
 export function FocusTimerPanel({
   tasks,
-  loggedHours,
+  workHours,
+  taskProgress,
 }: {
   tasks: SprintTaskOption[];
-  loggedHours: number;
+  /** Today's hours on non-Personal sprint tasks — what the daily target counts. */
+  workHours: number;
+  taskProgress: TimerTaskProgress[];
 }) {
   const timer = useFocusTimer();
   const { state, remaining, now } = timer;
@@ -56,9 +60,18 @@ export function FocusTimerPanel({
   const progress = run ? 1 - remaining / run.durationMs : 0;
   const today = localDate(now);
   const stats = state.days[today];
-  const pendingMinutes = state.pending
-    .filter((p) => p.date === today)
-    .reduce((sum, p) => sum + p.minutes, 0);
+  // Sessions finished but not yet saved count straight away, by the same rule
+  // the server total uses: only time on a non-Personal task is work.
+  const workTaskIds = new Set(tasks.filter((t) => t.category !== "personal").map((t) => t.id));
+  const pendingToday = state.pending.filter((p) => p.date === today);
+  const pendingWorkHours =
+    pendingToday
+      .filter((p) => p.taskId && workTaskIds.has(p.taskId))
+      .reduce((sum, p) => sum + p.minutes, 0) / 60;
+  const selectedTask = tasks.find((t) => t.id === currentTaskId);
+  const selectedProgress = taskProgress.find((t) => t.id === currentTaskId);
+  const selectedPendingHours =
+    pendingToday.filter((p) => p.taskId === currentTaskId).reduce((sum, p) => sum + p.minutes, 0) / 60;
   const recent = state.last && now - state.last.at < 15 * 60_000 ? state.last : null;
 
   const confirmReset = () => {
@@ -175,6 +188,19 @@ export function FocusTimerPanel({
             maxLength={500}
             className={inputClass}
           />
+          {selectedTask && selectedProgress ? (
+            <TaskProgress
+              name={selectedTask.name}
+              progress={selectedProgress}
+              pendingHours={selectedPendingHours}
+            />
+          ) : (
+            tasks.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Pick a task so this session counts toward it and your daily target.
+              </p>
+            )
+          )}
           {!run && activeMode === "timer" && (
             <div className="flex flex-wrap items-center gap-1.5">
               {PRESETS.map((p) => (
@@ -263,7 +289,8 @@ export function FocusTimerPanel({
       )}
 
       <DayTarget
-        loggedHours={loggedHours + pendingMinutes / 60}
+        workHours={workHours + pendingWorkHours}
+        hasWorkTasks={workTaskIds.size > 0}
         breakHours={(stats?.breakMinutes ?? 0) / 60}
         sessions={stats?.focusSessions ?? 0}
         settings={state.settings}
