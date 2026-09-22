@@ -1,16 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { Coffee, Pause, Timer } from "lucide-react";
+import { BellOff, Coffee, Pause, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PHASE_LABEL, formatClock, runLabel } from "@/lib/timer/engine";
 import { useFocusTimer } from "./FocusTimerProvider";
 
 /** Header indicator so a running timer is visible from every page. */
 export function TimerPill() {
-  const { state, remaining, hydrated } = useFocusTimer();
+  const { state, remaining, hydrated, ringing, stopAlarm } = useFocusTimer();
   const run = state.run;
-  if (!hydrated || !run) return null;
+  if (!hydrated) return null;
+
+  // Wherever you are when time's up, the off switch is one tap away.
+  if (ringing) {
+    return (
+      <button
+        type="button"
+        onClick={stopAlarm}
+        className="flex animate-pulse items-center gap-1.5 rounded-full bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground"
+      >
+        <BellOff className="h-3.5 w-3.5" /> Stop alarm
+      </button>
+    );
+  }
+  if (!run) return null;
 
   const isBreak = run.phase !== "focus";
   const Icon = run.status === "paused" ? Pause : isBreak ? Coffee : Timer;

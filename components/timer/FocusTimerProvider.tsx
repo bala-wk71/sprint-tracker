@@ -36,6 +36,13 @@ import {
   type TimerState,
   runLabel,
 } from "@/lib/timer/engine";
+import {
+  RING_EVERY_MS,
+  RING_MAX_MS,
+  playSound,
+  primeAudio,
+  unlockAudioOnGesture,
+} from "./sound";
 
 const KEY = "sprint-tracker:focus-timer:v1";
 const RETRY_MS = 30_000;
@@ -124,46 +131,6 @@ function mutate<T = void>(
 // Alerts
 // ----------------------------------------------------------------------
 
-let audioCtx: AudioContext | null = null;
-
-/** Browsers only allow sound after a user gesture — call from click handlers. */
-function primeAudio() {
-  try {
-    if (!audioCtx) {
-      const Ctx =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (Ctx) audioCtx = new Ctx();
-    }
-    void audioCtx?.resume();
-  } catch {
-    audioCtx = null;
-  }
-}
-
-function chime() {
-  const ctx = audioCtx;
-  if (!ctx) return;
-  try {
-    const t = ctx.currentTime;
-    [880, 660, 880].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      const start = t + i * 0.28;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.25);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.26);
-    });
-  } catch {
-    // Sound is a nicety; the notification and the on-screen state still land.
-  }
-}
-
 function describe(c: Completion, next: Run | null): { title: string; body: string } {
   if (c.phase === "focus") {
     const title = c.mode === "timer" ? "Time's up" : "Focus session done";
@@ -183,7 +150,15 @@ function describe(c: Completion, next: Run | null): { title: string; body: strin
 
 async function notify(title: string, body: string) {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-  const options: NotificationOptions = { body, tag: "focus-timer", icon: "/favicon.ico" };
+  // requireInteraction keeps it on screen until clicked; renotify makes a
+  // repeat with the same tag alert again instead of replacing it silently.
+  const options = {
+    body,
+    tag: "focus-timer",
+    icon: "/favicon.ico",
+    requireInteraction: true,
+    renotify: true,
+  } as NotificationOptions;
   try {
     const reg = await navigator.serviceWorker?.getRegistration("/timer-sw.js");
     if (reg) {
@@ -230,6 +205,10 @@ type FocusTimerContextValue = {
   requestNotifications: () => void;
   logError: string | null;
   retryLogs: () => void;
+  /** True while the time's-up sound is repeating in this tab. */
+  ringing: boolean;
+  stopAlarm: () => void;
+  testSound: () => void;
 };
 
 const FocusTimerContext = createContext<FocusTimerContextValue | null>(null);
@@ -253,7 +232,45 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
     "default"
   );
   const flushing = useRef(false);
-  const soundOn = state.settings.sound;
+  const [ringing, setRinging] = useState(false);
+  const ringTimer = useRef<number | null>(null);
+  const { sound, soundKind, volume, keepRinging } = state.settings;
+
+  const stopAlarm = useCallback(() => {
+    if (ringTimer.current !== null) window.clearInterval(ringTimer.current);
+    ringTimer.current = null;
+    setRinging(false);
+  }, []);
+
+  const ring = useCallback(() => {
+    stopAlarm();
+    if (!sound) return;
+    playSound(soundKind, volume);
+    if (!keepRinging) return;
+    const startedAt = Date.now();
+    setRinging(true);
+    ringTimer.current = window.setInterval(() => {
+      if (Date.now() - startedAt >= RING_MAX_MS) {
+        stopAlarm();
+        return;
+      }
+      playSound(soundKind, volume);
+    }, RING_EVERY_MS);
+  }, [sound, soundKind, volume, keepRinging, stopAlarm]);
+
+  useEffect(() => () => stopAlarm(), [stopAlarm]);
+  useEffect(() => unlockAudioOnGesture(), []);
+
+  // Tapping the notification stops the alarm too (the service worker relays it).
+  useEffect(() => {
+    const sw = navigator.serviceWorker;
+    if (!sw) return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "focus-timer:stop-alarm") stopAlarm();
+    };
+    sw.addEventListener("message", onMessage);
+    return () => sw.removeEventListener("message", onMessage);
+  }, [stopAlarm]);
 
   // Notification permission is only knowable in the browser.
   useEffect(() => {
@@ -268,7 +285,7 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
       if (completions.length === 0) return;
       const last = completions[completions.length - 1];
       const { title, body } = describe(last, next);
-      if (soundOn) chime();
+      ring();
       // Chrome refuses (and logs) vibration before the page has been tapped.
       if (navigator.userActivation?.hasBeenActive) {
         try {
@@ -279,7 +296,7 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
       }
       void notify(title, body);
     },
-    [soundOn]
+    [ring]
   );
 
   // Complete any phase whose time has come. Only the tab that wins the lock
@@ -368,10 +385,12 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
       hydrated,
       remaining,
       start: (opts) => {
+        stopAlarm();
         primeAudio();
         void mutate((s, n) => startSession(s, opts, n));
       },
       startNext: (patch) => {
+        stopAlarm();
         primeAudio();
         void mutate((s, n) => startReady(s, n, patch));
       },
@@ -381,13 +400,20 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
         void mutate((s, n) => resume(s, n));
       },
       finish: () => {
+        stopAlarm();
         primeAudio();
         void mutate((s, n) => finishNow(s, n).state);
       },
-      reset: () => void mutate((s) => reset(s)),
+      reset: () => {
+        stopAlarm();
+        void mutate((s) => reset(s));
+      },
       setTask: (patch) => void mutate((s) => updateTask(s, patch)),
       setSettings: (patch) => void mutate((s) => updateSettings(s, patch)),
-      dismissLast: () => void mutate((s) => ({ ...s, last: null })),
+      dismissLast: () => {
+        stopAlarm();
+        void mutate((s) => ({ ...s, last: null }));
+      },
       notifyPermission: permission,
       requestNotifications: () => {
         primeAudio();
@@ -399,8 +425,14 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
         setLogError(null);
         setRetryAt(0);
       },
+      ringing,
+      stopAlarm,
+      testSound: () => {
+        primeAudio();
+        playSound(state.settings.soundKind, state.settings.volume);
+      },
     }),
-    [state, now, hydrated, remaining, permission, logError]
+    [state, now, hydrated, remaining, permission, logError, ringing, stopAlarm]
   );
 
   return <FocusTimerContext.Provider value={value}>{children}</FocusTimerContext.Provider>;

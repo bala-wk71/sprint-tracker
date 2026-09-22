@@ -119,6 +119,11 @@ describe("storage", () => {
     expect(parseState(JSON.stringify({ v: 1, settings: { focusMin: -3 } })).settings.focusMin).toBe(1);
   });
 
+  it("fills in alarm settings saved before they existed", () => {
+    const old = parseState(JSON.stringify({ v: 1, settings: { sound: true, volume: 7, soundKind: "siren" } }));
+    expect(old.settings).toMatchObject({ soundKind: "alarm", volume: 1, keepRinging: true });
+  });
+
   it("formats the clock", () => {
     expect(formatClock(25 * MIN)).toBe("25:00");
     expect(formatClock(59_001)).toBe("1:00");
