@@ -16,8 +16,12 @@ paced instead of ground through.
   the laptop doesn't lose it; on return the timer catches up to the present.
 - **Visible everywhere.** A pill in the header shows the phase and time left on
   every page and links back to the daily log. The tab title shows it too.
-- **Rings when done.** Browser notification (after a one-time permission
-  prompt), a short chime, and vibration on phones.
+- **Rings when done.** A loud alarm by default (gentle chime and beep also
+  available, with volume and a test button) that repeats every 2s until you
+  press *Stop alarm* — in the panel or the header, from any page — or for 30s
+  at most. Plus a browser notification that stays on screen until clicked
+  (clicking it also stops the alarm), and vibration on phones. Audio unlocks
+  on the first click anywhere on the page, so it still rings after a reload.
 - **Logs itself.** Every finished focus session becomes a time entry for the
   chosen task, starting at the time the session started. Finishing early logs
   the minutes actually worked; *Reset* discards them. Logs that fail (offline)

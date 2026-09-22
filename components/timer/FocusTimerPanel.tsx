@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Pause, Play, RotateCcw, Settings2, SkipForward, Square, X } from "lucide-react";
+import { Bell, BellOff, Pause, Play, RotateCcw, Settings2, SkipForward, Square, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PHASE_LABEL, formatClock, localDate, type TimerMode } from "@/lib/timer/engine";
 import type { SprintTaskOption } from "@/app/(app)/daily/TimeEntries";
@@ -103,7 +103,21 @@ export function FocusTimerPanel({
       </div>
 
       {showSettings && (
-        <TimerSettingsForm settings={state.settings} onChange={timer.setSettings} />
+        <TimerSettingsForm
+          settings={state.settings}
+          onChange={timer.setSettings}
+          onTestSound={timer.testSound}
+        />
+      )}
+
+      {timer.ringing && (
+        <button
+          type="button"
+          onClick={timer.stopAlarm}
+          className="flex w-full animate-pulse items-center justify-center gap-2 rounded-md bg-destructive px-3 py-3 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
+        >
+          <BellOff className="h-4 w-4" /> Stop alarm
+        </button>
       )}
 
       {recent && (

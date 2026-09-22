@@ -11,6 +11,8 @@ import { format } from "date-fns";
 
 export type TimerMode = "pomodoro" | "timer";
 export type Phase = "focus" | "short" | "long";
+export type SoundKind = "chime" | "beep" | "alarm";
+export const SOUND_KINDS: SoundKind[] = ["chime", "beep", "alarm"];
 
 export type TimerSettings = {
   focusMin: number;
@@ -20,6 +22,11 @@ export type TimerSettings = {
   autoStartBreaks: boolean;
   autoStartFocus: boolean;
   sound: boolean;
+  soundKind: SoundKind;
+  /** 0–1. */
+  volume: number;
+  /** Repeat the sound until stopped (up to ALARM_MAX_MS) instead of once. */
+  keepRinging: boolean;
   dailyTargetHours: number;
   countBreaks: boolean;
   /** Last length used in single-timer mode. */
@@ -85,6 +92,9 @@ export const DEFAULT_SETTINGS: TimerSettings = {
   autoStartBreaks: true,
   autoStartFocus: false,
   sound: true,
+  soundKind: "alarm",
+  volume: 0.8,
+  keepRinging: true,
   dailyTargetHours: 8,
   countBreaks: false,
   timerMin: 30,
@@ -401,6 +411,9 @@ export function sanitizeSettings(s: Partial<TimerSettings>): TimerSettings {
     autoStartBreaks: bool(s.autoStartBreaks, d.autoStartBreaks),
     autoStartFocus: bool(s.autoStartFocus, d.autoStartFocus),
     sound: bool(s.sound, d.sound),
+    soundKind: SOUND_KINDS.includes(s.soundKind as SoundKind) ? (s.soundKind as SoundKind) : d.soundKind,
+    volume: Math.min(1, Math.max(0.05, num(s.volume, d.volume))),
+    keepRinging: bool(s.keepRinging, d.keepRinging),
     dailyTargetHours: Math.min(24, Math.max(0.5, num(s.dailyTargetHours, d.dailyTargetHours))),
     countBreaks: bool(s.countBreaks, d.countBreaks),
     timerMin: clampMinutes(num(s.timerMin, d.timerMin)),
