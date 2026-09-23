@@ -15,6 +15,7 @@ import {
   type SprintTaskOption,
 } from "./TimeEntries";
 import { FocusTimerPanel } from "@/components/timer/FocusTimerPanel";
+import { RigorStrip } from "@/components/craft/RigorStrip";
 import type { TimerTaskProgress } from "@/components/timer/TaskProgress";
 import { EveningWrapUp, type EveningPriority } from "./EveningWrapUp";
 import { CommentThread } from "@/components/comments/CommentThread";
@@ -256,6 +257,7 @@ export default async function DailyPage({
               workHours={workHoursToday}
               taskProgress={timerTasks}
             />
+            <RigorStrip supabase={supabase} ownerId={user.id} />
           </div>
         )}
         <TimeEntries date={date} tasks={sprintTasks} initialEntries={timeEntries} />
