@@ -10,6 +10,7 @@ import {
   ChevronUp,
   ChevronDown,
   NotebookPen,
+  ShieldCheck,
   StickyNote,
   Target,
 } from "lucide-react";
@@ -27,6 +28,9 @@ import { TaskNotes } from "./TaskNotes";
 import type { TodoTask } from "./types";
 import { GoalChip } from "@/components/goals/GoalChip";
 import { GoalSelect, useGoalOptions } from "@/components/goals/GoalOptions";
+import { RigorPanel } from "@/components/craft/RigorPanel";
+import { CHECKLIST, CHECKLIST_TOTAL, tickedCount, type Ticks } from "@/lib/craft/checklist";
+import { attachRigor } from "@/app/(app)/craft/actions";
 
 export function TaskItem({
   task,
@@ -39,12 +43,16 @@ export function TaskItem({
   /** The section's full task list, in position order. Omit to hide reordering. */
   siblings?: TodoTask[];
 }) {
-  const { run, applyArchiveEffect } = useTodoStore();
+  const { run, applyArchiveEffect, notify, patch } = useTodoStore();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.title);
   const [notesOpen, setNotesOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
+  const [rigorOpen, setRigorOpen] = useState(false);
+  // Held locally so the row chip and the open panel move together; the server
+  // copy is authoritative and replaces this on every tick.
+  const [rigor, setRigor] = useState(task.rigor ?? null);
   const goals = useGoalOptions();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +62,18 @@ export function TaskItem({
 
   const handleToggle = async () => {
     const isCompleted = !task.is_completed;
+
+    // A task carrying an unfinished checklist cannot be ticked from the row.
+    // This is the whole point of attaching one, so the row sends you to the
+    // checklist rather than quietly letting you past it.
+    if (isCompleted && rigor && !rigor.completed_at) {
+      setRigorOpen(true);
+      notify({
+        message: `${CHECKLIST_TOTAL - tickedCount(rigor.ticks)} boxes left before this one is done.`,
+      });
+      return;
+    }
+
     const result = await run(
       (sections) =>
         tree.updateTask(sections, task.id, (t) => ({
@@ -130,6 +150,39 @@ export function TaskItem({
       () => reorderTasks({ orderedIds: reordered.map((t) => t.id) })
     );
   };
+
+  const handleAttachRigor = async () => {
+    setRigorOpen(true);
+    const result = await attachRigor({ taskId: task.id });
+    if (!result.ok) {
+      notify({ message: result.error });
+      setRigorOpen(false);
+      return;
+    }
+    setRigor({ ticks: result.data.ticks, completed_at: null });
+  };
+
+  /** The checklist closed the task for us; mirror that into the tree. */
+  const handleRigorCompleted = () => {
+    setRigorOpen(false);
+    setRigor((prev) =>
+      prev ? { ...prev, completed_at: new Date().toISOString() } : prev
+    );
+    patch((sections) =>
+      tree.updateTask(sections, task.id, (t) => ({
+        ...t,
+        is_completed: true,
+        completed_at: new Date().toISOString(),
+      }))
+    );
+  };
+
+  const rigorDone = rigor ? tickedCount(rigor.ticks) : 0;
+  // The stage you are actually on, for the row chip — knowing it is "read the
+  // diff" time at a glance is most of the value of showing anything here.
+  const rigorStage = rigor
+    ? CHECKLIST.find((stage) => stage.items.some((i) => !rigor.ticks[i.id]))?.title ?? null
+    : null;
 
   const canReorder = Boolean(siblings && sectionId);
   const canMoveUp = canReorder && tree.canMoveTask(siblings!, task.id, -1);
@@ -232,6 +285,31 @@ export function TaskItem({
               <GoalChip goalId={task.goal_id} title={task.goal_title} />
             )}
 
+            {rigor && !rigor.completed_at && (
+              <button
+                onClick={() => setRigorOpen((o) => !o)}
+                title={rigorStage ? `Rigor — now: ${rigorStage}` : "Rigor"}
+                className="flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                <span className="tabular-nums">
+                  {rigorDone}/{CHECKLIST_TOTAL}
+                </span>
+                {rigorStage && (
+                  <span className="hidden max-w-[11rem] truncate md:inline">
+                    · {rigorStage}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {rigor?.completed_at && (
+              <ShieldCheck
+                className="h-3.5 w-3.5 shrink-0 text-primary"
+                aria-label="Completed with the full checklist"
+              />
+            )}
+
             {hasNotes && !notesOpen && (
               <StickyNote
                 className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
@@ -282,6 +360,18 @@ export function TaskItem({
               >
                 <StickyNote className="h-3.5 w-3.5" />
               </button>
+              {!task.is_completed && (
+                <button
+                  onClick={rigor ? () => setRigorOpen((o) => !o) : handleAttachRigor}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded hover:bg-accent hover:text-foreground",
+                    rigorOpen || rigor ? "text-foreground" : "text-muted-foreground"
+                  )}
+                  aria-label={rigor ? "Show rigor checklist" : "Work this one with rigor"}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 onClick={() => setEditing(true)}
                 className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -323,6 +413,19 @@ export function TaskItem({
           value={task.description ?? ""}
           onSave={handleSaveNotes}
           onClose={() => setNotesOpen(false)}
+        />
+      )}
+
+      {rigorOpen && rigor && !rigor.completed_at && (
+        <RigorPanel
+          taskId={task.id}
+          ticks={rigor.ticks}
+          onTicks={(ticks: Ticks) => setRigor((prev) => (prev ? { ...prev, ticks } : prev))}
+          onCompleted={handleRigorCompleted}
+          onDetached={() => {
+            setRigor(null);
+            setRigorOpen(false);
+          }}
         />
       )}
     </div>

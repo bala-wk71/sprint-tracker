@@ -1,3 +1,5 @@
+import type { Ticks } from "@/lib/craft/checklist";
+
 export type TodoTask = {
   id: string;
   section_id: string;
@@ -13,6 +15,17 @@ export type TodoTask = {
   /** The long-term goal this todo serves, if any — see app/(app)/goals. */
   goal_id?: string | null;
   goal_title?: string | null;
+  /**
+   * The rigor checklist attached to this task, or null when there isn't one.
+   * Opt-in per task: a checklist on "book dentist" would train you to tick
+   * boxes without reading them, which is worse than not having it.
+   */
+  rigor?: TaskRigor | null;
+};
+
+export type TaskRigor = {
+  ticks: Ticks;
+  completed_at: string | null;
 };
 
 export type TodoSection = {

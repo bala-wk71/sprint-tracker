@@ -5,13 +5,31 @@ import { groupGoalOptions } from "@/lib/planning/goalOptions";
 import { GoalOptionsProvider } from "@/components/goals/GoalOptions";
 import { TodoShell } from "./TodoShell";
 import type { TodoSection, TodoTask } from "./types";
+import type { Ticks } from "@/lib/craft/checklist";
+
+/** jsonb arrives as Json; keep only the true flags and drop anything odd. */
+function normaliseTicks(value: unknown): Ticks {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Ticks = {};
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+    if (val === true) out[key] = true;
+  }
+  return out;
+}
 
 export default async function TodoPage() {
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: sectionsRaw }, { data: tasksRaw }, { data: goalRows }, streams, todayIso] = await Promise.all([
+  const [
+    { data: sectionsRaw },
+    { data: tasksRaw },
+    { data: goalRows },
+    streams,
+    todayIso,
+    { data: rigorRows },
+  ] = await Promise.all([
     supabase
       .from("todo_sections")
       .select("id, parent_id, name, position, is_collapsed, archived_at, source_page_id")
@@ -32,9 +50,27 @@ export default async function TodoPage() {
       .order("target_date"),
     loadStreamOptions(supabase, user.id),
     todayIsoLocal(),
+    supabase
+      .from("craft_runs")
+      .select("task_id, ticks, completed_at")
+      .eq("owner_id", user.id),
   ]);
 
   const sections = sectionsRaw ?? [];
+
+  // One query for every run, indexed here, rather than a join on todo_tasks:
+  // most tasks have no checklist and the join would widen every row for the
+  // few that do.
+  const rigorByTask = new Map(
+    (rigorRows ?? []).map((row) => [
+      row.task_id,
+      {
+        ticks: normaliseTicks(row.ticks),
+        completed_at: row.completed_at,
+      },
+    ])
+  );
+
   const tasks: TodoTask[] = (tasksRaw ?? []).map((row) => {
     const { note_pages, goals, ...task } = row;
     const page = Array.isArray(note_pages) ? note_pages[0] : note_pages;
@@ -43,6 +79,7 @@ export default async function TodoPage() {
       ...task,
       source_page_title: page?.title ?? null,
       goal_title: goal?.title ?? null,
+      rigor: rigorByTask.get(task.id) ?? null,
     };
   });
 

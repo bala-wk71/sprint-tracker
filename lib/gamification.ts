@@ -39,6 +39,12 @@ export const XP = {
   goal_checkin: 10,
   goal_step: 15,
   goal_done: 50,
+  // Craft. A rigor run is worth more than any single tracking action because
+  // it is the most expensive thing on this list to do honestly — twenty-one
+  // boxes you have to actually be able to defend. Reading a foundation topic
+  // pays once, ever, via a dedupe key on the slug.
+  rigor_run: 25,
+  foundation_read: 15,
 } as const;
 
 // Time logging XP accrues with hours logged, capped per day — logging many
@@ -63,6 +69,7 @@ export type XpReason = keyof typeof XP;
  */
 const TRACKED_DAY_ONLY: ReadonlySet<XpReason> = new Set<XpReason>([
   "todo_done",
+  "rigor_run",
   "goal_step",
   "goal_checkin",
   "goal_done",
@@ -80,6 +87,9 @@ export const DAILY_AWARD_CAP: Partial<Record<XpReason, number>> = {
   todo_done: 5,
   goal_step: 2,
   goal_checkin: 3,
+  // Three honest rigor runs is a full day's work. Beyond that the boxes are
+  // being ticked rather than checked, and this stops paying.
+  rigor_run: 3,
 };
 
 /**

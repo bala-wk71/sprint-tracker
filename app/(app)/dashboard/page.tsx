@@ -8,6 +8,7 @@ import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
 import { AchievementSync } from "@/components/dashboard/AchievementSync";
 import { WagerCard, type WagerSummary } from "@/components/dashboard/WagerCard";
 import { GoalsCard } from "@/components/dashboard/GoalsCard";
+import { FoundationsCard } from "@/components/dashboard/FoundationsCard";
 import { PlanWeekCard } from "@/components/dashboard/PlanWeekCard";
 import { MascotOverlay } from "@/components/dashboard/MascotOverlay";
 import { computeWeeklyStreak } from "@/lib/streaks";
@@ -138,6 +139,7 @@ export default async function DashboardPage({
       />
       <PlanWeekCard ownerId={user.id} todayIso={todayIso} weekStart={currentWeekStart} />
       <GoalsCard ownerId={user.id} todayIso={todayIso} />
+      <FoundationsCard ownerId={user.id} />
       <WeekSummary
         ownerId={user.id}
         weekStart={weekStart}

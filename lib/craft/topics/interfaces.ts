@@ -1,0 +1,195 @@
+import type { Track } from "../types";
+
+export const interfacesTrack: Track = {
+  slug: "interfaces",
+  title: "Interfaces that hold",
+  blurb:
+    "An endpoint is a promise to a caller you will never meet, including you in six months. Interfaces are cheap to get right on the day you design them and nearly impossible to change once anything depends on them.",
+  topics: [
+    {
+      slug: "api-design",
+      title: "Designing an endpoint someone else has to call",
+      hook: "Design the contract before the implementation. The implementation is replaceable; the contract is not.",
+      minutes: 7,
+      idea: [
+        "An API is a user interface for programs, and it deserves the same care. The question is never \"what does my code need to do\" — it is \"what does the caller need to say, and what do they need back\".",
+        "",
+        "**Name resources, not actions.** `POST /sprints/{id}/archive` beats `POST /doSprintArchive`. When every endpoint is a verb, you end up with forty of them and no structure.",
+        "",
+        "**Design the response before the request.** What does the caller do with what comes back? If they immediately have to make three more calls to render one screen, the shape is wrong. If they get back 200 fields and use four, the shape is also wrong.",
+        "",
+        "**Make the common case one call and the rare case possible.** Most performance problems at the API layer are chattiness, not slowness.",
+        "",
+        "**Be conservative in what you promise.** Every field you return is now a field someone depends on. Removing it later is a breaking change. Start narrow.",
+        "",
+        "**Pagination is not optional.** Any endpoint returning a list returns an unbounded list eventually. Decide early between offset pagination (simple, drifts when rows are inserted, slow at depth) and cursor/keyset pagination (stable, fast, cannot jump to page 40). For anything that grows, keyset.",
+        "",
+        "**Versioning is a decision you make once and live with.** The practical answer for most teams: do not version. Add fields, never remove or repurpose them, and make new behaviour opt-in. Versioning is what you do when that stops being possible.",
+      ].join("\n"),
+      bites: [
+        "It bites as a mobile app you cannot update, a partner integration you cannot break, and a field named `status` that means three different things depending on which year the row was written.",
+        "",
+        "Inside a single codebase it bites more quietly: a server action whose arguments grew one at a time until nobody can tell which combinations are valid.",
+      ].join("\n"),
+      decisions: [
+        "What is the resource here, and is this really a new one or a state change on an existing one?",
+        "Offset or keyset pagination? Anything that grows or is written to while being read wants keyset.",
+        "Does the caller need this field, or am I returning it because I have it?",
+        "Is this a breaking change? Adding optional things is safe; removing, renaming and narrowing are not.",
+        "Should this be one call or three? Optimise for the screen that has to render.",
+      ],
+      inYourCode: [
+        "Pick one of your server actions and write down its contract as if for a stranger: inputs, outputs, errors, and what it guarantees.",
+        "Find a list endpoint with no limit. Picture it with 50,000 rows.",
+        "Find two places returning the same entity in different shapes. Ask which one is right.",
+      ],
+      gotIt: [
+        "You sketch the request and response shape before writing any handler code.",
+        "You can say, for any change, whether it is breaking and for whom.",
+      ],
+      deeper: [
+        {
+          label: "Google API Improvement Proposals — practical, opinionated, short",
+          url: "https://google.aip.dev/",
+        },
+        { label: "Zalando RESTful API Guidelines", url: "https://opensource.zalando.com/restful-api-guidelines/" },
+      ],
+    },
+    {
+      slug: "idempotency",
+      title: "Idempotency, or: the double-click problem",
+      hook: "The network will deliver your request twice. Your code decides whether that matters.",
+      minutes: 6,
+      idea: [
+        "An operation is **idempotent** when doing it twice has the same effect as doing it once. `set status = 'paid'` is idempotent. `balance = balance - 10` is not.",
+        "",
+        "This matters because **you cannot tell a lost response from a lost request**. The client sends a request, the connection drops, and there is no way to know whether the server processed it. The only safe options are to retry — which requires idempotency — or to leave the user stuck.",
+        "",
+        "And retries are everywhere, whether you designed for them or not: a user double-clicking, a mobile app on a flaky connection, a load balancer timing out and re-dispatching, a queue with at-least-once delivery, a React effect firing twice in strict mode.",
+        "",
+        "Three ways to get it:",
+        "",
+        "- **Make the operation naturally idempotent.** Prefer \"set to this value\" over \"add this amount\". Prefer `upsert` over `insert`.",
+        "- **Use an idempotency key.** The caller generates a unique id per logical operation; the server stores it with a unique constraint and returns the original result if it sees the key again. This is how payment APIs work, and it is the general answer.",
+        "- **Make the resource the key.** If the thing being created has a natural unique identity, a unique constraint does the work for free.",
+        "",
+        "The important detail: the key must be stored **in the same transaction as the effect**, or you can record the key and fail to do the work.",
+      ].join("\n"),
+      bites: [
+        "It bites as duplicates: two invites, two charges, two XP awards, two identical rows five milliseconds apart. Users notice this faster than almost any other bug, and it damages trust disproportionately because it looks like the system took something from them.",
+        "",
+        "It also bites as the fix that makes it worse — a client-side `disabled` on the button, which handles the double-click and none of the other five retry paths.",
+      ].join("\n"),
+      decisions: [
+        "Is this operation naturally idempotent? If not, what is the key that identifies one logical attempt?",
+        "Who generates the key — client or server? For retries to work it must be the client, generated before the first attempt.",
+        "Is the key stored atomically with the effect?",
+        "What should the second call return — the original result, or a conflict?",
+      ],
+      inYourCode: [
+        "Look at your `xp_events` dedupe key. That is an idempotency key. Trace exactly what happens on the second insert.",
+        "Find an action that creates a row and has no unique constraint protecting it. Double-click its button and see.",
+        "Find any `balance = balance + n` shaped update in your code, and decide whether a retry would corrupt it.",
+      ],
+      gotIt: [
+        "\"What happens if this runs twice?\" is automatic for any write.",
+        "You reach for a unique constraint rather than a disabled button.",
+      ],
+      deeper: [
+        {
+          label: "Stripe: Idempotent Requests — the canonical design",
+          url: "https://docs.stripe.com/api/idempotent_requests",
+        },
+      ],
+    },
+    {
+      slug: "error-contracts",
+      title: "Failing usefully",
+      hook: "How a system fails is part of its design, not an afterthought bolted on when QA complains.",
+      minutes: 6,
+      idea: [
+        "Errors are a feature with three distinct audiences, and most code serves none of them well:",
+        "",
+        "- **The user**, who needs to know what to do next. \"Something went wrong\" tells them nothing. \"That invite has already been used\" tells them everything.",
+        "- **The calling code**, which needs to decide whether to retry, fall back, or give up. That requires a stable, machine-readable code — not a string it has to pattern-match on.",
+        "- **You, at 2am**, who needs to know where and why. That requires context: the id, the input, the stack.",
+        "",
+        "The core distinction is **expected** versus **unexpected** failures. An expected failure — invalid input, not found, already used, permission denied — is part of the contract. It should be typed, returned, and handled. An unexpected failure — the database is down, a null where none should be — should not be caught locally at all. It should go up to a boundary that logs it with full context and returns something generic.",
+        "",
+        "Conflating them is the classic mistake, and it produces the two worst patterns in any codebase: the empty `catch {}` that turns a crash into corrupt data, and the `catch` that turns every failure into the same shrug of a message.",
+        "",
+        "The practical rule: **catch where you can do something about it.** If you cannot add information, add a fallback, or make a decision, do not catch.",
+      ].join("\n"),
+      bites: [
+        "It bites as unfixable production incidents — the error was swallowed, so there is no log, no trace and no way to reproduce. You are left with a user saying \"it didn't work\".",
+        "",
+        "It bites as retry storms: the caller cannot tell a permanent failure from a temporary one, so it retries a 400 forever.",
+      ].join("\n"),
+      decisions: [
+        "Is this failure expected or unexpected? Expected ones are return values; unexpected ones are exceptions.",
+        "Should the caller retry? Then the error must say so — 429 and 503 mean retry, 400 and 409 do not.",
+        "What does the user see, and is it actionable?",
+        "What context does the log need to make this debuggable without the user present?",
+      ],
+      inYourCode: [
+        "Search your codebase for `catch` blocks that do nothing. For each, decide whether that swallow is deliberate — your gamification code swallows on purpose, and says why in a comment. Most do not.",
+        "Look at your `ActionResult` type. Notice that it makes expected failures a return value rather than an exception, and follow how the UI uses that.",
+        "Find an error message a user could see and ask whether it tells them what to do.",
+      ],
+      gotIt: [
+        "You can name, for any failure path, who reads it and what they do next.",
+        "An empty catch block looks wrong to you immediately.",
+      ],
+      deeper: [
+        { label: "Release It! — Nygard, part I (stability patterns)" },
+      ],
+    },
+    {
+      slug: "trust-boundaries",
+      title: "Trust boundaries and where validation belongs",
+      hook: "Everything from outside your process is hostile until proven otherwise — including your own frontend.",
+      minutes: 6,
+      idea: [
+        "A **trust boundary** is the line where data stops being yours and starts being someone else's. Requests from a browser, webhook payloads, third-party API responses, file uploads, URL parameters, and anything read back from a database that a user once wrote. Validation belongs **at the boundary**, once, thoroughly — not sprinkled through the call stack.",
+        "",
+        "The rule that trips up nearly everyone early: **client-side checks are a UX feature, not a security feature.** A disabled button, a hidden menu item, a Zod schema in the browser — all of it is trivially bypassed with a terminal. Every one of those checks must be repeated on the server, where the user cannot reach it.",
+        "",
+        "The same logic runs one layer deeper. Server code can be bypassed too, by a script, a second service, or a mistake. Which is why row-level security in the database is a different and stronger guarantee than an `owner_id` filter in a query: one is a rule, the other is a habit.",
+        "",
+        "Then there is **authorization versus authentication**, which are routinely confused. Authentication is who you are. Authorization is what you may do. Knowing a user is logged in tells you nothing about whether this particular row is theirs. The most common real vulnerability in web apps is not injection — it is an endpoint that checks you are logged in and then trusts the id in the URL.",
+        "",
+        "Finally: **validate shape and meaning separately.** A schema tells you the id is a UUID. Only a query tells you it is *your* UUID.",
+      ].join("\n"),
+      bites: [
+        "It bites as the quietest and most serious class of bug: one user reading another user's data. Nothing crashes. Nothing looks wrong. It is found by an auditor, a customer, or a headline.",
+        "",
+        "It bites in generated code constantly, because a model writing a handler has no idea which arguments came from a trusted caller and which came off the wire.",
+      ].join("\n"),
+      decisions: [
+        "Where is the boundary for this data, and is it validated exactly once, there?",
+        "Am I checking authentication when I mean authorization?",
+        "If someone changed this id in the URL to another user's, what stops them?",
+        "Is this rule enforced somewhere it cannot be skipped — RLS, a constraint — or only in the path I happened to write?",
+      ],
+      inYourCode: [
+        "Take any server action that accepts an id and ask what stops another user passing someone else's. Then check whether RLS would actually catch it.",
+        "Find a check that exists only in the browser. Confirm the server repeats it.",
+        "Read one of your RLS policies and say precisely which attack it defeats.",
+      ],
+      gotIt: [
+        "You automatically ask \"where did this value come from?\" before using it.",
+        "You never rely on the UI hiding something to keep it safe.",
+      ],
+      deeper: [
+        {
+          label: "OWASP Top 10 — especially Broken Access Control",
+          url: "https://owasp.org/www-project-top-ten/",
+        },
+        {
+          label: "Supabase docs: Row Level Security",
+          url: "https://supabase.com/docs/guides/database/postgres/row-level-security",
+        },
+      ],
+    },
+  ],
+};

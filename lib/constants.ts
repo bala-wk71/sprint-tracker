@@ -195,6 +195,17 @@ export const NAV_GROUPS: readonly { label: string; items: readonly NavItem[] }[]
     ],
   },
   {
+    label: "Craft",
+    items: [
+      {
+        href: "/craft",
+        label: "Foundations",
+        icon: "GraduationCap",
+        match: ["/craft"],
+      },
+    ],
+  },
+  {
     label: "Support",
     items: [
       { href: "/assistant", label: "Assistant", icon: "Bot" },
