@@ -30,7 +30,7 @@ import { GoalChip } from "@/components/goals/GoalChip";
 import { GoalSelect, useGoalOptions } from "@/components/goals/GoalOptions";
 import { RigorPanel } from "@/components/craft/RigorPanel";
 import { CHECKLIST, CHECKLIST_TOTAL, tickedCount, type Ticks } from "@/lib/craft/checklist";
-import { attachRigor } from "@/app/(app)/craft/actions";
+import { attachRigor } from "./rigor";
 
 export function TaskItem({
   task,

@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
-  GraduationCap,
   HeartPulse,
   LayoutDashboard,
   LogOut,
@@ -37,7 +36,6 @@ const icons: Record<string, LucideIcon> = {
   Bot,
   NotebookPen,
   HeartPulse,
-  GraduationCap,
 };
 
 const COLLAPSED_KEY = "sidebar-collapsed";

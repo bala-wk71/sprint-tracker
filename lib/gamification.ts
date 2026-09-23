@@ -39,12 +39,10 @@ export const XP = {
   goal_checkin: 10,
   goal_step: 15,
   goal_done: 50,
-  // Craft. A rigor run is worth more than any single tracking action because
-  // it is the most expensive thing on this list to do honestly — twenty-one
-  // boxes you have to actually be able to defend. Reading a foundation topic
-  // pays once, ever, via a dedupe key on the slug.
+  // A rigor run is worth more than any single tracking action because it is
+  // the most expensive thing on this list to do honestly — twenty-one boxes
+  // you have to actually be able to defend.
   rigor_run: 25,
-  foundation_read: 15,
 } as const;
 
 // Time logging XP accrues with hours logged, capped per day — logging many

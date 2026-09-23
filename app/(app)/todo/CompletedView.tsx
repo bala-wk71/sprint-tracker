@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { format, isToday, isYesterday, isThisWeek } from "date-fns";
 import { DEFAULT_WEEK_START_DAY, type WeekStartDay } from "@/lib/week";
-import { Check, Undo2, Trash2, Inbox, SearchX } from "lucide-react";
+import { Check, Undo2, Trash2, Inbox, SearchX, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toggleTaskComplete, deleteTask, clearCompletedTasks } from "./actions";
 import { useTodoStore } from "./store";
@@ -117,11 +117,21 @@ function CompletedRow({ task }: { task: DoneTask }) {
         <span className="truncate text-sm text-muted-foreground line-through">
           {task.title}
         </span>
-        <span className="truncate text-[11px] text-muted-foreground/70">
-          {task.path}
-          {task.completed_at && (
-            <> · {format(new Date(task.completed_at), "MMM d, HH:mm")}</>
+        <span className="flex items-center gap-1 truncate text-[11px] text-muted-foreground/70">
+          {/* The whole point of a rigor run is being able to look back and see
+              which finished work you can actually defend. */}
+          {task.rigor?.completed_at && (
+            <ShieldCheck
+              className="h-3 w-3 shrink-0 text-primary"
+              aria-label="Done with the full checklist"
+            />
           )}
+          <span className="truncate">
+            {task.path}
+            {task.completed_at && (
+              <> · {format(new Date(task.completed_at), "MMM d, HH:mm")}</>
+            )}
+          </span>
         </span>
       </div>
 

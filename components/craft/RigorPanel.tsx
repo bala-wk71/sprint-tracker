@@ -11,7 +11,7 @@ import {
   tickedCount,
   type Ticks,
 } from "@/lib/craft/checklist";
-import { completeRigor, detachRigor, setTick } from "@/app/(app)/craft/actions";
+import { completeRigor, detachRigor, setTick } from "@/app/(app)/todo/rigor";
 
 /** First stage with an unticked box — what you should be looking at now. */
 function currentStageId(ticks: Ticks): string | null {

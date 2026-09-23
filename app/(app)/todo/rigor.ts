@@ -1,12 +1,13 @@
 "use server";
 
+// Server actions for the rigor checklist attached to a todo task.
+// Lives beside the todo actions because that is the only place rigor appears.
+
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { awardXp, awardTrackedXp } from "@/lib/gamification";
+import { awardTrackedXp } from "@/lib/gamification";
 import { todayIsoLocal } from "@/lib/dates";
 import { CHECKLIST_ITEM_IDS, isComplete, type Ticks } from "@/lib/craft/checklist";
-import { topicBySlug } from "@/lib/craft/curriculum";
 
 export type ActionResult<T = undefined> =
   | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
@@ -181,7 +182,6 @@ export async function completeRigor(
     today
   );
 
-  revalidatePath("/craft");
   return { ok: true, data: { completedAt }, xp };
 }
 
@@ -203,91 +203,5 @@ export async function reopenRigor(
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/craft");
-  return { ok: true };
-}
-
-// ---------------------------------------------------------------------------
-// Foundations — the read-once curriculum
-// ---------------------------------------------------------------------------
-
-const readingSchema = z.object({
-  slug: z.string().refine((s) => Boolean(topicBySlug(s)), "Unknown topic"),
-  status: z.enum(["reading", "read"]),
-});
-
-export async function setTopicStatus(
-  input: z.infer<typeof readingSchema>
-): Promise<ActionResult> {
-  const parsed = readingSchema.safeParse(input);
-  if (!parsed.success)
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
-
-  const ctx = await getUserOrFail();
-  if (!ctx) return { ok: false, error: "Not authenticated" };
-
-  const { slug, status } = parsed.data;
-
-  const { error } = await ctx.supabase.from("craft_reading").upsert(
-    {
-      owner_id: ctx.user.id,
-      topic_slug: slug,
-      status,
-      // Keep the first read_at rather than overwriting on a re-read: when you
-      // first understood something is the interesting date.
-      ...(status === "read" ? { read_at: new Date().toISOString() } : {}),
-    },
-    { onConflict: "owner_id,topic_slug" }
-  );
-
-  if (error) return { ok: false, error: error.message };
-
-  // Once per topic, ever — the slug is the dedupe key, so re-reading pays
-  // nothing and marking read/unread/read cannot be farmed.
-  const xp =
-    status === "read"
-      ? await awardXp(ctx.supabase, ctx.user.id, "foundation_read", slug)
-      : 0;
-
-  revalidatePath("/craft");
-  return { ok: true, xp };
-}
-
-const notesSchema = z.object({
-  slug: z.string().refine((s) => Boolean(topicBySlug(s)), "Unknown topic"),
-  notes: z.string().max(8000),
-});
-
-export async function saveTopicNotes(
-  input: z.infer<typeof notesSchema>
-): Promise<ActionResult> {
-  const parsed = notesSchema.safeParse(input);
-  if (!parsed.success)
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
-
-  const ctx = await getUserOrFail();
-  if (!ctx) return { ok: false, error: "Not authenticated" };
-
-  const notes = parsed.data.notes.trim();
-
-  const { data: existing } = await ctx.supabase
-    .from("craft_reading")
-    .select("status")
-    .eq("owner_id", ctx.user.id)
-    .eq("topic_slug", parsed.data.slug)
-    .maybeSingle();
-
-  const { error } = await ctx.supabase.from("craft_reading").upsert(
-    {
-      owner_id: ctx.user.id,
-      topic_slug: parsed.data.slug,
-      notes: notes || null,
-      // Writing a note on an untouched topic means you are reading it.
-      status: existing?.status ?? "reading",
-    },
-    { onConflict: "owner_id,topic_slug" }
-  );
-
-  if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
