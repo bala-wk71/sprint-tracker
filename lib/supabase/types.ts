@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      craft_reading: {
+        Row: {
+          owner_id: string
+          topic_slug: string
+          status: string
+          notes: string | null
+          read_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          owner_id: string
+          topic_slug: string
+          status?: string
+          notes?: string | null
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          owner_id?: string
+          topic_slug?: string
+          status?: string
+          notes?: string | null
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craft_reading_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craft_runs: {
+        Row: {
+          id: string
+          owner_id: string
+          task_id: string
+          ticks: Json
+          lesson: string | null
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          task_id: string
+          ticks?: Json
+          lesson?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          task_id?: string
+          ticks?: Json
+          lesson?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craft_runs_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "craft_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "todo_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           author_id: string
@@ -2052,6 +2138,10 @@ export type Database = {
       total_xp: { Args: Record<string, never>; Returns: number }
       gamification_stats: { Args: Record<string, never>; Returns: Json }
       day_is_tracked: { Args: { d: string }; Returns: boolean }
+      craft_set_tick: {
+        Args: { p_task_id: string; p_item: string; p_value: boolean }
+        Returns: Database["public"]["Tables"]["craft_runs"]["Row"]
+      }
     }
     Enums: {
       comment_target_type: "daily_log" | "sprint" | "goal" | "journal_entry"

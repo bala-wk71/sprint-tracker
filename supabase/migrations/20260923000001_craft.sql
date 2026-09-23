@@ -78,3 +78,27 @@ create policy "craft_reading owner all"
   on public.craft_reading for all
   using (owner_id = (select auth.uid()))
   with check (owner_id = (select auth.uid()));
+
+-- ---------------------------------------------------------------------------
+-- Ticking a box is a read-modify-write on a jsonb column, which two open tabs
+-- can lose. Doing the merge in one statement makes that impossible, rather
+-- than unlikely — the same argument the curriculum's transactions topic makes.
+-- `owner_id = auth.uid()` is belt and braces over RLS, which also applies.
+
+create or replace function public.craft_set_tick(
+  p_task_id uuid,
+  p_item    text,
+  p_value   boolean
+)
+returns public.craft_runs
+language sql
+security invoker
+set search_path = public
+as $$
+  update public.craft_runs
+     set ticks = ticks || jsonb_build_object(p_item, p_value)
+   where task_id = p_task_id
+     and owner_id = (select auth.uid())
+     and completed_at is null
+  returning *;
+$$;
