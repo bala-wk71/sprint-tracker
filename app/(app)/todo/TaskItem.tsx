@@ -30,7 +30,7 @@ import { GoalChip } from "@/components/goals/GoalChip";
 import { GoalSelect, useGoalOptions } from "@/components/goals/GoalOptions";
 import { RigorPanel } from "@/components/craft/RigorPanel";
 import { CHECKLIST, CHECKLIST_TOTAL, tickedCount, type Ticks } from "@/lib/craft/checklist";
-import { attachRigor } from "./rigor";
+import { attachRigor, reopenRigor } from "./rigor";
 
 export function TaskItem({
   task,
@@ -160,6 +160,22 @@ export function TaskItem({
       return;
     }
     setRigor({ ticks: result.data.ticks, completed_at: null });
+  };
+
+  /**
+   * Restoring a completed task leaves its run closed, so the shield would open
+   * a panel that refuses to draw. Reopening the run is what the button means
+   * here: the ticks are kept, because review sending work back is a reason to
+   * re-verify the boxes, not to lose them.
+   */
+  const handleReopenRigor = async () => {
+    const result = await reopenRigor({ taskId: task.id });
+    if (!result.ok) {
+      notify({ message: result.error });
+      return;
+    }
+    setRigor((prev) => (prev ? { ...prev, completed_at: null } : prev));
+    setRigorOpen(true);
   };
 
   /** The checklist closed the task for us; mirror that into the tree. */
@@ -362,12 +378,24 @@ export function TaskItem({
               </button>
               {!task.is_completed && (
                 <button
-                  onClick={rigor ? () => setRigorOpen((o) => !o) : handleAttachRigor}
+                  onClick={
+                    rigor?.completed_at
+                      ? handleReopenRigor
+                      : rigor
+                        ? () => setRigorOpen((o) => !o)
+                        : handleAttachRigor
+                  }
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded hover:bg-accent hover:text-foreground",
                     rigorOpen || rigor ? "text-foreground" : "text-muted-foreground"
                   )}
-                  aria-label={rigor ? "Show rigor checklist" : "Work this one with rigor"}
+                  aria-label={
+                    rigor?.completed_at
+                      ? "Reopen rigor checklist"
+                      : rigor
+                        ? "Show rigor checklist"
+                        : "Work this one with rigor"
+                  }
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
                 </button>
