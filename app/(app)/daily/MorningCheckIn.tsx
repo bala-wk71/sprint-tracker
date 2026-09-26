@@ -17,6 +17,8 @@ type Props = {
   initialEnergy: number | null;
   initialIntention: string;
   initialPriorities: MorningPriority[];
+  /** A closed day: show what was logged, allow no changes. */
+  readOnly?: boolean;
 };
 
 const EMPTY_PRIORITIES: MorningPriority[] = [
@@ -31,6 +33,7 @@ export function MorningCheckIn({
   initialEnergy,
   initialIntention,
   initialPriorities,
+  readOnly = false,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -80,7 +83,7 @@ export function MorningCheckIn({
   };
 
   return (
-    <div className="space-y-5">
+    <fieldset disabled={readOnly} className="min-w-0 space-y-5">
       {/* Mood */}
       <div>
         <label className="mb-2 block text-sm font-medium text-foreground">
@@ -196,26 +199,28 @@ export function MorningCheckIn({
         </p>
       )}
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={pending}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {pending ? "Saving…" : "Save morning check-in"}
-        </button>
-        {savedAt && (
-          <span className="text-xs text-muted-foreground">
-            Saved at {savedAt}
-            {xpGained > 0 && (
-              <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
-                +{xpGained} XP
-              </span>
-            )}
-          </span>
-        )}
-      </div>
-    </div>
+      {!readOnly && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={pending}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Save morning check-in"}
+          </button>
+          {savedAt && (
+            <span className="text-xs text-muted-foreground">
+              Saved at {savedAt}
+              {xpGained > 0 && (
+                <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
+                  +{xpGained} XP
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+      )}
+    </fieldset>
   );
 }

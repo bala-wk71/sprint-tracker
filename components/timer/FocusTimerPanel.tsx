@@ -288,6 +288,15 @@ export function FocusTimerPanel({
         </p>
       )}
 
+      {timer.droppedLog && (
+        <div className="flex items-start justify-between gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          <p>{timer.droppedLog}</p>
+          <button type="button" onClick={timer.dismissDropped} aria-label="Dismiss" className="hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <DayTarget
         workHours={workHours + pendingWorkHours}
         hasWorkTasks={workTaskIds.size > 0}

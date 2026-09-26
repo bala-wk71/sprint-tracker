@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardTimeLogXp, awardXp } from "@/lib/gamification";
-import { getWeekStartDay } from "@/lib/dates";
+import { getWeekStartDay, nowLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
+import { LOG_DAY_CLOSED, isLogDayOpen } from "@/lib/daily/logWindow";
 
 export type ActionResult<T = undefined> =
   | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
@@ -37,6 +38,31 @@ async function getUserOrFail() {
     data: { user },
   } = await supabase.auth.getUser();
   return user ? { supabase, user } : null;
+}
+
+/** Server-side half of the lock the daily page shows: the UI is not the gate. */
+async function logDayOpen(date: string): Promise<boolean> {
+  const { todayIso, hour } = await nowLocal();
+  return isLogDayOpen(date, todayIso, hour);
+}
+
+/**
+ * The day an existing entry belongs to, read from the database. Edits and
+ * deletes check this rather than a date the browser sends, which could name
+ * today for an entry from last week.
+ */
+async function entryLogDate(
+  ctx: NonNullable<Awaited<ReturnType<typeof getUserOrFail>>>,
+  entryId: string
+): Promise<string | null> {
+  const { data } = await ctx.supabase
+    .from("time_entries")
+    .select("daily_logs!inner(log_date)")
+    .eq("id", entryId)
+    .eq("owner_id", ctx.user.id)
+    .maybeSingle();
+  const log = Array.isArray(data?.daily_logs) ? data.daily_logs[0] : data?.daily_logs;
+  return log?.log_date ?? null;
 }
 
 /**
@@ -111,6 +137,9 @@ export async function saveMorningCheckIn(
 
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
+  if (!(await logDayOpen(parsed.data.date))) {
+    return { ok: false, error: LOG_DAY_CLOSED };
+  }
 
   try {
     const log = await ensureDailyLog(ctx, parsed.data.date);
@@ -195,6 +224,9 @@ export async function addTimeEntry(input: TimeEntryInput): Promise<ActionResult>
 
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
+  if (!(await logDayOpen(parsed.data.date))) {
+    return { ok: false, error: LOG_DAY_CLOSED };
+  }
 
   try {
     const log = await ensureDailyLog(ctx, parsed.data.date);
@@ -260,6 +292,10 @@ export async function updateTimeEntry(
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
 
+  const entryDate = await entryLogDate(ctx, parsed.data.id);
+  if (!entryDate) return { ok: false, error: "Entry not found" };
+  if (!(await logDayOpen(entryDate))) return { ok: false, error: LOG_DAY_CLOSED };
+
   const { error } = await ctx.supabase
     .from("time_entries")
     .update({
@@ -280,13 +316,13 @@ export async function updateTimeEntry(
     .from("daily_logs")
     .select("id")
     .eq("owner_id", ctx.user.id)
-    .eq("log_date", parsed.data.date)
+    .eq("log_date", entryDate)
     .maybeSingle();
   const xp = log
     ? await awardTimeLogXp(
         ctx.supabase,
         ctx.user.id,
-        parsed.data.date,
+        entryDate,
         await sumDayHours(ctx, log.id)
       )
     : 0;
@@ -299,6 +335,10 @@ export async function updateTimeEntry(
 export async function deleteTimeEntry(id: string): Promise<ActionResult> {
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  const entryDate = await entryLogDate(ctx, id);
+  if (!entryDate) return { ok: false, error: "Entry not found" };
+  if (!(await logDayOpen(entryDate))) return { ok: false, error: LOG_DAY_CLOSED };
 
   const { error } = await ctx.supabase
     .from("time_entries")
@@ -347,6 +387,9 @@ export async function saveEveningWrapUp(
 
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "Not authenticated" };
+  if (!(await logDayOpen(parsed.data.date))) {
+    return { ok: false, error: LOG_DAY_CLOSED };
+  }
 
   try {
     const log = await ensureDailyLog(ctx, parsed.data.date);

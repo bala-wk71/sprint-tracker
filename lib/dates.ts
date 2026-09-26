@@ -17,27 +17,45 @@ import {
  * locally the header is absent and the dev machine's own zone is correct.
  */
 export async function todayIsoLocal(): Promise<string> {
+  return (await nowLocal()).todayIso;
+}
+
+/**
+ * Today's date and the current hour (0-23), both in the viewer's timezone.
+ * The hour is what lets a log stay open for a little while after midnight.
+ */
+export async function nowLocal(): Promise<{ todayIso: string; hour: number }> {
   const h = await headers();
   const timeZone = h.get("x-vercel-ip-timezone");
 
   if (timeZone) {
     try {
-      // en-CA formats as YYYY-MM-DD.
-      return new Intl.DateTimeFormat("en-CA", {
+      // en-CA formats the date as YYYY-MM-DD.
+      const parts = new Intl.DateTimeFormat("en-CA", {
         timeZone,
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-      }).format(new Date());
+        hour: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(new Date());
+      const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+      return {
+        todayIso: `${get("year")}-${get("month")}-${get("day")}`,
+        hour: Number(get("hour")),
+      };
     } catch {
       // Unrecognised zone in the header — fall through to server-local time.
     }
   }
 
   const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 10);
+  return {
+    todayIso: new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+      .toISOString()
+      .slice(0, 10),
+    hour: now.getHours(),
+  };
 }
 
 /**

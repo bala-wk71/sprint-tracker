@@ -46,10 +46,13 @@ export function TimeEntries({
   date,
   tasks,
   initialEntries,
+  readOnly = false,
 }: {
   date: string;
   tasks: SprintTaskOption[];
   initialEntries: DisplayTimeEntry[];
+  /** A closed day: list what was logged, offer no way to change it. */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -311,23 +314,25 @@ export function TimeEntries({
                       <p className="mt-1 text-xs text-muted-foreground">{entry.notes}</p>
                     )}
                   </div>
-                  <div className="flex shrink-0 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => beginEdit(entry)}
-                      className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(entry.id)}
-                      disabled={pending}
-                      className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {!readOnly && (
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => beginEdit(entry)}
+                        className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(entry.id)}
+                        disabled={pending}
+                        className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </li>
             )
@@ -341,12 +346,18 @@ export function TimeEntries({
         </p>
       )}
 
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Add new entry
-        </p>
-        {renderEntryEditor(draft, setDraft, handleAdd)}
-      </div>
+      {readOnly ? (
+        initialEntries.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nothing was logged this day.</p>
+        )
+      ) : (
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Add new entry
+          </p>
+          {renderEntryEditor(draft, setDraft, handleAdd)}
+        </div>
+      )}
     </div>
   );
 }

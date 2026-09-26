@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { addTimeEntry } from "@/app/(app)/daily/actions";
+import { LOG_DAY_CLOSED } from "@/lib/daily/logWindow";
 import {
   INITIAL_STATE,
   PHASE_LABEL,
@@ -205,6 +206,9 @@ type FocusTimerContextValue = {
   requestNotifications: () => void;
   logError: string | null;
   retryLogs: () => void;
+  /** A queued session that couldn't be logged because its day had closed. */
+  droppedLog: string | null;
+  dismissDropped: () => void;
   /** True while the time's-up sound is repeating in this tab. */
   ringing: boolean;
   stopAlarm: () => void;
@@ -227,6 +231,7 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [now, setNow] = useState(() => Date.now());
   const [logError, setLogError] = useState<string | null>(null);
+  const [droppedLog, setDroppedLog] = useState<string | null>(null);
   const [retryAt, setRetryAt] = useState(0);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
     "default"
@@ -342,6 +347,13 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
           const next: PendingLog | undefined = readState().pending[0];
           if (!next) break;
           const error = await postLog(next);
+          // The day it belongs to has closed (it sat queued past the grace
+          // hours). Retrying can never succeed, so let it go and say so once.
+          if (error === LOG_DAY_CLOSED) {
+            writeState(removePending(readState(), next.id));
+            setDroppedLog(`A ${next.minutes} min session from ${next.date} wasn't logged — that day is closed.`);
+            continue;
+          }
           if (error) {
             setLogError(error);
             setRetryAt(Date.now() + RETRY_MS);
@@ -425,6 +437,8 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
         setLogError(null);
         setRetryAt(0);
       },
+      droppedLog,
+      dismissDropped: () => setDroppedLog(null),
       ringing,
       stopAlarm,
       testSound: () => {
@@ -432,7 +446,7 @@ export function FocusTimerProvider({ children }: { children: React.ReactNode }) 
         playSound(state.settings.soundKind, state.settings.volume);
       },
     }),
-    [state, now, hydrated, remaining, permission, logError, ringing, stopAlarm]
+    [state, now, hydrated, remaining, permission, logError, droppedLog, ringing, stopAlarm]
   );
 
   return <FocusTimerContext.Provider value={value}>{children}</FocusTimerContext.Provider>;
