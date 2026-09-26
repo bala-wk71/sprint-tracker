@@ -256,7 +256,7 @@ export function TimeEntries({
         </span>
       </div>
 
-      {tasks.length === 0 && (
+      {tasks.length === 0 && !readOnly && (
         <p className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-600 dark:text-yellow-400">
           No sprint set up for this week — entries can still be logged without a task.
         </p>
