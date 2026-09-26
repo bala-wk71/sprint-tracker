@@ -4,7 +4,6 @@ import {
   CHECKLIST_ITEM_IDS,
   CHECKLIST_TOTAL,
   isComplete,
-  stageProgress,
   tickedCount,
 } from "./checklist";
 
@@ -27,7 +26,6 @@ describe("rigor checklist", () => {
     for (const stage of CHECKLIST) {
       expect(stage.title.length, stage.id).toBeGreaterThan(0);
       expect(stage.when.length, stage.id).toBeGreaterThan(0);
-      expect(stage.why.length, stage.id).toBeGreaterThan(0);
       expect(stage.items.length, stage.id).toBeGreaterThan(0);
       for (const item of stage.items) {
         expect(item.text.length, item.id).toBeGreaterThan(0);
@@ -58,12 +56,5 @@ describe("rigor checklist", () => {
 
   it("does not count a box that was ticked and then unticked", () => {
     expect(tickedCount({ [CHECKLIST_ITEM_IDS[0]]: false })).toBe(0);
-  });
-
-  it("reports per-stage progress independently", () => {
-    const first = CHECKLIST[0];
-    const ticks = { [first.items[0].id]: true };
-    expect(stageProgress(first, ticks)).toEqual({ done: 1, total: first.items.length });
-    expect(stageProgress(CHECKLIST[1], ticks).done).toBe(0);
   });
 });

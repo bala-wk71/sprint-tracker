@@ -125,8 +125,8 @@ const completeSchema = z.object({
  * Close a run and complete the task behind it, in that order.
  *
  * The full-checklist requirement is re-checked here against the stored ticks,
- * not the ones the browser sent — the gate is the point of the feature, and a
- * gate enforced only in the UI is decoration.
+ * not the ones the browser sent. The task itself can still be ticked from its
+ * row without the checklist; this is only the checklist's own "done".
  */
 export async function completeRigor(
   input: z.infer<typeof completeSchema>
