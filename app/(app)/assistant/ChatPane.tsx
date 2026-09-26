@@ -47,6 +47,9 @@ export function ChatPane({
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // A thread this pane created for its first message. Held so a retry after a
+  // failed reply lands in that thread rather than starting another one.
+  const createdIdRef = useRef<string | null>(null);
 
   const scrollToBottom = useCallback(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,15 +79,16 @@ export function ChatPane({
     // The first message in a brand-new session has no thread to land in.
     // Create one titled from the message rather than making the user press
     // "New chat" before they can say anything.
-    let id = conversationId;
+    let id = conversationId ?? createdIdRef.current;
     if (!id) {
-      const created = await createThread(text);
+      const created = await createThread(text, { revalidate: false });
       if (!created.ok) {
         setError(created.error);
         setStreaming(false);
         return;
       }
       id = created.id;
+      createdIdRef.current = id;
     }
 
     setMessages((prev) => [
@@ -184,7 +188,8 @@ export function ChatPane({
       setLookups([]);
 
       // Pull in the server's state: the thread's title and its position in the
-      // rail both move once a message lands.
+      // rail both move once a message lands. A thread started here swaps this
+      // pane for its own, which loads the exchange just saved by the route.
       if (!conversationId) router.replace(`/assistant?c=${id}`);
       else router.refresh();
     } catch (err) {

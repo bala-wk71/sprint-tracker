@@ -1,8 +1,9 @@
 import { format } from "date-fns";
-import { Check, MessageSquare, Moon, Sunrise, Timer, type LucideIcon } from "lucide-react";
+import { Check, Lock, MessageSquare, Moon, Sunrise, Timer, type LucideIcon } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import type { TaskCategory } from "@/lib/constants";
-import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
+import { getWeekStartDay, nowLocal } from "@/lib/dates";
+import { isLogDayOpen } from "@/lib/daily/logWindow";
 import { weekStartIsoOf } from "@/lib/week";
 import { addDaysIso, elapsedDaysInWeek, expectedByNow } from "@/lib/pace";
 import { DateNav } from "./DateNav";
@@ -15,7 +16,6 @@ import {
   type SprintTaskOption,
 } from "./TimeEntries";
 import { FocusTimerPanel } from "@/components/timer/FocusTimerPanel";
-import { RigorStrip } from "@/components/craft/RigorStrip";
 import type { TimerTaskProgress } from "@/components/timer/TaskProgress";
 import { EveningWrapUp, type EveningPriority } from "./EveningWrapUp";
 import { CommentThread } from "@/components/comments/CommentThread";
@@ -33,9 +33,11 @@ export default async function DailyPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const todayIso = await todayIsoLocal();
+  const { todayIso, hour } = await nowLocal();
   const date =
     params.date && isValidIsoDate(params.date) ? params.date : todayIso;
+  // Logs belong to the day they happen: any other day is shown as a record.
+  const readOnly = !isLogDayOpen(date, todayIso, hour);
 
   const supabase = await createClient();
   const user = await getUser();
@@ -213,6 +215,16 @@ export default async function DailyPage({
         <DateNav date={date} todayIso={todayIso} />
       </div>
 
+      {readOnly && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            This day is closed, so it&apos;s read-only. Logs belong to the day
+            they happen — whatever didn&apos;t get logged is part of the record too.
+          </p>
+        </div>
+      )}
+
       <DayProgress
         steps={steps}
         hoursLogged={hoursLogged}
@@ -233,6 +245,7 @@ export default async function DailyPage({
         />
         <MorningCheckIn
           date={date}
+          readOnly={readOnly}
           initialMood={dailyLog?.morning_mood ?? null}
           initialEnergy={dailyLog?.morning_energy ?? null}
           initialIntention={dailyLog?.daily_intention ?? ""}
@@ -257,10 +270,14 @@ export default async function DailyPage({
               workHours={workHoursToday}
               taskProgress={timerTasks}
             />
-            <RigorStrip supabase={supabase} ownerId={user.id} />
           </div>
         )}
-        <TimeEntries date={date} tasks={sprintTasks} initialEntries={timeEntries} />
+        <TimeEntries
+          date={date}
+          tasks={sprintTasks}
+          initialEntries={timeEntries}
+          readOnly={readOnly}
+        />
       </section>
 
       <section
@@ -275,6 +292,7 @@ export default async function DailyPage({
         />
         <EveningWrapUp
           date={date}
+          readOnly={readOnly}
           initialMood={dailyLog?.closing_mood ?? null}
           initialProductivity={dailyLog?.productivity_rating ?? null}
           initialReflection={dailyLog?.reflection ?? ""}

@@ -63,17 +63,6 @@ export function TaskItem({
   const handleToggle = async () => {
     const isCompleted = !task.is_completed;
 
-    // A task carrying an unfinished checklist cannot be ticked from the row.
-    // This is the whole point of attaching one, so the row sends you to the
-    // checklist rather than quietly letting you past it.
-    if (isCompleted && rigor && !rigor.completed_at) {
-      setRigorOpen(true);
-      notify({
-        message: `${CHECKLIST_TOTAL - tickedCount(rigor.ticks)} boxes left before this one is done.`,
-      });
-      return;
-    }
-
     const result = await run(
       (sections) =>
         tree.updateTask(sections, task.id, (t) => ({

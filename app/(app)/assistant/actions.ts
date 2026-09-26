@@ -9,7 +9,17 @@ export type ThreadResult =
   | { ok: true; id: string }
   | { ok: false; error: string };
 
-export async function createThread(seed?: string): Promise<ThreadResult> {
+/**
+ * `revalidate: false` is for the chat pane starting a thread from its first
+ * message. Revalidating there re-renders the page with the new thread active
+ * while the reply is still streaming, which remounts the pane (it is keyed by
+ * thread id) and throws the in-flight answer away. The pane navigates to the
+ * thread itself once the reply has landed.
+ */
+export async function createThread(
+  seed?: string,
+  { revalidate = true }: { revalidate?: boolean } = {}
+): Promise<ThreadResult> {
   const user = await getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
 
@@ -27,7 +37,7 @@ export async function createThread(seed?: string): Promise<ThreadResult> {
     return { ok: false, error: error?.message ?? "Couldn't start a new chat" };
   }
 
-  revalidatePath("/assistant");
+  if (revalidate) revalidatePath("/assistant");
   return { ok: true, id: data.id };
 }
 

@@ -58,6 +58,9 @@ export function FocusTimerPanel({
   const isFocus = run?.phase === "focus";
   const elapsedMin = run && isFocus ? Math.floor((run.durationMs - remaining) / 60_000) : 0;
   const progress = run ? 1 - remaining / run.durationMs : 0;
+  const clock = run
+    ? formatClock(remaining)
+    : formatClock((activeMode === "timer" ? timerMinutes : state.settings.focusMin) * 60_000);
   const today = localDate(now);
   const stats = state.days[today];
   // Sessions finished but not yet saved count straight away, by the same rule
@@ -148,12 +151,18 @@ export function FocusTimerPanel({
 
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
         <Ring progress={progress} phase={run?.phase ?? "focus"}>
-          <span className="font-mono text-3xl font-semibold tabular-nums text-foreground" data-testid="timer-clock">
-            {run
-              ? formatClock(remaining)
-              : formatClock((activeMode === "timer" ? timerMinutes : state.settings.focusMin) * 60_000)}
+          <span
+            className={cn(
+              "font-mono font-semibold tabular-nums text-foreground",
+              // h:mm:ss is two characters wider than mm:ss; at the mm:ss size
+              // it runs past the ring.
+              clock.length > 5 ? "text-2xl" : "text-3xl"
+            )}
+            data-testid="timer-clock"
+          >
+            {clock}
           </span>
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="max-w-[6rem] text-center text-[11px] uppercase leading-tight tracking-wide text-muted-foreground">
             {run
               ? run.status === "paused"
                 ? "Paused"
@@ -288,6 +297,15 @@ export function FocusTimerPanel({
         </p>
       )}
 
+      {timer.droppedLog && (
+        <div className="flex items-start justify-between gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          <p>{timer.droppedLog}</p>
+          <button type="button" onClick={timer.dismissDropped} aria-label="Dismiss" className="hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <DayTarget
         workHours={workHours + pendingWorkHours}
         hasWorkTasks={workTaskIds.size > 0}
@@ -357,7 +375,8 @@ function Ring({
           )}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
+      {/* Inset so the text stays inside the stroke rather than just the box. */}
+      <div className="absolute inset-3 flex flex-col items-center justify-center gap-0.5">{children}</div>
     </div>
   );
 }
