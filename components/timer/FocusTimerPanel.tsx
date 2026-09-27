@@ -167,7 +167,11 @@ export function FocusTimerPanel({
               ? run.status === "paused"
                 ? "Paused"
                 : run.status === "ready"
-                  ? `Up next · ${PHASE_LABEL[run.phase]}`
+                  ? // Two lines on purpose: on one it wraps mid-phrase in the ring.
+                    <>
+                      Up next
+                      <span className="block">{PHASE_LABEL[run.phase]}</span>
+                    </>
                   : run.mode === "timer"
                     ? "Timer"
                     : PHASE_LABEL[run.phase]
