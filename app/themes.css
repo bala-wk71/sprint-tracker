@@ -476,3 +476,78 @@ html.minimal :is(.xpt-icon, .xpt-art, .xpt-bar, .xpt-close, .xpt-life, .xpt-deta
 @media (prefers-reduced-motion: reduce) {
   .xpt, .xpt-title { animation: none !important; }
 }
+
+/* ===================================================================== */
+/* Phone tab bar and Home, per theme                                      */
+/* ===================================================================== */
+html.jarvis .tabbar {
+  background: hsl(210 70% 6% / 0.92);
+  backdrop-filter: blur(8px);
+  border-top-color: hsl(191 100% 61% / 0.4);
+  box-shadow: 0 -8px 30px -12px hsl(191 100% 61% / 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+html.jarvis .tabbar-centre {
+  background: transparent;
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary));
+  box-shadow: 0 0 0 4px hsl(var(--background)), 0 0 18px hsl(191 100% 61% / 0.8),
+    inset 0 0 12px hsl(191 100% 61% / 0.35);
+}
+
+html.retro .tabbar {
+  border-top: 3px solid hsl(var(--primary));
+  background: #0d0208;
+  font-family: var(--app-display), monospace;
+}
+html.retro .tabbar span { font-size: 7px; }
+html.retro .tabbar-centre {
+  border: 3px solid #000;
+  background: hsl(var(--primary));
+  box-shadow: 3px 3px 0 hsl(184 100% 50%);
+}
+
+html.pastel .tabbar {
+  inset-inline: 0.75rem;
+  bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  height: 4rem;
+  padding-bottom: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 12px 30px -10px rgb(43 33 64 / 0.3);
+}
+html.pastel .tabbar-centre {
+  border-color: #fff;
+  background: #e0d7ff;
+  color: #2b2140;
+}
+
+html.minimal .tabbar { box-shadow: none; }
+html.minimal .tabbar-centre {
+  margin-top: 0;
+  height: 1.75rem;
+  width: 1.75rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+}
+html.minimal .tabbar a,
+html.minimal .tabbar button { color: hsl(var(--muted-foreground)); font-weight: 500; }
+html.minimal .tabbar a[aria-current="page"] { color: hsl(var(--foreground)); }
+
+@keyframes jv-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.6); }
+  50% { box-shadow: 0 0 0 10px hsl(var(--primary) / 0); }
+}
+.jv-pulse { animation: jv-pulse 1.2s ease-out infinite; }
+
+/* Retro Home: the level bar is a chunky health bar. */
+html.retro .home [data-gamified] .bg-muted {
+  height: 0.75rem;
+  background: #000;
+  outline: 2px solid hsl(var(--primary));
+}
+html.retro .home [data-gamified] .bg-primary { background: hsl(140 100% 58%); }
