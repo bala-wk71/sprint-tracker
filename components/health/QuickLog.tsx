@@ -21,6 +21,7 @@ import {
 } from "@/app/(app)/health/actions";
 import { saveBodyMetrics } from "@/app/(app)/health/body/actions";
 import { WaterCard } from "./WaterCard";
+import { announceXp } from "@/lib/xpToast";
 
 type Tab = "water" | "weight" | "food" | "train" | "write";
 
@@ -232,6 +233,7 @@ function QuickWeight({
       }
       setSaved(true);
       setXpGained("xp" in result && result.xp ? result.xp : 0);
+      announceXp("xp" in result ? result.xp : 0, "Quick log");
       onSaved();
     });
   };

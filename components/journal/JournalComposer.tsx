@@ -13,6 +13,7 @@ import {
   deleteJournalEntry,
   saveJournalEntry,
 } from "@/app/(app)/journal/actions";
+import { announceXp } from "@/lib/xpToast";
 
 export type ComposerEntry = {
   id: string;
@@ -76,7 +77,8 @@ export function JournalComposer({ todayIso, entry, compact = false }: Props) {
         setTitle("");
         setBody("");
         setMood(null);
-        setStatus(result.xp ? `Saved to your journal · +${result.xp} XP` : "Saved to your journal");
+        setStatus("Saved to your journal");
+        announceXp(result.xp, "Journal entry");
       }
       router.refresh();
     });

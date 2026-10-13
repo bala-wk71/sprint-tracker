@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Lock, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { checkInOnGoal } from "@/app/(app)/goals/checkin-actions";
+import { announceXp } from "@/lib/xpToast";
 
 type Props = {
   goal: {
@@ -48,7 +49,8 @@ export function CheckInForm({ goal }: Props) {
       }
       setNote("");
       setOnTrack(null);
-      setStatus(result.xp ? `Checked in · +${result.xp} XP` : "Checked in");
+      setStatus("Checked in");
+      announceXp(result.xp, "Goal check-in");
       router.refresh();
     });
   };

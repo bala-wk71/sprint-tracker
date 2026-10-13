@@ -10,6 +10,7 @@ import {
   type PriorityStatus,
 } from "@/lib/constants";
 import { saveEveningWrapUp } from "./actions";
+import { announceXp } from "@/lib/xpToast";
 
 export type EveningPriority = {
   id: string;
@@ -92,6 +93,7 @@ export function EveningWrapUp({
       }
       setSavedAt(new Date().toLocaleTimeString());
       setXpGained("xp" in result && result.xp ? result.xp : 0);
+      announceXp("xp" in result ? result.xp : 0, "Evening wrap-up");
       router.refresh();
     });
   };

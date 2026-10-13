@@ -5,6 +5,9 @@ import { QuickLog } from "@/components/health/QuickLog";
 import { FocusTimerProvider } from "@/components/timer/FocusTimerProvider";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { levelFromXp } from "@/lib/gamification";
+import { XpToaster } from "@/components/shared/XpToaster";
+import { AchievementSync } from "@/components/dashboard/AchievementSync";
+import { MascotOverlay } from "@/components/dashboard/MascotOverlay";
 
 export default async function AppLayout({
   children,
@@ -65,6 +68,16 @@ export default async function AppLayout({
             having to navigate to the Health tab first is the friction that turns
             a daily habit into a weekly one. */}
         <QuickLog />
+        {/* XP popups, plus the two checks that feed them when the app opens:
+            wager/decay settlement and newly earned badges. They used to live
+            on the dashboard, which is no longer the landing page. */}
+        <XpToaster
+          level={sidebarUser.level}
+          levelTitle={sidebarUser.levelTitle}
+          levelProgressPct={sidebarUser.levelProgressPct}
+        />
+        <MascotOverlay />
+        <AchievementSync />
       </div>
     </FocusTimerProvider>
   );

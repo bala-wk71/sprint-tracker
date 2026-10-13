@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addGoalStep, deleteGoalStep, setGoalStepDone } from "@/app/(app)/goals/step-actions";
+import { announceXp } from "@/lib/xpToast";
 
 type Step = { id: string; title: string; done_at: string | null };
 
@@ -32,7 +33,7 @@ export function StepList({
         setError(result.error);
         return;
       }
-      if (result.xp) setFlash(`+${result.xp} XP`);
+      announceXp(result.xp, "Goal step done");
       after?.();
       router.refresh();
     });

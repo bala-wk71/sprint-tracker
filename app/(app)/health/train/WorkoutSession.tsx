@@ -16,6 +16,7 @@ import { RestTimer } from "./RestTimer";
 import * as sessionTree from "./session";
 import { SessionProvider, useSessionStore } from "./store";
 import type { ExerciseHistory, ExerciseRow, Session } from "./types";
+import { announceXp } from "@/lib/xpToast";
 
 type Props = {
   session: Session;
@@ -82,6 +83,7 @@ function SessionBody({ library, recentIds, history, weightUnit }: Props) {
       setFinishing(false);
       if (!result.ok) return;
       setXpGained("xp" in result && result.xp ? result.xp : 0);
+      announceXp("xp" in result ? result.xp : 0, "Workout logged");
       router.refresh();
     })();
   };

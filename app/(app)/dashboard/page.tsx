@@ -5,11 +5,9 @@ import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { GamificationHero } from "@/components/dashboard/GamificationHero";
 import { DecayWarning } from "@/components/dashboard/DecayWarning";
 import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
-import { AchievementSync } from "@/components/dashboard/AchievementSync";
 import { WagerCard, type WagerSummary } from "@/components/dashboard/WagerCard";
 import { GoalsCard } from "@/components/dashboard/GoalsCard";
 import { PlanWeekCard } from "@/components/dashboard/PlanWeekCard";
-import { MascotOverlay } from "@/components/dashboard/MascotOverlay";
 import { computeWeeklyStreak } from "@/lib/streaks";
 import {
   computeShieldedStreak,
@@ -146,8 +144,6 @@ export default async function DashboardPage({
       <AchievementsPanel
         unlockedIds={(achievementRows ?? []).map((r) => r.achievement_id)}
       />
-      <AchievementSync />
-      <MascotOverlay />
     </div>
   );
 }
