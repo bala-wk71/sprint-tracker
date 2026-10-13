@@ -1035,6 +1035,81 @@ export type Database = {
           },
         ]
       }
+      money_budgets: {
+        Row: {
+          id: string
+          owner_id: string
+          category: string
+          monthly_limit: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          category: string
+          monthly_limit: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          category?: string
+          monthly_limit?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      money_transactions: {
+        Row: {
+          id: string
+          owner_id: string
+          txn_date: string
+          amount: number
+          is_income: boolean
+          category: string
+          title: string
+          note: string
+          account: string
+          currency: string
+          source: string
+          external_key: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          txn_date: string
+          amount: number
+          is_income?: boolean
+          category?: string
+          title?: string
+          note?: string
+          account?: string
+          currency?: string
+          source?: string
+          external_key?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          txn_date?: string
+          amount?: number
+          is_income?: boolean
+          category?: string
+          title?: string
+          note?: string
+          account?: string
+          currency?: string
+          source?: string
+          external_key?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           id: string

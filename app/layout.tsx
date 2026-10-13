@@ -62,6 +62,7 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Sprint Tracker",
   description: "Weekly sprint planning and productivity tracking",
+  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Sprint Tracker" },
 };
 
