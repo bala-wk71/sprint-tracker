@@ -62,7 +62,7 @@ export const THEMES: readonly ThemeMeta[] = [
   {
     id: "jarvis",
     name: "Jarvis",
-    blurb: "An assistant briefs you. Ask or speak to log.",
+    blurb: "An assistant briefs you. Ask by typing or by voice.",
     swatch: ["#030B14", "#081826", "#38DCFF", "#FFB547"],
   },
   {
