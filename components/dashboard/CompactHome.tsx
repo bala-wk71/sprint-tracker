@@ -37,6 +37,8 @@ type Props = {
   money: HomeMoney | null;
   badges: { unlocked: number; total: number };
   wagerOpen: boolean;
+  /** The goals strip, rendered on the server. */
+  goals: React.ReactNode;
 };
 
 /**
@@ -54,6 +56,7 @@ export function CompactHome({
   money,
   badges,
   wagerOpen,
+  goals,
 }: Props) {
   const { theme, vocab } = useAppTheme(serverTheme);
   const pct = Math.min(100, Math.round((level.progress / level.span) * 100));
@@ -243,6 +246,8 @@ export function CompactHome({
           </Link>
         </div>
       </div>
+
+      {goals}
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs">
         <Link

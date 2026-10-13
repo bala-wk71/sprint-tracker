@@ -22,6 +22,8 @@ import { COMPACT_THEMES, THEME_COOKIE, toThemeId } from "@/lib/themes";
 import { addDaysIso } from "@/lib/pace";
 import { monthRange, summariseMonth } from "@/lib/money/summary";
 import { CompactHome, type WeekDay } from "@/components/dashboard/CompactHome";
+import { GoalsGlance } from "@/components/goals/GoalsGlance";
+import { loadGoalsGlance } from "@/lib/goals/glance";
 import { WeekNav } from "./WeekNav";
 
 type SearchParams = Promise<{ week?: string; view?: string }>;
@@ -117,7 +119,7 @@ export default async function DashboardPage({
 
   if (compactTheme && theme && params.view !== "full" && !params.week) {
     const { from, to } = monthRange(todayIso.slice(0, 7));
-    const [{ data: monthTxns }, { data: budgets }] = await Promise.all([
+    const [{ data: monthTxns }, { data: budgets }, goalsGlance] = await Promise.all([
       supabase
         .from("money_transactions")
         .select("amount, is_income, category, currency")
@@ -129,6 +131,7 @@ export default async function DashboardPage({
         .from("money_budgets")
         .select("category, monthly_limit")
         .eq("owner_id", user.id),
+      loadGoalsGlance(supabase, user.id, todayIso),
     ]);
     const money = summariseMonth(monthTxns ?? [], budgets ?? []);
     const logged = new Set(weekLoggedDates);
@@ -180,6 +183,9 @@ export default async function DashboardPage({
           }}
           wagerOpen={
             !wager && wagerPlacementOpen(currentWeekStart, todayIso)
+          }
+          goals={
+            <GoalsGlance goals={goalsGlance.goals} total={goalsGlance.total} />
           }
         />
       </div>

@@ -9,6 +9,8 @@ import { addDaysIso, elapsedDaysInWeek, expectedByNow } from "@/lib/pace";
 import { DateNav } from "./DateNav";
 import { DayProgress } from "./DayProgress";
 import { FocusToday, type FocusTask } from "./FocusToday";
+import { GoalsGlance } from "@/components/goals/GoalsGlance";
+import { loadGoalsGlance } from "@/lib/goals/glance";
 import { MorningCheckIn, type MorningPriority } from "./MorningCheckIn";
 import {
   TimeEntries,
@@ -46,8 +48,9 @@ export default async function DailyPage({
   // Sprint for this week — used to populate the time entry task dropdown.
   const weekStart = weekStartIsoOf(date, await getWeekStartDay());
 
-  // Daily log (may not exist yet) and this week's sprint, fetched in parallel.
-  const [{ data: dailyLog }, { data: sprint }] = await Promise.all([
+  // Daily log (may not exist yet), this week's sprint, and (today only) the
+  // goals the day's work is meant to serve, fetched in parallel.
+  const [{ data: dailyLog }, { data: sprint }, goalsGlance] = await Promise.all([
     supabase
       .from("daily_logs")
       .select(
@@ -62,6 +65,7 @@ export default async function DailyPage({
       .eq("owner_id", user.id)
       .eq("week_start_date", weekStart)
       .maybeSingle(),
+    date === todayIso ? loadGoalsGlance(supabase, user.id, todayIso) : null,
   ]);
 
   // Priorities, time entries, and comments depend on the log existing.
@@ -232,6 +236,10 @@ export default async function DailyPage({
       />
 
       <FocusToday tasks={focusTasks} />
+
+      {goalsGlance && (
+        <GoalsGlance goals={goalsGlance.goals} total={goalsGlance.total} />
+      )}
 
       <section
         id="morning"
