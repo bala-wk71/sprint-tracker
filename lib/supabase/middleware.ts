@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { HOME_PATH } from "@/lib/constants";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -56,7 +57,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/invite") ||
     request.nextUrl.pathname.startsWith("/callback") ||
-    request.nextUrl.pathname.startsWith("/api/");
+    request.nextUrl.pathname.startsWith("/api/") ||
+    // The install manifest is fetched without credentials.
+    request.nextUrl.pathname === "/manifest.webmanifest";
 
   if (!user && !isPublicRoute && request.nextUrl.pathname !== "/") {
     const url = request.nextUrl.clone();
@@ -67,14 +70,14 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from login
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = HOME_PATH;
     return NextResponse.redirect(url);
   }
 
-  // Redirect root to dashboard for authenticated users
+  // Redirect root to the daily log for authenticated users
   if (user && request.nextUrl.pathname === "/") {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = HOME_PATH;
     return NextResponse.redirect(url);
   }
 

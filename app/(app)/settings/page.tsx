@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { currentWeekStart } from "@/lib/dates";
 import { toWeekStartDay } from "@/lib/week";
+import { ThemePicker } from "@/components/shared/ThemePicker";
 import { ExportForm } from "./ExportForm";
 import { PreferencesForm } from "./PreferencesForm";
 
@@ -50,6 +51,15 @@ export default async function SettingsPage() {
           </Link>
         ))}
       </div>
+
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
+        <h2 className="mb-1 text-lg font-semibold text-foreground">Theme</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Dark and Light are the originals. The other four change the fonts,
+          spacing and wording as well as the colours.
+        </p>
+        <ThemePicker />
+      </section>
 
       <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="mb-1 text-lg font-semibold text-foreground">

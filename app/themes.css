@@ -1,0 +1,343 @@
+/* The four add-on themes. Dark and Light live in globals.css and are left
+   exactly as they were.
+
+   Each theme sets the shared colour variables, then its own fonts, corner
+   radius and card treatment, so every page changes character without each
+   component having to know which theme is on. Selectors are written as
+   html.<theme> so they outrank the :root defaults regardless of file order. */
+
+/* ===================================================================== */
+/* Jarvis — an assistant's console. Thin lines, wide tracking, cyan glow. */
+/* ===================================================================== */
+html.jarvis {
+  color-scheme: dark;
+  --background: 212 74% 5%;
+  --foreground: 195 100% 92%;
+  --card: 208 64% 9%;
+  --card-foreground: 195 100% 92%;
+  --popover: 208 64% 9%;
+  --popover-foreground: 195 100% 92%;
+  --primary: 191 100% 61%;
+  --primary-foreground: 212 74% 5%;
+  --secondary: 206 55% 13%;
+  --secondary-foreground: 195 100% 92%;
+  --muted: 206 55% 13%;
+  --muted-foreground: 198 32% 62%;
+  --accent: 200 62% 15%;
+  --accent-foreground: 195 100% 92%;
+  --destructive: 0 90% 67%;
+  --destructive-foreground: 212 74% 5%;
+  --border: 196 62% 22%;
+  --input: 196 62% 22%;
+  --ring: 191 100% 61%;
+  --radius: 0.125rem;
+
+  --strong-signal: 157 85% 65%;
+  --weak-signal: 36 100% 64%;
+  --strong-noise: 258 90% 76%;
+  --weak-noise: 355 88% 68%;
+  --personal: 191 100% 61%;
+  --progress-good: 157 85% 65%;
+  --progress-warning: 36 100% 64%;
+  --progress-danger: 355 88% 68%;
+
+  --app-font: var(--font-rajdhani);
+  --app-display: var(--font-rajdhani);
+  --app-mono: var(--font-share-tech);
+}
+
+html.jarvis body {
+  font-size: 1.0625rem;
+  letter-spacing: 0.01em;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, hsl(191 100% 61% / 0.1), transparent 60%),
+    linear-gradient(hsl(191 100% 61% / 0.035) 1px, transparent 1px) 0 0 / 100% 32px,
+    linear-gradient(90deg, hsl(191 100% 61% / 0.035) 1px, transparent 1px) 0 0 / 32px 100%,
+    hsl(var(--background));
+  background-attachment: fixed;
+}
+
+html.jarvis :is(h1, h2, h3) {
+  font-family: var(--app-display), system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+html.jarvis h1 {
+  color: hsl(var(--primary));
+  text-shadow: 0 0 18px hsl(191 100% 61% / 0.45);
+}
+
+/* Bracketed panels: a hairline frame with brighter corner ticks. */
+html.jarvis :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"] {
+  border-color: hsl(191 100% 61% / 0.22);
+  background:
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) top left / 14px 1px no-repeat,
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) top left / 1px 14px no-repeat,
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) top right / 14px 1px no-repeat,
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) top right / 1px 14px no-repeat,
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) bottom left / 14px 1px no-repeat,
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) bottom left / 1px 14px no-repeat,
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) bottom right / 14px 1px no-repeat,
+    linear-gradient(hsl(var(--primary)), hsl(var(--primary))) bottom right / 1px 14px no-repeat,
+    linear-gradient(180deg, hsl(191 100% 61% / 0.07), transparent 45%),
+    hsl(var(--card) / 0.82);
+  box-shadow: 0 0 28px -16px hsl(191 100% 61% / 0.7);
+}
+
+html.jarvis :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]) {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  box-shadow: 0 0 18px -4px hsl(191 100% 61% / 0.75);
+}
+
+html.jarvis :is(input, select, textarea) {
+  font-family: var(--app-mono), ui-monospace, monospace;
+}
+
+/* ===================================================================== */
+/* Retro gaming — red neon on near-black, hard pixels, block shadows.     */
+/* ===================================================================== */
+html.retro {
+  color-scheme: dark;
+  --background: 327 73% 3%;
+  --foreground: 0 0% 96%;
+  --card: 332 60% 7%;
+  --card-foreground: 0 0% 96%;
+  --popover: 332 60% 7%;
+  --popover-foreground: 0 0% 96%;
+  --primary: 349 100% 59%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 332 45% 13%;
+  --secondary-foreground: 0 0% 96%;
+  --muted: 332 45% 13%;
+  --muted-foreground: 335 22% 70%;
+  --accent: 184 100% 14%;
+  --accent-foreground: 184 100% 80%;
+  --destructive: 20 100% 58%;
+  --destructive-foreground: 327 73% 3%;
+  --border: 349 72% 34%;
+  --input: 349 72% 34%;
+  --ring: 184 100% 50%;
+  --radius: 0px;
+
+  --strong-signal: 140 100% 58%;
+  --weak-signal: 50 100% 65%;
+  --strong-noise: 280 100% 74%;
+  --weak-noise: 349 100% 62%;
+  --personal: 184 100% 50%;
+  --progress-good: 140 100% 58%;
+  --progress-warning: 50 100% 65%;
+  --progress-danger: 349 100% 62%;
+
+  --app-font: var(--font-pixelify);
+  --app-display: var(--font-press-start);
+  --app-mono: var(--font-pixelify);
+}
+
+html.retro body {
+  font-size: 1.0625rem;
+  background:
+    radial-gradient(900px 500px at 50% -20%, hsl(349 100% 59% / 0.16), transparent 65%),
+    hsl(var(--background));
+  background-attachment: fixed;
+}
+
+/* CRT scanlines over everything; never intercepts a tap. */
+html.retro body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgb(0 0 0 / 0.16) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+/* Press Start 2P is roughly twice as wide as a normal face, so headings
+   drop in size to keep their place in the layout. */
+html.retro :is(h1, h2, h3) {
+  font-family: var(--app-display), monospace;
+  text-transform: uppercase;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+html.retro h1 {
+  font-size: 1rem;
+  color: hsl(var(--primary));
+  text-shadow: 0 0 12px hsl(349 100% 59% / 0.9), 2px 2px 0 #000;
+}
+html.retro h2 {
+  font-size: 0.75rem;
+  color: hsl(184 100% 50%);
+  text-shadow: 0 0 10px hsl(184 100% 50% / 0.7);
+}
+html.retro h3 {
+  font-size: 0.6875rem;
+  color: hsl(50 100% 65%);
+}
+
+html.retro [class*="rounded"] {
+  border-radius: 0;
+}
+
+html.retro :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"] {
+  border: 2px solid hsl(var(--primary));
+  box-shadow: 4px 4px 0 hsl(184 100% 50%);
+}
+
+html.retro :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]) {
+  font-family: var(--app-display), monospace;
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 hsl(50 100% 65%);
+}
+html.retro :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]):active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+html.retro :is(input, select, textarea) {
+  border-width: 2px;
+}
+
+/* ===================================================================== */
+/* Pastel — soft, roomy, every card its own colour.                       */
+/* ===================================================================== */
+html.pastel {
+  color-scheme: light;
+  --background: 266 100% 99%;
+  --foreground: 259 32% 19%;
+  --card: 0 0% 100%;
+  --card-foreground: 259 32% 19%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 259 32% 19%;
+  --primary: 262 62% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 253 100% 92%;
+  --secondary-foreground: 259 32% 19%;
+  --muted: 266 60% 96%;
+  --muted-foreground: 259 16% 40%;
+  --accent: 148 66% 89%;
+  --accent-foreground: 259 32% 19%;
+  --destructive: 350 78% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 262 46% 90%;
+  --input: 262 46% 86%;
+  --ring: 262 62% 58%;
+  --radius: 1.25rem;
+
+  --strong-signal: 150 52% 36%;
+  --weak-signal: 34 88% 42%;
+  --strong-noise: 262 62% 58%;
+  --weak-noise: 348 70% 52%;
+  --personal: 208 78% 46%;
+  --progress-good: 150 52% 42%;
+  --progress-warning: 38 92% 52%;
+  --progress-danger: 348 78% 62%;
+
+  --app-font: var(--font-nunito);
+  --app-display: var(--font-baloo);
+}
+
+html.pastel body {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+html.pastel :is(h1, h2, h3) {
+  font-family: var(--app-display), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"] {
+  border-color: transparent;
+  border-radius: 28px;
+  background: #cff5e1;
+}
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 2) {
+  background: #ffd9c7;
+}
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 3) {
+  background: #e0d7ff;
+}
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 4) {
+  background: #fff0b8;
+}
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 5) {
+  background: #cfe8ff;
+}
+/* A card inside a card goes back to white so it reads as a layer. */
+html.pastel [class~="bg-card"][class*="rounded-"] [class~="bg-card"][class*="rounded-"] {
+  background: #fff;
+}
+
+html.pastel :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]) {
+  border-radius: 999px;
+  font-weight: 700;
+  padding-inline: 1.25rem;
+}
+
+html.pastel :is(input, select, textarea) {
+  border-radius: 14px;
+  background: #fff;
+}
+
+/* ===================================================================== */
+/* Minimal — the app and nothing else. No cards, no colour, no game.      */
+/* ===================================================================== */
+html.minimal {
+  color-scheme: light;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 7%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 7%;
+  --primary: 0 0% 7%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 7%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 42%;
+  --accent: 0 0% 95%;
+  --accent-foreground: 0 0% 7%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 91%;
+  --input: 0 0% 85%;
+  --ring: 0 0% 7%;
+  --radius: 0.375rem;
+}
+
+html.minimal :is(h1, h2, h3) {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+html.minimal h1 {
+  font-size: 1.25rem;
+}
+html.minimal h2 {
+  font-size: 1rem;
+}
+
+/* Cards become plain sections separated by a hairline. */
+html.minimal main :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"] {
+  background: transparent;
+  border-width: 0;
+  border-top: 1px solid hsl(var(--border));
+  border-radius: 0;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+/* Anything tagged as part of the game layer is hidden here. */
+html.minimal [data-gamified] {
+  display: none !important;
+}

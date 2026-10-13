@@ -1,20 +1,37 @@
 "use client";
 
-import { Moon, Palette, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useSyncExternalStore } from "react";
+import { Palette } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { TimerPill } from "@/components/timer/TimerPill";
+import { ThemePicker } from "@/components/shared/ThemePicker";
 
 const emptySubscribe = () => () => {};
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
   // True after hydration only — avoids a theme flash without setState-in-effect.
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
+  const [themeOpen, setThemeOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!themeOpen) return;
+    const close = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setThemeOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setThemeOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [themeOpen]);
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -28,9 +45,7 @@ export function Header() {
   });
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm md:px-6">
-      {/* Spacer that reserves room for the mobile hamburger button */}
-      <div className="w-10 md:hidden" />
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm md:h-16 md:px-6">
       {/* Date text depends on the viewer's timezone, so render it
           client-only to avoid a hydration mismatch near midnight. */}
       <p className="text-sm font-medium text-muted-foreground">
@@ -43,21 +58,22 @@ export function Header() {
       </p>
       <div className="flex items-center gap-2 sm:gap-4">
         <TimerPill />
-        {mounted && (() => {
-          const cycle = { light: "dark", dark: "colourful", colourful: "light" } as const;
-          const current = (theme as string) in cycle ? (theme as keyof typeof cycle) : "light";
-          return (
-            <button
-              onClick={() => setTheme(cycle[current])}
-              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              aria-label={`Switch theme (current: ${current})`}
-            >
-              {current === "light" && <Moon className="h-4 w-4" />}
-              {current === "dark" && <Palette className="h-4 w-4" />}
-              {current === "colourful" && <Sun className="h-4 w-4" />}
-            </button>
-          );
-        })()}
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setThemeOpen((v) => !v)}
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Change theme"
+            aria-haspopup="true"
+            aria-expanded={themeOpen}
+          >
+            <Palette className="h-4 w-4" />
+          </button>
+          {themeOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-popover p-2 shadow-xl">
+              <ThemePicker compact onPick={() => setThemeOpen(false)} />
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

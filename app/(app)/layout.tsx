@@ -56,7 +56,10 @@ export default async function AppLayout({
             --sidebar-w is set by Sidebar so collapsing it doesn't leave a gap. */}
         <div className="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 md:ml-[var(--sidebar-w,15rem)]">
           <Header />
-          <main className="flex-1 p-4 sm:p-6">{children}</main>
+          {/* Bottom padding on phones clears the tab bar. */}
+          <main className="flex-1 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:p-6 md:pb-6">
+            {children}
+          </main>
         </div>
         {/* Logging water or a weight has to be possible from wherever you are —
             having to navigate to the Health tab first is the friction that turns
