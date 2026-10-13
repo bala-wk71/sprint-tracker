@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { isDarkTheme } from "@/lib/themes";
 import { format } from "date-fns";
 import {
   Area,
@@ -48,9 +49,9 @@ export function MeasureChart({
   /** Latest reading → where the current pace lands on the next checkpoint. */
   forecast?: Point[] | null;
 }) {
-  const { resolvedTheme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
-  const c = PALETTES[mounted && resolvedTheme === "dark" ? "dark" : "light"];
+  const c = PALETTES[mounted && isDarkTheme(theme === "system" ? resolvedTheme : theme) ? "dark" : "light"];
   const [whole, setWhole] = useState(false);
 
   const checkpointDates = path.checkpoints.map((p) => p.date).sort();

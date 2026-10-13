@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekEndIsoOf, weekStartIsoOf } from "@/lib/week";
@@ -5,11 +7,9 @@ import { WeekSummary } from "@/components/dashboard/WeekSummary";
 import { GamificationHero } from "@/components/dashboard/GamificationHero";
 import { DecayWarning } from "@/components/dashboard/DecayWarning";
 import { AchievementsPanel } from "@/components/dashboard/AchievementsPanel";
-import { AchievementSync } from "@/components/dashboard/AchievementSync";
 import { WagerCard, type WagerSummary } from "@/components/dashboard/WagerCard";
 import { GoalsCard } from "@/components/dashboard/GoalsCard";
 import { PlanWeekCard } from "@/components/dashboard/PlanWeekCard";
-import { MascotOverlay } from "@/components/dashboard/MascotOverlay";
 import { computeWeeklyStreak } from "@/lib/streaks";
 import {
   computeShieldedStreak,
@@ -17,9 +17,14 @@ import {
   wagerPlacementOpen,
   type GamificationStats,
 } from "@/lib/gamification";
+import { ACHIEVEMENTS } from "@/lib/gamification";
+import { COMPACT_THEMES, THEME_COOKIE, toThemeId } from "@/lib/themes";
+import { addDaysIso } from "@/lib/pace";
+import { monthRange, summariseMonth } from "@/lib/money/summary";
+import { CompactHome, type WeekDay } from "@/components/dashboard/CompactHome";
 import { WeekNav } from "./WeekNav";
 
-type SearchParams = Promise<{ week?: string }>;
+type SearchParams = Promise<{ week?: string; view?: string }>;
 
 function isValidIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
@@ -105,8 +110,92 @@ export default async function DashboardPage({
     ),
   };
 
+  // Jarvis, Retro, Pastel and Minimal open on a one-screen Home. The long
+  // view below stays reachable from it, and is what Dark and Light show.
+  const theme = toThemeId((await cookies()).get(THEME_COOKIE)?.value);
+  const compactTheme = theme !== null && COMPACT_THEMES.includes(theme);
+
+  if (compactTheme && theme && params.view !== "full" && !params.week) {
+    const { from, to } = monthRange(todayIso.slice(0, 7));
+    const [{ data: monthTxns }, { data: budgets }] = await Promise.all([
+      supabase
+        .from("money_transactions")
+        .select("amount, is_income, category, currency")
+        .eq("owner_id", user.id)
+        .gte("txn_date", from)
+        .lte("txn_date", to)
+        .limit(2000),
+      supabase
+        .from("money_budgets")
+        .select("category, monthly_limit")
+        .eq("owner_id", user.id),
+    ]);
+    const money = summariseMonth(monthTxns ?? [], budgets ?? []);
+    const logged = new Set(weekLoggedDates);
+    const week: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
+      const iso = addDaysIso(currentWeekStart, i);
+      return {
+        iso,
+        label: new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+          weekday: "narrow",
+          timeZone: "UTC",
+        }),
+        logged: logged.has(iso),
+        isToday: iso === todayIso,
+        future: iso > todayIso,
+      };
+    });
+    const meta = user.user_metadata ?? {};
+    const fullName =
+      (meta.full_name as string | undefined) ??
+      (meta.name as string | undefined) ??
+      "";
+
+    return (
+      <div className="space-y-3">
+        <DecayWarning
+          trackedDates={stats.tracked_dates ?? []}
+          todayIso={todayIso}
+        />
+        <CompactHome
+          serverTheme={theme}
+          name={fullName.split(" ")[0] || "there"}
+          level={level}
+          today={today}
+          streak={dailyStreak}
+          week={week}
+          money={
+            (monthTxns ?? []).length > 0 || money.limit !== null
+              ? {
+                  spent: money.spent,
+                  left: money.left,
+                  pct: money.pct,
+                  currency: monthTxns?.[0]?.currency ?? "INR",
+                }
+              : null
+          }
+          badges={{
+            unlocked: (achievementRows ?? []).length,
+            total: ACHIEVEMENTS.length,
+          }}
+          wagerOpen={
+            !wager && wagerPlacementOpen(currentWeekStart, todayIso)
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {compactTheme && (
+        <Link
+          href="/dashboard"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          Back to Home
+        </Link>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
@@ -127,6 +216,7 @@ export default async function DashboardPage({
         today={today}
         todosDoneToday={todosDoneToday ?? 0}
       />
+      <div id="wager" className="scroll-mt-20" />
       <WagerCard
         weekStart={currentWeekStart}
         todayIso={todayIso}
@@ -143,11 +233,10 @@ export default async function DashboardPage({
         weekStart={weekStart}
         revalidatePath="/dashboard"
       />
+      <div id="achievements" className="scroll-mt-20" />
       <AchievementsPanel
         unlockedIds={(achievementRows ?? []).map((r) => r.achievement_id)}
       />
-      <AchievementSync />
-      <MascotOverlay />
     </div>
   );
 }

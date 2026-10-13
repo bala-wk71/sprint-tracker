@@ -168,16 +168,24 @@ export type NavItem = {
 
 export const NAV_GROUPS: readonly { label: string; items: readonly NavItem[] }[] = [
   {
-    label: "Today",
+    // Opened most days, so they come first. Daily Log is the landing page.
+    label: "Daily",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
       { href: "/daily", label: "Daily Log", icon: "CalendarDays" },
       { href: "/todo", label: "Todo", icon: "CheckSquare" },
+      {
+        href: "/notes",
+        label: "Notes & Journal",
+        icon: "NotebookPen",
+        match: ["/notes", "/journal"],
+      },
     ],
   },
   {
-    label: "Plan",
+    // Planning happens about once a week.
+    label: "Weekly",
     items: [
+      { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
       { href: "/sprint/setup", label: "Plan", icon: "Compass", match: ["/sprint"] },
       { href: "/analytics", label: "Analytics", icon: "BarChart3" },
     ],
@@ -186,12 +194,7 @@ export const NAV_GROUPS: readonly { label: string; items: readonly NavItem[] }[]
     label: "Life",
     items: [
       { href: "/health", label: "Health", icon: "HeartPulse" },
-      {
-        href: "/notes",
-        label: "Notes & Journal",
-        icon: "NotebookPen",
-        match: ["/notes", "/journal"],
-      },
+      { href: "/money", label: "Money", icon: "Wallet" },
     ],
   },
   {
@@ -202,6 +205,9 @@ export const NAV_GROUPS: readonly { label: string; items: readonly NavItem[] }[]
     ],
   },
 ];
+
+/** Where the app opens. */
+export const HOME_PATH = "/daily";
 
 // Total hours a week has to offer — hard ceiling for sprint planning
 export const WEEK_HOURS = 168;

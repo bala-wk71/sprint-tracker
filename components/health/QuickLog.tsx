@@ -21,6 +21,7 @@ import {
 } from "@/app/(app)/health/actions";
 import { saveBodyMetrics } from "@/app/(app)/health/body/actions";
 import { WaterCard } from "./WaterCard";
+import { announceXp } from "@/lib/xpToast";
 
 type Tab = "water" | "weight" | "food" | "train" | "write";
 
@@ -61,7 +62,7 @@ export function QuickLog() {
           onClick={openSheet}
           aria-label="Quick log"
           title="Quick log"
-          className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-12 w-12 md:bottom-5 md:right-5 md:h-14 md:w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           <Plus className="h-6 w-6" />
         </button>
@@ -232,6 +233,7 @@ function QuickWeight({
       }
       setSaved(true);
       setXpGained("xp" in result && result.xp ? result.xp : 0);
+      announceXp("xp" in result ? result.xp : 0, "Quick log");
       onSaved();
     });
   };

@@ -7,6 +7,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { displayToKg, kgToDisplay, type WeightUnit } from "@/lib/health/units";
 import { deleteBodyMetrics, saveBodyMetrics } from "./actions";
+import { announceXp } from "@/lib/xpToast";
 
 export type BodyRow = {
   measured_on: string;
@@ -147,6 +148,7 @@ export function BodyLogger({ date, todayIso, entry, weightUnit }: Props) {
       }
       setSavedAt(new Date().toLocaleTimeString());
       setXpGained("xp" in result && result.xp ? result.xp : 0);
+      announceXp("xp" in result ? result.xp : 0, "Body log");
       router.refresh();
     });
   };

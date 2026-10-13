@@ -12,6 +12,7 @@ import {
   setGoalStatus,
   type GoalResult,
 } from "@/app/(app)/goals/actions";
+import { announceXp } from "@/lib/xpToast";
 
 type Props = {
   goal: { id: string; status: string; pinned: boolean; startDate: string; targetDate: string };
@@ -43,6 +44,7 @@ export function GoalStatusActions({ goal, pastEnd }: Props) {
         return;
       }
       after?.(result.xp ?? 0);
+      announceXp(result.xp, "Goal complete");
       router.refresh();
     });
   };
@@ -50,8 +52,8 @@ export function GoalStatusActions({ goal, pastEnd }: Props) {
   const confirmClose = () =>
     run(
       () => setGoalStatus({ id: goal.id, status: closing ?? "done", note }),
-      (xp) => {
-        setFlash(closing === "done" ? `Done. Well played${xp ? ` · +${xp} XP` : ""}` : "Let go. That's a real choice too.");
+      () => {
+        setFlash(closing === "done" ? "Done. Well played" : "Let go. That's a real choice too.");
         setClosing(null);
         setNote("");
       }

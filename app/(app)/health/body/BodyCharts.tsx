@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { isDarkTheme } from "@/lib/themes";
 import { format } from "date-fns";
 import {
   CartesianGrid,
@@ -67,14 +68,14 @@ export function BodyCharts({
    *  when it happens to run, and the server already knows the viewer's day. */
   todayIso: string;
 }) {
-  const { resolvedTheme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
-  // "colourful" has light surfaces, so it shares the light chart palette.
-  const c = PALETTES[mounted && resolvedTheme === "dark" ? "dark" : "light"];
+  // Pastel and Minimal have light surfaces; Jarvis and Retro have dark ones.
+  const c = PALETTES[mounted && isDarkTheme(theme === "system" ? resolvedTheme : theme) ? "dark" : "light"];
 
   const [rangeDays, setRangeDays] = useState<number>(90);
 

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { isDarkTheme } from "@/lib/themes";
 import {
   Area,
   AreaChart,
@@ -96,14 +97,14 @@ const CATEGORY_LABELS: Record<(typeof STACK_KEYS)[number], string> = {
 const emptySubscribe = () => () => {};
 
 export function AnalyticsCharts({ dailySeries, weeklySeries }: Props) {
-  const { resolvedTheme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
-  // "colourful" has light surfaces, so it shares the light chart palette.
-  const c = PALETTES[mounted && resolvedTheme === "dark" ? "dark" : "light"];
+  // Pastel and Minimal have light surfaces; Jarvis and Retro have dark ones.
+  const c = PALETTES[mounted && isDarkTheme(theme === "system" ? resolvedTheme : theme) ? "dark" : "light"];
 
   const tooltipStyle = {
     backgroundColor: c.surface,

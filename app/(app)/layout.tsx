@@ -5,6 +5,9 @@ import { QuickLog } from "@/components/health/QuickLog";
 import { FocusTimerProvider } from "@/components/timer/FocusTimerProvider";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { levelFromXp } from "@/lib/gamification";
+import { XpToaster } from "@/components/shared/XpToaster";
+import { AchievementSync } from "@/components/dashboard/AchievementSync";
+import { MascotOverlay } from "@/components/dashboard/MascotOverlay";
 
 export default async function AppLayout({
   children,
@@ -56,12 +59,25 @@ export default async function AppLayout({
             --sidebar-w is set by Sidebar so collapsing it doesn't leave a gap. */}
         <div className="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 md:ml-[var(--sidebar-w,15rem)]">
           <Header />
-          <main className="flex-1 p-4 sm:p-6">{children}</main>
+          {/* Bottom padding on phones clears the tab bar. */}
+          <main className="flex-1 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:p-6 md:pb-6">
+            {children}
+          </main>
         </div>
         {/* Logging water or a weight has to be possible from wherever you are —
             having to navigate to the Health tab first is the friction that turns
             a daily habit into a weekly one. */}
         <QuickLog />
+        {/* XP popups, plus the two checks that feed them when the app opens:
+            wager/decay settlement and newly earned badges. They used to live
+            on the dashboard, which is no longer the landing page. */}
+        <XpToaster
+          level={sidebarUser.level}
+          levelTitle={sidebarUser.levelTitle}
+          levelProgressPct={sidebarUser.levelProgressPct}
+        />
+        <MascotOverlay />
+        <AchievementSync />
       </div>
     </FocusTimerProvider>
   );

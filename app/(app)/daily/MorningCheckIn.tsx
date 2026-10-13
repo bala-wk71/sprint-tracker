@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MORNING_MOODS, INTENTION_MAX_LENGTH, type MorningMood } from "@/lib/constants";
 import { saveMorningCheckIn } from "./actions";
+import { announceXp } from "@/lib/xpToast";
 
 export type MorningPriority = {
   position: number;
@@ -78,6 +79,7 @@ export function MorningCheckIn({
       }
       setSavedAt(new Date().toLocaleTimeString());
       setXpGained("xp" in result && result.xp ? result.xp : 0);
+      announceXp("xp" in result ? result.xp : 0, "Morning check-in");
       router.refresh();
     });
   };

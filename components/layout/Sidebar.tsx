@@ -15,16 +15,18 @@ import {
   HeartPulse,
   LayoutDashboard,
   LogOut,
-  Menu,
   NotebookPen,
   Settings,
   Users,
+  Wallet,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS, type NavItem } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
+import { useAppTheme } from "@/lib/hooks/useAppTheme";
+import { MobileTabBar } from "./MobileTabBar";
 
 const icons: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -36,6 +38,7 @@ const icons: Record<string, LucideIcon> = {
   Bot,
   NotebookPen,
   HeartPulse,
+  Wallet,
 };
 
 const COLLAPSED_KEY = "sidebar-collapsed";
@@ -128,18 +131,24 @@ export function Sidebar({
 
   const settingsActive = pathname.startsWith("/settings");
 
+  // A few destinations are renamed by the theme (Quests, Reserves, ...).
+  const { vocab } = useAppTheme();
+  const themedLabels: Record<string, string> = {
+    "/dashboard": vocab.home,
+    "/daily": vocab.today,
+    "/todo": vocab.todo,
+    "/money": vocab.money,
+  };
+
   return (
     <>
-      {/* Mobile hamburger (only visible when sidebar closed on mobile) */}
-      {!mobileOpen && (
-        <button
-          className="fixed top-4 left-4 z-50 rounded-md border border-border bg-card p-2 text-foreground shadow-md md:hidden"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-      )}
+      {/* Phones navigate from a tab bar; "More" opens this drawer. */}
+      <MobileTabBar
+        pathname={pathname}
+        labels={themedLabels}
+        moreOpen={mobileOpen}
+        onMore={() => setMobileOpen((v) => !v)}
+      />
 
       {/* Mobile backdrop */}
       {mobileOpen && (
@@ -152,7 +161,7 @@ export function Sidebar({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-card transition-all duration-200",
+          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-card transition-all duration-200 max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]",
           collapsed ? "md:w-16" : "md:w-60",
           "w-60 max-md:shadow-xl",
           mobileOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"
@@ -229,12 +238,12 @@ export function Sidebar({
                             ? "bg-primary/10 text-primary before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary"
                             : "text-muted-foreground hover:bg-accent hover:text-foreground"
                         )}
-                        title={collapsed ? item.label : undefined}
+                        title={collapsed ? themedLabels[item.href] ?? item.label : undefined}
                         aria-current={isActive ? "page" : undefined}
                       >
                         {Icon && <Icon className="h-[18px] w-[18px] shrink-0" />}
                         <span className={cn(collapsed && "md:hidden")}>
-                          {item.label}
+                          {themedLabels[item.href] ?? item.label}
                         </span>
                       </Link>
                     );
@@ -278,10 +287,16 @@ export function Sidebar({
               <p className="truncate text-xs text-muted-foreground">
                 {user.email}
               </p>
-              <p className="mt-0.5 truncate text-xs font-semibold text-primary">
+              <p
+                data-gamified
+                className="mt-0.5 truncate text-xs font-semibold text-primary"
+              >
                 Lv {user.level} · {user.levelTitle}
               </p>
-              <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+              <div
+                data-gamified
+                className="mt-1 h-1 overflow-hidden rounded-full bg-muted"
+              >
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${user.levelProgressPct}%` }}

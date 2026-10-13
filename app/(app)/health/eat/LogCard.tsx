@@ -10,6 +10,7 @@ import { saveMeal } from "./actions";
 import { DraftEditor } from "./DraftEditor";
 import { QuickChips } from "./QuickChips";
 import type { DraftItem, FoodRow, TemplateRow } from "./types";
+import { announceXp } from "@/lib/xpToast";
 
 type Props = {
   logDate: string;
@@ -94,6 +95,7 @@ export function LogCard({
         return;
       }
       setXpGained("xp" in result && result.xp ? result.xp : 0);
+      announceXp("xp" in result ? result.xp : 0, "Meal logged");
       setDraft(null);
       setText("");
       router.refresh();

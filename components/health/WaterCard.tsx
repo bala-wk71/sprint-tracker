@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { WATER_PRESETS } from "@/lib/health/constants";
 import { formatVolume, type VolumeUnit } from "@/lib/health/units";
 import { deleteWaterLog, logWater } from "@/app/(app)/health/actions";
+import { announceXp } from "@/lib/xpToast";
 
 export type WaterEntry = { id: string; amount_ml: number };
 
@@ -59,7 +60,10 @@ export function WaterCard({
       setEntries((list) =>
         list.map((e) => (e.id === tempId ? { ...e, id: result.data.id } : e))
       );
-      if ("xp" in result && result.xp) setXpGained(result.xp);
+      if ("xp" in result && result.xp) {
+        setXpGained(result.xp);
+        announceXp(result.xp, "Water goal hit");
+      }
       router.refresh();
     });
   };
