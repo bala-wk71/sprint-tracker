@@ -124,7 +124,7 @@ export function CompactHome({
               <li key={s.key}>
                 <Link
                   href={s.href}
-                  className="flex items-center gap-3 py-2.5 text-sm"
+                  className="flex items-center gap-3 py-2 text-sm"
                 >
                   <span
                     className={cn(

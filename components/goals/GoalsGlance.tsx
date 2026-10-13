@@ -6,13 +6,15 @@ type Props = {
   goals: GoalGlance[];
   /** Every active goal, including the ones not shown. */
   total: number;
+  /** Tighter rows and a one-line note, for the one-screen Home. */
+  dense?: boolean;
 };
 
 /**
  * A few goals, one line each, for the pages opened every day. Shows only the
  * top ones on purpose, and says so when the full list has grown too long.
  */
-export function GoalsGlance({ goals, total }: Props) {
+export function GoalsGlance({ goals, total, dense = false }: Props) {
   const tooMany = total > ACTIVE_GOAL_SOFT_LIMIT;
 
   return (
@@ -44,7 +46,7 @@ export function GoalsGlance({ goals, total }: Props) {
             <li key={goal.id}>
               <Link
                 href={goal.checkinDue ? `/goals/${goal.id}#check-in` : `/goals/${goal.id}`}
-                className="flex items-center gap-2.5 py-2 text-sm"
+                className={`flex items-center gap-2.5 text-sm ${dense ? "py-1.5" : "py-2"}`}
               >
                 <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${goal.dot}`} />
                 <span className="min-w-0 flex-1 truncate font-medium text-foreground">
@@ -73,11 +75,13 @@ export function GoalsGlance({ goals, total }: Props) {
 
       {tooMany && (
         <p className="mt-1 border-t border-border pt-2 text-xs text-muted-foreground">
-          {total} active goals pull you in too many directions.{" "}
+          {dense
+            ? `${total} active goals is too many.`
+            : `${total} active goals pull you in too many directions.`}{" "}
           <Link href="/goals" className="font-medium text-primary hover:underline">
             Pause a few
-          </Link>{" "}
-          so these get your attention.
+          </Link>
+          {!dense && " so these get your attention."}
         </p>
       )}
     </section>

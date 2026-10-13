@@ -185,7 +185,7 @@ export default async function DashboardPage({
             !wager && wagerPlacementOpen(currentWeekStart, todayIso)
           }
           goals={
-            <GoalsGlance goals={goalsGlance.goals} total={goalsGlance.total} />
+            <GoalsGlance dense goals={goalsGlance.goals} total={goalsGlance.total} />
           }
         />
       </div>
