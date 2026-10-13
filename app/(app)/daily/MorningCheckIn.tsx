@@ -86,13 +86,16 @@ export function MorningCheckIn({
 
   return (
     <fieldset disabled={readOnly} className="min-w-0 space-y-5">
-      {/* Mood */}
+      {/* Mood: how the morning feels. Energy is asked separately below. */}
       <div>
-        <label className="mb-2 block text-sm font-medium text-foreground">
-          How are you feeling?
+        <label className="block text-sm font-medium text-foreground">
+          What&apos;s your mood?
         </label>
+        <p className="mb-2 text-xs text-muted-foreground">
+          How the morning feels, whatever your energy is.
+        </p>
         <div className="flex flex-wrap gap-2">
-          {MORNING_MOODS.map((m) => (
+          {MORNING_MOODS.filter((m) => !m.legacy || m.value === mood).map((m) => (
             <button
               key={m.value}
               type="button"
@@ -112,12 +115,15 @@ export function MorningCheckIn({
 
       {/* Energy slider */}
       <div>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <label htmlFor="energy" className="text-sm font-medium text-foreground">
             Energy level
           </label>
           <span className="text-sm font-semibold text-primary">{energy}/10</span>
         </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          How much fuel you have, whatever your mood is.
+        </p>
         <input
           id="energy"
           type="range"
@@ -128,6 +134,11 @@ export function MorningCheckIn({
           onChange={(e) => setEnergy(Number(e.target.value))}
           className="w-full accent-primary"
         />
+        <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+          <span>Drained</span>
+          <span>Steady</span>
+          <span>Full</span>
+        </div>
       </div>
 
       {/* Intention */}

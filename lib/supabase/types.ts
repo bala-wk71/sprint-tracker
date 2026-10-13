@@ -2228,7 +2228,19 @@ export type Database = {
         | "proud"
       invite_status: "pending" | "accepted" | "revoked" | "expired"
       invite_type: "reviewer" | "owner"
-      morning_mood: "energised" | "neutral" | "tired" | "stressed" | "pumped"
+      morning_mood:
+        | "energised"
+        | "neutral"
+        | "tired"
+        | "stressed"
+        | "pumped"
+        | "calm"
+        | "content"
+        | "focused"
+        | "hopeful"
+        | "anxious"
+        | "low"
+        | "irritable"
       priority_status: "pending" | "done" | "partial" | "missed"
       task_category:
         | "strong_signal"
@@ -2373,7 +2385,20 @@ export const Constants = {
       ],
       invite_status: ["pending", "accepted", "revoked", "expired"],
       invite_type: ["reviewer", "owner"],
-      morning_mood: ["energised", "neutral", "tired", "stressed", "pumped"],
+      morning_mood: [
+        "energised",
+        "neutral",
+        "tired",
+        "stressed",
+        "pumped",
+        "calm",
+        "content",
+        "focused",
+        "hopeful",
+        "anxious",
+        "low",
+        "irritable",
+      ],
       priority_status: ["pending", "done", "partial", "missed"],
       task_category: [
         "strong_signal",

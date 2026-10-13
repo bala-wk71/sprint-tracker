@@ -96,15 +96,33 @@ export const CATEGORY_ORDER = [
 ] as const satisfies readonly TaskCategory[];
 
 // Morning Moods
+//
+// Mood is how the morning feels; energy is how much fuel there is, and the
+// check-in asks for that separately on a 1-10 slider. The first list had
+// three energy words in it (energised, tired, pumped), so the two questions
+// asked the same thing twice. Those three stay valid so old days still read
+// correctly, but are no longer offered.
 export const MORNING_MOODS = [
-  { value: "energised", emoji: "😊", label: "Energised" },
-  { value: "neutral", emoji: "😐", label: "Neutral" },
-  { value: "tired", emoji: "😴", label: "Tired" },
-  { value: "stressed", emoji: "😟", label: "Stressed" },
-  { value: "pumped", emoji: "🔥", label: "Pumped" },
+  { value: "calm", emoji: "😌", label: "Calm", legacy: false },
+  { value: "content", emoji: "🙂", label: "Content", legacy: false },
+  { value: "focused", emoji: "🎯", label: "Focused", legacy: false },
+  { value: "hopeful", emoji: "🌱", label: "Hopeful", legacy: false },
+  { value: "neutral", emoji: "😐", label: "Neutral", legacy: false },
+  { value: "anxious", emoji: "😰", label: "Anxious", legacy: false },
+  { value: "stressed", emoji: "😟", label: "Stressed", legacy: false },
+  { value: "low", emoji: "😔", label: "Low", legacy: false },
+  { value: "irritable", emoji: "😤", label: "Irritable", legacy: false },
+  { value: "energised", emoji: "😊", label: "Energised", legacy: true },
+  { value: "tired", emoji: "😴", label: "Tired", legacy: true },
+  { value: "pumped", emoji: "🔥", label: "Pumped", legacy: true },
 ] as const;
 
 export type MorningMood = (typeof MORNING_MOODS)[number]["value"];
+
+export const MORNING_MOOD_VALUES = MORNING_MOODS.map((m) => m.value) as [
+  MorningMood,
+  ...MorningMood[],
+];
 
 // Evening Moods
 export const EVENING_MOODS = [

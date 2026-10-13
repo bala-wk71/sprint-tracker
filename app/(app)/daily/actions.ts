@@ -7,6 +7,7 @@ import { awardTimeLogXp, awardXp } from "@/lib/gamification";
 import { getWeekStartDay, nowLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
 import { LOG_DAY_CLOSED, isLogDayOpen } from "@/lib/daily/logWindow";
+import { MORNING_MOOD_VALUES } from "@/lib/constants";
 
 export type ActionResult<T = undefined> =
   | ({ ok: true; xp?: number } & (T extends undefined ? object : { data: T }))
@@ -14,13 +15,7 @@ export type ActionResult<T = undefined> =
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
 
-const morningMood = z.enum([
-  "energised",
-  "neutral",
-  "tired",
-  "stressed",
-  "pumped",
-]);
+const morningMood = z.enum(MORNING_MOOD_VALUES);
 
 const eveningMood = z.enum([
   "accomplished",
