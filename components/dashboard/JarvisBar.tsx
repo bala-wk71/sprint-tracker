@@ -205,7 +205,7 @@ export function JarvisBar() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about your week, goals or health"
+          placeholder="Ask Jarvis"
           aria-label="Ask Jarvis"
           maxLength={2000}
           className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm"

@@ -85,7 +85,7 @@ html.jarvis :is(div, section, article, a, li, form)[class~="bg-card"][class*="ro
   box-shadow: 0 0 28px -16px hsl(191 100% 61% / 0.7);
 }
 
-html.jarvis :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]) {
+html.jarvis :is(button, a)[class~="bg-primary"] {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 600;
@@ -190,14 +190,14 @@ html.retro :is(div, section, article, a, li, form)[class~="bg-card"][class*="rou
   box-shadow: 4px 4px 0 hsl(184 100% 50%);
 }
 
-html.retro :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]) {
+html.retro :is(button, a)[class~="bg-primary"] {
   font-family: var(--app-display), monospace;
   font-size: 0.625rem;
   text-transform: uppercase;
   border: 2px solid #000;
   box-shadow: 3px 3px 0 hsl(50 100% 65%);
 }
-html.retro :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]):active {
+html.retro :is(button, a)[class~="bg-primary"]:active {
   transform: translate(3px, 3px);
   box-shadow: none;
 }
@@ -261,16 +261,16 @@ html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="ro
   border-radius: 28px;
   background: #cff5e1;
 }
-html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 2) {
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-child(5n + 2) {
   background: #ffd9c7;
 }
-html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 3) {
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-child(5n + 3) {
   background: #e0d7ff;
 }
-html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 4) {
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-child(5n + 4) {
   background: #fff0b8;
 }
-html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-of-type(5n + 5) {
+html.pastel :is(div, section, article, a, li, form)[class~="bg-card"][class*="rounded-"]:nth-child(5n + 5) {
   background: #cfe8ff;
 }
 /* A card inside a card goes back to white so it reads as a layer. */
@@ -278,10 +278,16 @@ html.pastel [class~="bg-card"][class*="rounded-"] [class~="bg-card"][class*="rou
   background: #fff;
 }
 
-html.pastel :is(button, a)[class*="bg-primary"]:not([class*="bg-primary/"]) {
+html.pastel :is(button, a)[class~="bg-primary"] {
   border-radius: 999px;
   font-weight: 700;
-  padding-inline: 1.25rem;
+}
+/* Tracks and empty slots sit on a coloured card, so they go white. */
+html.pastel [class~="bg-card"] .bg-muted {
+  background: rgb(255 255 255 / 0.7);
+}
+html.pastel .home section[class~="bg-card"]:first-child:not(:only-child) {
+  background: #e0d7ff;
 }
 
 html.pastel :is(input, select, textarea) {
@@ -488,6 +494,7 @@ html.jarvis .tabbar {
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
+html.jarvis .tabbar button { text-transform: inherit; letter-spacing: inherit; }
 html.jarvis .tabbar-centre {
   background: transparent;
   color: hsl(var(--primary));

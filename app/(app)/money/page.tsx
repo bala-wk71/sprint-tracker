@@ -96,7 +96,7 @@ export default async function MoneyPage({
       label: summary.left !== null && summary.left < 0 ? "Over budget" : "Left",
       value:
         summary.left === null
-          ? "No budget yet"
+          ? "Not set"
           : formatMoney(Math.abs(summary.left), currency),
       tone:
         summary.left === null
