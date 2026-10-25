@@ -172,11 +172,13 @@ export async function removeQuickSession(id: string): Promise<WrapupResult> {
   if (!uuid.safeParse(id).success) return { ok: false, error: "That session doesn't exist." };
   const ctx = await ctxOrNull();
   if (!ctx) return { ok: false, error: "Not authenticated" };
-  // Only sessions without sets: one logged set by set is edited on the Train page.
+  // Only sessions without sets: one logged set by set is edited on the Train
+  // page. Empty rows that only hold an exercise's place don't count.
   const { count } = await ctx.supabase
     .from("workout_sets")
     .select("id", { count: "exact", head: true })
-    .eq("workout_id", id);
+    .eq("workout_id", id)
+    .or("weight_kg.not.is.null,reps.not.is.null,distance_m.not.is.null,duration_sec.not.is.null");
   if ((count ?? 0) > 0) return { ok: false, error: "This session has sets. Remove it from the Train page." };
   const { error } = await ctx.supabase.from("workouts").delete().eq("id", id).eq("owner_id", ctx.userId);
   if (error) return { ok: false, error: "Couldn't remove the session. Try again." };

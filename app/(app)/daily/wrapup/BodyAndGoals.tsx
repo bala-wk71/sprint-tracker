@@ -30,7 +30,7 @@ export function BodyAndGoals({ date, data }: { date: string; data: WrapupBodyDat
         <DayFoodPanel date={date} meals={data.meals} kcalGoal={data.kcalGoal} proteinGoal={data.proteinGoal} />
       </Part>
       <Part icon={Dumbbell} title="Training">
-        <TrainedToday date={date} sessions={data.sessions} />
+        <TrainedToday date={date} sessions={data.sessions} nextSplit={data.nextSplit} />
       </Part>
       <Part icon={HeartPulse} title="Water and weight">
         <WaterWeight

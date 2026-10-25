@@ -13,10 +13,12 @@ import {
 import { ExerciseBlock } from "./ExerciseBlock";
 import { ExercisePicker } from "./ExercisePicker";
 import { RestTimer } from "./RestTimer";
+import { SplitDayPicker, type SplitOption } from "./SplitDayPicker";
 import * as sessionTree from "./session";
 import { SessionProvider, useSessionStore } from "./store";
 import type { ExerciseHistory, ExerciseRow, Session } from "./types";
 import { announceXp } from "@/lib/xpToast";
+import { splitFromName, type SplitDay } from "@/lib/health/split";
 
 type Props = {
   session: Session;
@@ -24,6 +26,7 @@ type Props = {
   recentIds: string[];
   history: ExerciseHistory[];
   weightUnit: WeightUnit;
+  split: { next: SplitDay; options: SplitOption[] };
 };
 
 export function WorkoutSession(props: Props) {
@@ -34,7 +37,7 @@ export function WorkoutSession(props: Props) {
   );
 }
 
-function SessionBody({ library, recentIds, history, weightUnit }: Props) {
+function SessionBody({ library, recentIds, history, weightUnit, split }: Props) {
   const router = useRouter();
   const { session, patch, run } = useSessionStore();
   const [picking, setPicking] = useState(false);
@@ -186,7 +189,23 @@ function SessionBody({ library, recentIds, history, weightUnit }: Props) {
           />
         ))}
 
-        {session.exercises.length === 0 && !picking && (
+        {/* A session tapped in the wrap-up ("Push", 45 min) arrives empty:
+            offer the day's exercises from last time before a blank picker. */}
+        {session.exercises.length === 0 && !picking && split.options.length > 0 && (
+          <div className="rounded-md border border-dashed border-border p-4">
+            <p className="mb-3 text-sm text-muted-foreground">
+              Fill in the exercises from your last session of the day:
+            </p>
+            <SplitDayPicker
+              logDate={session.log_date}
+              next={splitFromName(session.name) ?? split.next}
+              options={split.options}
+              workoutId={session.id}
+            />
+          </div>
+        )}
+
+        {session.exercises.length === 0 && !picking && split.options.length === 0 && (
           <div className="rounded-md border border-dashed border-border p-8 text-center">
             <Dumbbell className="mx-auto h-6 w-6 text-muted-foreground" />
             <p className="mt-2 text-sm text-muted-foreground">

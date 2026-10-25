@@ -5,6 +5,7 @@ import { createClient, getUser } from "@/lib/supabase/server";
 import { todayIsoLocal } from "@/lib/dates";
 import { readHealthProfile } from "@/lib/health/profile";
 import { e1rm, kgToDisplay } from "@/lib/health/units";
+import { loadSplitHistory, nextSplitDay, SPLIT_DAYS } from "@/lib/health/split";
 import { StartWorkout } from "./StartWorkout";
 import { WorkoutSession } from "./WorkoutSession";
 import * as sessionTree from "./session";
@@ -47,7 +48,7 @@ export default async function TrainPage({
   const date =
     params.date && isValidIsoDate(params.date) ? params.date : todayIso;
 
-  const [profile, { data: libraryRows }, { data: dayWorkouts }] =
+  const [profile, { data: libraryRows }, { data: dayWorkouts }, splitHistory] =
     await Promise.all([
       readHealthProfile(supabase, user.id),
       supabase
@@ -61,6 +62,7 @@ export default async function TrainPage({
         .eq("owner_id", user.id)
         .eq("log_date", date)
         .order("created_at"),
+      loadSplitHistory(supabase, user.id, date),
     ]);
 
   const library = (libraryRows ?? []) as ExerciseRow[];
@@ -256,6 +258,14 @@ export default async function TrainPage({
 
   const isToday = date === todayIso;
 
+  const split = {
+    next: nextSplitDay(splitHistory.last),
+    options: SPLIT_DAYS.flatMap(({ value }) => {
+      const t = splitHistory.templates[value];
+      return t ? [{ day: value, logDate: t.logDate, exerciseCount: t.exerciseIds.length }] : [];
+    }),
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
@@ -305,6 +315,7 @@ export default async function TrainPage({
                 }
               : null
           }
+          split={split}
         />
       ) : (
         sessions.map((session) => (
@@ -315,6 +326,7 @@ export default async function TrainPage({
             recentIds={recentIds}
             history={history}
             weightUnit={profile.weight_unit}
+            split={split}
           />
         ))
       )}

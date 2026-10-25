@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardXp } from "@/lib/gamification";
 import { activityFromSets } from "@/lib/health/daily";
+import { loadSplitHistory, splitLabel } from "@/lib/health/split";
 
 // No revalidatePath on the set-level mutations: the session keeps an optimistic
 // client copy (see store.tsx), and revalidating from a Server Action ships a
@@ -123,6 +124,68 @@ export async function repeatLastWorkout(
 
   revalidatePath("/health/train");
   return { ok: true, data: { id: created.data.id, copied: exerciseIds.length } };
+}
+
+const splitDaySchema = z.object({
+  logDate: isoDate,
+  day: z.enum(["push", "pull", "legs"]),
+  // A session tapped in the wrap-up ("Push", 45 min, no sets) is filled in
+  // place rather than doubled.
+  workoutId: uuid.optional(),
+});
+
+/**
+ * Start a Push, Pull or Legs session from the latest one of that day: same
+ * exercises in the same order, no sets.
+ */
+export async function startSplitDay(
+  input: z.infer<typeof splitDaySchema>
+): Promise<ActionResult<{ id: string; copied: number }>> {
+  const parsed = splitDaySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+
+  const ctx = await getUserOrFail();
+  if (!ctx) return { ok: false, error: "Not authenticated" };
+
+  const { logDate, day, workoutId } = parsed.data;
+  const history = await loadSplitHistory(ctx.supabase, ctx.user.id, logDate);
+  const template = history.templates[day];
+
+  let id = workoutId;
+  if (id) {
+    const { count } = await ctx.supabase
+      .from("workout_sets")
+      .select("id", { count: "exact", head: true })
+      .eq("workout_id", id);
+    if (count) return { ok: false, error: "This session already has exercises." };
+    const { error } = await ctx.supabase
+      .from("workouts")
+      .update({ name: splitLabel(day), activity: "strength" })
+      .eq("id", id)
+      .eq("owner_id", ctx.user.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const created = await startWorkout({ logDate, name: splitLabel(day) });
+    if (!created.ok) return created;
+    id = created.data.id;
+    await ctx.supabase.from("workouts").update({ activity: "strength" }).eq("id", id).eq("owner_id", ctx.user.id);
+  }
+
+  const exerciseIds = template?.exerciseIds ?? [];
+  if (exerciseIds.length > 0) {
+    const { error } = await ctx.supabase.from("workout_sets").insert(
+      exerciseIds.map((exerciseId, i) => ({
+        owner_id: ctx.user.id,
+        workout_id: id,
+        exercise_id: exerciseId,
+        position: i,
+      }))
+    );
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/health/train");
+  return { ok: true, data: { id, copied: exerciseIds.length } };
 }
 
 const finishSchema = z.object({

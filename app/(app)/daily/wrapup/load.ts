@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { readHealthProfile } from "@/lib/health/profile";
+import { loadSplitHistory, nextSplitDay, type SplitDay } from "@/lib/health/split";
 import { loadLeverSummaries, type LeverSummary } from "@/lib/planning/load";
 import type { MealType } from "@/lib/health/constants";
 import type { VolumeUnit, WeightUnit } from "@/lib/health/units";
@@ -16,6 +17,8 @@ export type WrapupBodyData = {
   kcalGoal: number | null;
   proteinGoal: number | null;
   sessions: WrapupSession[];
+  /** The gym day due next in the Push / Pull / Legs rotation. */
+  nextSplit: SplitDay;
   waterMl: number;
   waterGoalMl: number;
   volumeUnit: VolumeUnit;
@@ -43,7 +46,7 @@ export async function loadWrapupBody(
   weekStart: string
 ): Promise<WrapupBodyData> {
   const isToday = date === todayIso;
-  const [profile, { data: meals }, { data: workouts }, { data: water }, { data: body }, { data: goals }] =
+  const [profile, { data: meals }, { data: workouts }, { data: water }, { data: body }, { data: goals }, split] =
     await Promise.all([
       readHealthProfile(supabase, ownerId),
       supabase
@@ -55,7 +58,7 @@ export async function loadWrapupBody(
         .order("created_at"),
       supabase
         .from("workouts")
-        .select("id, name, activity, duration_min, started_at, ended_at, workout_sets(count)")
+        .select("id, name, activity, duration_min, started_at, ended_at, workout_sets(weight_kg, reps, distance_m, duration_sec)")
         .eq("owner_id", ownerId)
         .eq("log_date", date)
         .order("created_at"),
@@ -64,6 +67,7 @@ export async function loadWrapupBody(
       isToday
         ? supabase.from("goals").select("id, parent_id, title, status, start_date, target_date, extended_at").eq("owner_id", ownerId)
         : Promise.resolve({ data: [] as { id: string; parent_id: string | null; title: string; status: string; start_date: string; target_date: string; extended_at: string | null }[] }),
+      loadSplitHistory(supabase, ownerId, date),
     ]);
 
   const allGoals = goals ?? [];
@@ -88,8 +92,12 @@ export async function loadWrapupBody(
       name: w.name ?? "Workout",
       activity: w.activity,
       minutes: minutesOf(w),
-      sets: (w.workout_sets as unknown as { count: number }[] | null)?.[0]?.count ?? 0,
+      // Rows with nothing in them only hold an exercise's place.
+      sets: (w.workout_sets ?? []).filter(
+        (s) => s.weight_kg !== null || s.reps !== null || s.distance_m !== null || s.duration_sec !== null
+      ).length,
     })),
+    nextSplit: nextSplitDay(split.last),
     waterMl: (water ?? []).reduce((s, r) => s + r.amount_ml, 0),
     waterGoalMl: profile.daily_water_ml_goal,
     volumeUnit: profile.volume_unit,

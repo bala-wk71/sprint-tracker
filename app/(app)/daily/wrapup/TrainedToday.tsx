@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { QUICK_MINUTES, QUICK_SESSIONS } from "@/lib/health/daily";
+import { splitFromName, type SplitDay } from "@/lib/health/split";
 import { announceXp } from "@/lib/xpToast";
 import { logQuickSession, removeQuickSession } from "./actions";
 import type { WrapupSession } from "./load";
@@ -15,7 +16,15 @@ const CHIP_OFF = "border-border bg-background text-muted-foreground hover:border
 const CHIP_ON = "border-primary bg-primary/10 text-foreground";
 
 /** One tap per session: what it was and roughly how long. Sets stay optional. */
-export function TrainedToday({ date, sessions }: { date: string; sessions: WrapupSession[] }) {
+export function TrainedToday({
+  date,
+  sessions,
+  nextSplit,
+}: {
+  date: string;
+  sessions: WrapupSession[];
+  nextSplit: SplitDay;
+}) {
   const router = useRouter();
   const [minutes, setMinutes] = useState<number>(45);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +58,11 @@ export function TrainedToday({ date, sessions }: { date: string; sessions: Wrapu
                 {s.minutes ? ` · ${s.minutes} min` : ""}
                 {s.sets > 0 ? ` · ${s.sets} sets` : ""}
               </span>
+              {s.sets === 0 && s.activity === "strength" && (
+                <Link href={`/health/train?date=${date}`} className="px-1 text-xs text-primary hover:underline">
+                  Add sets
+                </Link>
+              )}
               {s.sets === 0 ? (
                 <button
                   type="button"
@@ -60,7 +74,7 @@ export function TrainedToday({ date, sessions }: { date: string; sessions: Wrapu
                   <X className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <Link href="/health/train" className="px-1 text-xs text-primary hover:underline">
+                <Link href={`/health/train?date=${date}`} className="px-1 text-xs text-primary hover:underline">
                   Open
                 </Link>
               )}
@@ -85,22 +99,27 @@ export function TrainedToday({ date, sessions }: { date: string; sessions: Wrapu
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          {QUICK_SESSIONS.map((s) => (
-            <button
-              key={s.name}
-              type="button"
-              onClick={() => log(s.name, s.activity)}
-              disabled={pending}
-              className={`${CHIP} ${CHIP_OFF} inline-flex items-center gap-1`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {s.name}
-            </button>
-          ))}
+          {QUICK_SESSIONS.map((s) => {
+            // The split day due next is the likeliest tap, so it stands out.
+            const due = splitFromName(s.name) === nextSplit;
+            return (
+              <button
+                key={s.name}
+                type="button"
+                onClick={() => log(s.name, s.activity)}
+                disabled={pending}
+                className={`${CHIP} ${due ? "border-primary/60 bg-background text-foreground hover:border-primary" : CHIP_OFF} inline-flex items-center gap-1`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {s.name}
+                {due && <span className="text-[11px] text-primary">next</span>}
+              </button>
+            );
+          })}
         </div>
         <p className="text-xs text-muted-foreground">
           Want the sets too?{" "}
-          <Link href="/health/train" className="text-primary hover:underline">
+          <Link href={`/health/train?date=${date}`} className="text-primary hover:underline">
             Log them on the Train page
           </Link>
           .

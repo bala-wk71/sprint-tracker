@@ -4,15 +4,23 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Dumbbell, RotateCcw } from "lucide-react";
+import type { SplitDay } from "@/lib/health/split";
 import { repeatLastWorkout, startWorkout } from "./actions";
+import { SplitDayPicker, type SplitOption } from "./SplitDayPicker";
 
 export function StartWorkout({
   logDate,
   lastWorkout,
+  split,
 }: {
   logDate: string;
   lastWorkout: { log_date: string; name: string | null; exerciseCount: number } | null;
+  split: { next: SplitDay; options: SplitOption[] };
 }) {
+  // Once the history shows a split, the day is the choice; "repeat last"
+  // would repeat the day just done.
+  const hasSplit = split.options.length > 0;
+
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +44,16 @@ export function StartWorkout({
         Nothing logged for {format(new Date(`${logDate}T00:00:00`), "d MMM")} yet
       </h2>
 
+      {hasSplit && (
+        <div className="mx-auto mt-5 max-w-md text-left">
+          <SplitDayPicker logDate={logDate} next={split.next} options={split.options} />
+        </div>
+      )}
+
       <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        {/* The single most likely workout is the last one, so it gets the
-            primary button and one tap. */}
-        {lastWorkout && (
+        {/* Without a split, the single most likely workout is the last one, so
+            it gets the primary button and one tap. */}
+        {lastWorkout && !hasSplit && (
           <button
             type="button"
             disabled={pending}
@@ -60,7 +74,7 @@ export function StartWorkout({
         </button>
       </div>
 
-      {lastWorkout && (
+      {lastWorkout && !hasSplit && (
         <p className="mt-3 text-xs text-muted-foreground">
           {lastWorkout.exerciseCount} exercise
           {lastWorkout.exerciseCount === 1 ? "" : "s"} from{" "}
