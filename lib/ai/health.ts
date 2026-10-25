@@ -1,29 +1,29 @@
 import { z } from "zod";
 import type { ResponseSchema } from "./gemini";
 
+const FOOD_ITEMS_RESPONSE_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      qty: { type: "number" },
+      unit: { type: "string" },
+      kcal: { type: "number" },
+      protein_g: { type: "number" },
+      carbs_g: { type: "number" },
+      fat_g: { type: "number" },
+      fiber_g: { type: "number" },
+      confidence: { type: "string", enum: ["high", "low"] },
+    },
+    required: ["name", "qty", "unit", "kcal", "protein_g", "carbs_g", "fat_g"],
+  },
+};
+
 /** Shape Gemini is pinned to when reading a typed-out meal. */
 export const MEAL_PARSE_RESPONSE_SCHEMA: ResponseSchema = {
   type: "object",
-  properties: {
-    items: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          qty: { type: "number" },
-          unit: { type: "string" },
-          kcal: { type: "number" },
-          protein_g: { type: "number" },
-          carbs_g: { type: "number" },
-          fat_g: { type: "number" },
-          fiber_g: { type: "number" },
-          confidence: { type: "string", enum: ["high", "low"] },
-        },
-        required: ["name", "qty", "unit", "kcal", "protein_g", "carbs_g", "fat_g"],
-      },
-    },
-  },
+  properties: { items: FOOD_ITEMS_RESPONSE_SCHEMA },
   required: ["items"],
 };
 
@@ -87,4 +87,53 @@ Rules:
   one whose recipe varies a lot.
 - Drinks count. Water, black coffee and plain tea are items with 0 kcal.
 - If the text describes no food at all, return an empty list.${known}`;
+}
+
+/**
+ * A whole day typed in one go at the evening wrap-up: the same items as a
+ * single meal, grouped into the meals they belong to.
+ */
+export const DAY_PARSE_RESPONSE_SCHEMA: ResponseSchema = {
+  type: "object",
+  properties: {
+    meals: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          meal_type: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"] },
+          said: { type: "string" },
+          items: FOOD_ITEMS_RESPONSE_SCHEMA,
+        },
+        required: ["meal_type", "said", "items"],
+      },
+    },
+  },
+  required: ["meals"],
+};
+
+export const dayParseResultSchema = z.object({
+  meals: z
+    .array(
+      z.object({
+        meal_type: z.enum(["breakfast", "lunch", "dinner", "snack"]).catch("snack"),
+        said: z.string().trim().max(2000).catch(""),
+        items: mealParseResultSchema.shape.items,
+      })
+    )
+    .max(12),
+});
+
+export type ParsedDayMeal = z.infer<typeof dayParseResultSchema>["meals"][number];
+
+export function getDayParsePrompt(knownFoods: string[]): string {
+  return `${getMealParsePrompt(knownFoods)}
+
+This time the text covers a whole day, so group the items into meals:
+- One entry in "meals" per meal the person describes, in the order they ate.
+- meal_type is breakfast, lunch, dinner or snack. Use the person's own words
+  ("morning", "tiffin", "night") and the order of the day to decide; tea,
+  coffee and small bites between meals are snacks.
+- "said" is the part of the text that describes that meal, copied as written.
+- Every food goes in exactly one meal. Never repeat an item across meals.`;
 }

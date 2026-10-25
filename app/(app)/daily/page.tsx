@@ -20,6 +20,8 @@ import {
 import { FocusTimerPanel } from "@/components/timer/FocusTimerPanel";
 import type { TimerTaskProgress } from "@/components/timer/TaskProgress";
 import { EveningWrapUp, type EveningPriority } from "./EveningWrapUp";
+import { BodyAndGoals } from "./wrapup/BodyAndGoals";
+import { loadWrapupBody } from "./wrapup/load";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { loadComments } from "@/components/comments/loadComments";
 
@@ -48,9 +50,10 @@ export default async function DailyPage({
   // Sprint for this week — used to populate the time entry task dropdown.
   const weekStart = weekStartIsoOf(date, await getWeekStartDay());
 
-  // Daily log (may not exist yet), this week's sprint, and (today only) the
-  // goals the day's work is meant to serve, fetched in parallel.
-  const [{ data: dailyLog }, { data: sprint }, goalsGlance] = await Promise.all([
+  // Daily log (may not exist yet), this week's sprint, (today only) the goals
+  // the day's work is meant to serve, and the wrap-up's body and goals step
+  // while the day is still open, fetched in parallel.
+  const [{ data: dailyLog }, { data: sprint }, goalsGlance, wrapupBody] = await Promise.all([
     supabase
       .from("daily_logs")
       .select(
@@ -66,6 +69,7 @@ export default async function DailyPage({
       .eq("week_start_date", weekStart)
       .maybeSingle(),
     date === todayIso ? loadGoalsGlance(supabase, user.id, todayIso) : null,
+    readOnly ? null : loadWrapupBody(supabase, user.id, date, todayIso, weekStart),
   ]);
 
   // Priorities, time entries, and comments depend on the log existing.
@@ -295,9 +299,14 @@ export default async function DailyPage({
         <SectionHeader
           icon={Moon}
           title="Evening wrap-up"
-          subtitle="Close the loop — rate the day and mark your priorities"
+          subtitle="Close the loop: food, training, goals, then rate the day"
           done={steps.wrapup}
         />
+        {wrapupBody && (
+          <div className="mb-5">
+            <BodyAndGoals date={date} data={wrapupBody} />
+          </div>
+        )}
         <EveningWrapUp
           date={date}
           readOnly={readOnly}
