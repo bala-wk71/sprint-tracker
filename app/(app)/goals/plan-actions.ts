@@ -7,6 +7,14 @@ import { todayIsoLocal } from "@/lib/dates";
 import { GOAL_AREA_VALUES } from "@/lib/goals/constants";
 import { LEVER_SOURCE_VALUES, MEASURE_SOURCES } from "@/lib/planning/constants";
 import { quarterEndIso, quarterLabel, quarterOf, quarterStartIso, nextQuarter } from "@/lib/planning/quarters";
+import {
+  budgetProblem,
+  freeHours,
+  goalFocusProblem,
+  loadTimeBudget,
+  PUSH_LIMIT,
+  PUSH_LIMIT_MESSAGE,
+} from "@/lib/planning/focus";
 
 export type PlanResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? object : { data: T }))
@@ -51,6 +59,20 @@ export async function saveStream(input: z.input<typeof streamSchema>): Promise<P
   const ctx = await ctxOrNull();
   if (!ctx) return { ok: false, error: SIGNED_OUT };
 
+  // The week only holds so much: more hours here have to come from somewhere.
+  const { data: current } = await ctx.supabase
+    .from("streams")
+    .select("id, weekly_hours")
+    .eq("owner_id", ctx.userId)
+    .is("archived_at", null);
+  const before = Number(current?.find((s) => s.id === v.id)?.weekly_hours ?? 0);
+  if ((v.weeklyHours ?? 0) > before) {
+    const planned =
+      (current ?? []).filter((s) => s.id !== v.id).reduce((sum, s) => sum + Number(s.weekly_hours ?? 0), 0) + (v.weeklyHours ?? 0);
+    const problem = budgetProblem(planned, freeHours(await loadTimeBudget(ctx.supabase, ctx.userId)));
+    if (problem) return { ok: false, error: problem };
+  }
+
   const fields = { name: v.name, area: v.area, weekly_hours: v.weeklyHours, weight: v.weight };
   if (v.id) {
     const { error } = await ctx.supabase.from("streams").update(fields).eq("id", v.id).eq("owner_id", ctx.userId);
@@ -74,6 +96,70 @@ export async function saveStream(input: z.input<typeof streamSchema>): Promise<P
 
 function duplicateName(error: { code?: string } | null) {
   return error?.code === "23505" ? "You already have a stream with that name." : null;
+}
+
+/** Push (at most three at a time) or maintain: hours only, no new short goals. */
+export async function setStreamFocus(id: string, focus: "push" | "maintain"): Promise<PlanResult> {
+  if (!uuid.safeParse(id).success || (focus !== "push" && focus !== "maintain")) {
+    return { ok: false, error: "That stream doesn't exist." };
+  }
+  const ctx = await ctxOrNull();
+  if (!ctx) return { ok: false, error: SIGNED_OUT };
+  if (focus === "push") {
+    const { count } = await ctx.supabase
+      .from("streams")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", ctx.userId)
+      .eq("focus", "push")
+      .is("archived_at", null)
+      .neq("id", id);
+    if ((count ?? 0) >= PUSH_LIMIT) return { ok: false, error: PUSH_LIMIT_MESSAGE };
+  }
+  const { error } = await ctx.supabase.from("streams").update({ focus }).eq("id", id).eq("owner_id", ctx.userId);
+  // The database holds the same limit, for a race between two tabs.
+  if (error) {
+    return { ok: false, error: error.message.includes("push_limit") ? PUSH_LIMIT_MESSAGE : "Couldn't change the stream. Try again." };
+  }
+  revalidatePlan();
+  return { ok: true };
+}
+
+const budgetSchema = z.object({
+  sleepHours: z.number().min(0).max(14),
+  jobHours: z.number().min(0).max(100),
+  overheadHours: z.number().min(0).max(100),
+});
+
+/** What the week holds before any stream. The streams have to still fit after. */
+export async function saveTimeBudget(input: z.input<typeof budgetSchema>): Promise<PlanResult> {
+  const parsed = budgetSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Hours should be numbers: sleep up to 14 a night, the rest up to 100 a week." };
+  }
+  const v = parsed.data;
+  const ctx = await ctxOrNull();
+  if (!ctx) return { ok: false, error: SIGNED_OUT };
+
+  const { data: streams } = await ctx.supabase
+    .from("streams")
+    .select("weekly_hours")
+    .eq("owner_id", ctx.userId)
+    .is("archived_at", null);
+  const planned = (streams ?? []).reduce((sum, s) => sum + Number(s.weekly_hours ?? 0), 0);
+  const free = freeHours(v);
+  if (planned > free) {
+    return { ok: false, error: `Your streams plan ${planned}h a week, and that would leave ${free}h. Lower a stream's hours first.` };
+  }
+
+  const { error } = await ctx.supabase.from("time_budgets").upsert({
+    owner_id: ctx.userId,
+    sleep_hours: v.sleepHours,
+    job_hours: v.jobHours,
+    overhead_hours: v.overheadHours,
+  });
+  if (error) return { ok: false, error: "Couldn't save your week. Try again." };
+  revalidatePlan();
+  return { ok: true };
 }
 
 /** Archiving keeps the stream's goals; they just stop being grouped under it. */
@@ -454,6 +540,13 @@ export async function addQuarterGoal(goalId: string, which: "current" | "next"):
   const start = which === "current" ? today : quarterStartIso(quarter);
   const end = quarterEndIso(quarter);
   if (start > parent.target_date) return { ok: false, error: "This goal ends before that quarter starts." };
+  const focus = await goalFocusProblem(
+    ctx.supabase,
+    ctx.userId,
+    { stream_id: parent.stream_id, level: "quarter", start_date: start, target_date: end },
+    today
+  );
+  if (focus) return { ok: false, error: focus };
 
   const label = quarterLabel(quarter);
   const { data: existing } = await ctx.supabase

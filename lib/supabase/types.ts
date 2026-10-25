@@ -830,6 +830,7 @@ export type Database = {
           area: string
           weekly_hours: number | null
           weight: number
+          focus: string
           position: number
           archived_at: string | null
           created_at: string
@@ -842,6 +843,7 @@ export type Database = {
           area: string
           weekly_hours?: number | null
           weight?: number
+          focus?: string
           position?: number
           archived_at?: string | null
           created_at?: string
@@ -854,8 +856,36 @@ export type Database = {
           area?: string
           weekly_hours?: number | null
           weight?: number
+          focus?: string
           position?: number
           archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      time_budgets: {
+        Row: {
+          owner_id: string
+          sleep_hours: number
+          job_hours: number
+          overhead_hours: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          owner_id: string
+          sleep_hours?: number
+          job_hours?: number
+          overhead_hours?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          owner_id?: string
+          sleep_hours?: number
+          job_hours?: number
+          overhead_hours?: number
           created_at?: string
           updated_at?: string
         }

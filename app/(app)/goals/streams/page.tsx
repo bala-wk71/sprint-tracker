@@ -3,19 +3,24 @@ import { ChevronLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { GOAL_AREA_VALUES, type GoalArea } from "@/lib/goals/constants";
 import { StreamManager } from "@/components/goals/plan/StreamManager";
+import { WeekBudget } from "@/components/goals/plan/WeekBudget";
+import { loadTimeBudget } from "@/lib/planning/focus";
 
 export default async function StreamsPage() {
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return null;
 
-  const { data } = await supabase
-    .from("streams")
-    .select("id, name, area, weekly_hours, weight")
-    .eq("owner_id", user.id)
-    .is("archived_at", null)
-    .order("position")
-    .order("created_at");
+  const [{ data }, budget] = await Promise.all([
+    supabase
+      .from("streams")
+      .select("id, name, area, weekly_hours, weight, focus")
+      .eq("owner_id", user.id)
+      .is("archived_at", null)
+      .order("position")
+      .order("created_at"),
+    loadTimeBudget(supabase, user.id),
+  ]);
 
   const streams = (data ?? []).map((s) => ({
     id: s.id,
@@ -23,7 +28,9 @@ export default async function StreamsPage() {
     area: ((GOAL_AREA_VALUES as readonly string[]).includes(s.area) ? s.area : "self") as GoalArea,
     weeklyHours: s.weekly_hours === null ? null : Number(s.weekly_hours),
     weight: Number(s.weight),
+    focus: s.focus === "push" ? ("push" as const) : ("maintain" as const),
   }));
+  const plannedHours = streams.reduce((sum, s) => sum + (s.weeklyHours ?? 0), 0);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -38,6 +45,7 @@ export default async function StreamsPage() {
           learning. Put each goal in a stream and its hours and progress add up there.
         </p>
       </div>
+      <WeekBudget budget={budget} plannedHours={plannedHours} />
       <StreamManager streams={streams} />
       <p className="text-sm text-muted-foreground">
         Already have a written plan?{" "}

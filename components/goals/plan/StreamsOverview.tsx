@@ -41,7 +41,10 @@ export function StreamsOverview({ streams }: { streams: StreamOverview[] }) {
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", area.dot)} aria-hidden />
                   <span className="truncate">{s.name}</span>
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                  {s.focus === "push" && (
+                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-primary">Push</span>
+                  )}
                   {s.goals.length} {s.goals.length === 1 ? "goal" : "goals"}
                 </span>
               </div>

@@ -6,9 +6,17 @@ import { Archive, Pencil, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GOAL_AREAS, goalArea, type GoalArea } from "@/lib/goals/constants";
 import { FIELD_HINT, FIELD_LABEL, INPUT, PillGroup } from "@/components/goals/GoalFormParts";
-import { archiveStream, saveStream } from "@/app/(app)/goals/plan-actions";
+import { PUSH_LIMIT, type StreamFocus } from "@/lib/planning/focus";
+import { archiveStream, saveStream, setStreamFocus } from "@/app/(app)/goals/plan-actions";
 
-export type EditableStream = { id: string; name: string; area: GoalArea; weeklyHours: number | null; weight: number };
+export type EditableStream = {
+  id: string;
+  name: string;
+  area: GoalArea;
+  weeklyHours: number | null;
+  weight: number;
+  focus: StreamFocus;
+};
 
 /** Starting points drawn from real plans; each is one tap to add, then editable. */
 const SUGGESTIONS: { name: string; area: GoalArea }[] = [
@@ -25,10 +33,15 @@ const SUGGESTIONS: { name: string; area: GoalArea }[] = [
 export function StreamManager({ streams }: { streams: EditableStream[] }) {
   const [editing, setEditing] = useState<string | "new" | null>(streams.length ? null : "new");
   const taken = new Set(streams.map((s) => s.name.toLowerCase()));
-  const totalHours = streams.reduce((sum, s) => sum + (s.weeklyHours ?? 0), 0);
+  const pushing = streams.filter((s) => s.focus === "push").length;
 
   return (
     <div className="space-y-4">
+      {streams.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Pushing {pushing} of {PUSH_LIMIT}. Push streams take new goals; maintain streams keep their hours and long-range goals, nothing new.
+        </p>
+      )}
       {streams.length > 0 && (
         <ul className="divide-y divide-border rounded-xl border border-border bg-card">
           {streams.map((s) =>
@@ -37,16 +50,10 @@ export function StreamManager({ streams }: { streams: EditableStream[] }) {
                 <StreamForm stream={s} onDone={() => setEditing(null)} />
               </li>
             ) : (
-              <StreamRow key={s.id} stream={s} onEdit={() => setEditing(s.id)} />
+              <StreamRow key={s.id} stream={s} canPush={pushing < PUSH_LIMIT} onEdit={() => setEditing(s.id)} />
             )
           )}
         </ul>
-      )}
-      {totalHours > 0 && (
-        <p className={cn("text-xs", totalHours > 112 ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground")}>
-          {totalHours}h a week planned across streams
-          {totalHours > 112 ? ", more than the waking hours in a week. Something has to give." : "."}
-        </p>
       )}
 
       {editing === "new" ? (
@@ -78,38 +85,65 @@ export function StreamManager({ streams }: { streams: EditableStream[] }) {
   );
 }
 
-function StreamRow({ stream, onEdit }: { stream: EditableStream; onEdit: () => void }) {
+function StreamRow({ stream, canPush, onEdit }: { stream: EditableStream; canPush: boolean; onEdit: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const area = goalArea(stream.area);
+  const isPush = stream.focus === "push";
+
+  const toggleFocus = () =>
+    startTransition(async () => {
+      setError(null);
+      const result = await setStreamFocus(stream.id, isPush ? "maintain" : "push");
+      if (!result.ok) return setError(result.error);
+      router.refresh();
+    });
+
   return (
-    <li className="flex items-center gap-3 p-4">
-      <span className={cn("h-2 w-2 shrink-0 rounded-full", area.dot)} aria-hidden />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">{stream.name}</p>
-        <p className="text-xs text-muted-foreground">
-          {area.label}
-          {stream.weeklyHours !== null ? ` · ${stream.weeklyHours}h a week` : ""}
-        </p>
+    <li className="space-y-2 p-4">
+      <div className="flex items-center gap-3">
+        <span className={cn("h-2 w-2 shrink-0 rounded-full", area.dot)} aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-foreground">{stream.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {area.label}
+            {stream.weeklyHours !== null ? ` · ${stream.weeklyHours}h a week` : ""}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={toggleFocus}
+          disabled={pending || (!isPush && !canPush)}
+          aria-pressed={isPush}
+          title={!isPush && !canPush ? `Already pushing ${PUSH_LIMIT}: set one to maintain first` : undefined}
+          className={cn(
+            "shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium disabled:opacity-50",
+            isPush ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+          )}
+        >
+          {isPush ? "Push" : "Maintain"}
+        </button>
+        <button type="button" onClick={onEdit} aria-label={`Edit ${stream.name}`} className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          aria-label={`Archive ${stream.name}`}
+          onClick={() =>
+            window.confirm(`Archive "${stream.name}"? Its goals stay; they just leave the stream.`) &&
+            startTransition(async () => {
+              await archiveStream(stream.id);
+              router.refresh();
+            })
+          }
+          className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-destructive disabled:opacity-50"
+        >
+          <Archive className="h-4 w-4" />
+        </button>
       </div>
-      <button type="button" onClick={onEdit} aria-label={`Edit ${stream.name}`} className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        disabled={pending}
-        aria-label={`Archive ${stream.name}`}
-        onClick={() =>
-          window.confirm(`Archive "${stream.name}"? Its goals stay; they just leave the stream.`) &&
-          startTransition(async () => {
-            await archiveStream(stream.id);
-            router.refresh();
-          })
-        }
-        className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-destructive disabled:opacity-50"
-      >
-        <Archive className="h-4 w-4" />
-      </button>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </li>
   );
 }

@@ -11,7 +11,7 @@ import type { SummaryStatus } from "./constants";
 
 type Client = SupabaseClient<Database>;
 
-export type StreamOption = { id: string; name: string; area: GoalArea };
+export type StreamOption = { id: string; name: string; area: GoalArea; focus: "push" | "maintain" };
 
 const toArea = (value: string): GoalArea =>
   (GOAL_AREA_VALUES as readonly string[]).includes(value) ? (value as GoalArea) : "self";
@@ -19,12 +19,17 @@ const toArea = (value: string): GoalArea =>
 export async function loadStreamOptions(supabase: Client, ownerId: string): Promise<StreamOption[]> {
   const { data } = await supabase
     .from("streams")
-    .select("id, name, area")
+    .select("id, name, area, focus")
     .eq("owner_id", ownerId)
     .is("archived_at", null)
     .order("position")
     .order("created_at");
-  return (data ?? []).map((s) => ({ id: s.id, name: s.name, area: toArea(s.area) }));
+  return (data ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    area: toArea(s.area),
+    focus: s.focus === "push" ? ("push" as const) : ("maintain" as const),
+  }));
 }
 
 type StreamGoal = {
@@ -62,6 +67,7 @@ export type StreamOverview = {
   name: string;
   area: GoalArea;
   weeklyHours: number | null;
+  focus: "push" | "maintain";
   /** Active goals in the stream, destinations before quarters and projects. */
   goals: StreamGoal[];
   hoursWeek: number;
@@ -83,9 +89,11 @@ export async function loadStreamsOverview(
   const [{ data: streamRows }, { data: goalRows }, hours] = await Promise.all([
     supabase
       .from("streams")
-      .select("id, name, area, weekly_hours")
+      .select("id, name, area, weekly_hours, focus")
       .eq("owner_id", ownerId)
       .is("archived_at", null)
+      // Pushed streams lead; the rest keep their order after them.
+      .order("focus", { ascending: false })
       .order("position")
       .order("created_at"),
     supabase
@@ -124,6 +132,7 @@ export async function loadStreamsOverview(
       name: s.name,
       area: toArea(s.area),
       weeklyHours: s.weekly_hours === null ? null : Number(s.weekly_hours),
+      focus: s.focus === "push" ? "push" : "maintain",
       goals: inStream,
       hoursWeek: Math.round(hoursWeek * 10) / 10,
       summaries: streamSummaries,

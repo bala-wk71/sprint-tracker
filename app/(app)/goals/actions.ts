@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardTrackedXp } from "@/lib/gamification";
 import { todayIsoLocal } from "@/lib/dates";
+import { goalFocusProblem } from "@/lib/planning/focus";
 import {
   GOAL_AREA_VALUES,
   GOAL_HORIZON_VALUES,
@@ -99,16 +100,19 @@ export async function saveGoal(input: GoalInput): Promise<GoalResult<{ id: strin
   const ctx = await getUserOrFail();
   if (!ctx) return { ok: false, error: "You're signed out. Sign in and try again." };
 
-  let startDate = await todayIsoLocal();
+  const today = await todayIsoLocal();
+  let startDate = today;
+  let existing: { start_date: string; level: string | null; status: string; stream_id: string | null } | null = null;
   if (v.id) {
-    const { data: existing } = await ctx.supabase
+    const { data } = await ctx.supabase
       .from("goals")
-      .select("start_date")
+      .select("start_date, level, status, stream_id")
       .eq("id", v.id)
       .eq("owner_id", ctx.user.id)
       .maybeSingle();
-    if (!existing) return { ok: false, error: "That goal doesn't exist anymore." };
-    startDate = existing.start_date;
+    if (!data) return { ok: false, error: "That goal doesn't exist anymore." };
+    existing = data;
+    startDate = data.start_date;
   }
 
   const targetDate = v.horizon === "custom" ? v.customTargetDate : targetDateFor(v.horizon, startDate);
@@ -138,6 +142,19 @@ export async function saveGoal(input: GoalInput): Promise<GoalResult<{ id: strin
       .is("archived_at", null)
       .maybeSingle();
     if (!stream) return { ok: false, error: "That stream doesn't exist anymore." };
+  }
+
+  // A short goal only goes into a push stream. Checked when one is created or
+  // moved into a stream, so goals from before the rule can still be edited.
+  const movedIn = v.streamId !== undefined && v.streamId !== (existing?.stream_id ?? null);
+  if (v.streamId && (!existing || (movedIn && existing.status === "active"))) {
+    const focus = await goalFocusProblem(
+      ctx.supabase,
+      ctx.user.id,
+      { stream_id: v.streamId, level: existing?.level ?? null, start_date: startDate, target_date: targetDate },
+      today
+    );
+    if (focus) return { ok: false, error: focus };
   }
 
   const fields = {
@@ -214,11 +231,16 @@ export async function setGoalStatus(input: z.input<typeof statusSchema>): Promis
 
   const { data: goal } = await ctx.supabase
     .from("goals")
-    .select("id, title, is_private")
+    .select("id, title, is_private, status, stream_id, level, start_date, target_date")
     .eq("id", id)
     .eq("owner_id", ctx.user.id)
     .maybeSingle();
   if (!goal) return { ok: false, error: "That goal doesn't exist anymore." };
+
+  if (status === "active" && goal.status !== "active") {
+    const focus = await goalFocusProblem(ctx.supabase, ctx.user.id, goal, await todayIsoLocal());
+    if (focus) return { ok: false, error: focus };
+  }
 
   const { error } = await ctx.supabase
     .from("goals")

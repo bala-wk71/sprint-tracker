@@ -188,10 +188,14 @@ export function GoalForm({
             {streams.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
+                {s.focus === "maintain" ? " (maintain)" : ""}
               </option>
             ))}
           </select>
-          <p className={FIELD_HINT}>Which front of your life this belongs to. Its hours and progress roll up there.</p>
+          <p className={FIELD_HINT}>
+            Which front of your life this belongs to. Its hours and progress roll up there. Goals ending within a year
+            go in a push stream.
+          </p>
         </div>
       )}
 
