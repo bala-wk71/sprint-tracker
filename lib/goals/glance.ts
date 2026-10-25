@@ -34,6 +34,9 @@ export async function loadGoalsGlance(
       )
       .eq("owner_id", ownerId)
       .eq("status", "active")
+      // A goal past its end date is asked about in the wrap-up, not shown as
+      // if it were still running.
+      .gte("target_date", todayIso)
       .order("pinned", { ascending: false })
       .order("target_date", { ascending: true })
       .limit(limit),
@@ -41,7 +44,8 @@ export async function loadGoalsGlance(
       .from("goals")
       .select("id", { count: "exact", head: true })
       .eq("owner_id", ownerId)
-      .eq("status", "active"),
+      .eq("status", "active")
+      .gte("target_date", todayIso),
   ]);
   const goals = rows ?? [];
 

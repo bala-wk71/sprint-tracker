@@ -7,6 +7,8 @@ import type { Database } from "@/lib/supabase/types";
 import { addDaysIso } from "@/lib/week";
 import { trailingAverage, type Point } from "./projection";
 import { BODY_COLUMNS, isBodySource, type LeverSource } from "./constants";
+import { hitsKcal, hitsProtein, loadDailyNutrition, sessionCounts, type DayNutrition } from "@/lib/health/daily";
+import { readHealthProfile } from "@/lib/health/profile";
 import {
   loanParams,
   loanSeries,
@@ -210,9 +212,14 @@ export async function loadLevers(supabase: Client, ownerId: string, goalIds: str
   return ((data ?? []) as LeverRow[]).map((l) => ({ ...l, target: Number(l.target), floor: Number(l.floor) }));
 }
 
+const SESSION_SOURCES = ["workouts", "strength", "cardio", "sport"] as const;
+type SessionSource = (typeof SESSION_SOURCES)[number];
+const isSessionSource = (s: LeverSource): s is SessionSource => (SESSION_SOURCES as readonly string[]).includes(s);
+
 /**
  * Each lever's count per day between two dates (inclusive): ticks, workouts
- * logged in Health, or hours on work linked to the lever's goal and the goals
+ * logged in Health (all, or one kind), days the meals hit the protein or
+ * calorie target, or hours on work linked to the lever's goal and the goals
  * under it.
  */
 export async function loadLeverDaily(
@@ -226,8 +233,9 @@ export async function loadLeverDaily(
   const out = new Map<string, Map<string, number>>(levers.map((l) => [l.id, new Map()]));
   if (levers.length === 0) return out;
   const needs = (source: LeverSource) => levers.some((l) => l.source === source);
+  const needsMeals = needs("protein_days") || needs("kcal_days");
 
-  const [{ data: ticks }, { data: workouts }, hours] = await Promise.all([
+  const [{ data: ticks }, { data: workouts }, hours, nutrition, profile] = await Promise.all([
     needs("tick")
       ? supabase
           .from("lever_ticks")
@@ -237,10 +245,12 @@ export async function loadLeverDaily(
           .gte("done_on", fromIso)
           .lte("done_on", toIso)
       : Promise.resolve({ data: [] as { lever_id: string; done_on: string; count: number }[] }),
-    needs("workouts")
-      ? supabase.from("workouts").select("log_date").eq("owner_id", ownerId).gte("log_date", fromIso).lte("log_date", toIso)
-      : Promise.resolve({ data: [] as { log_date: string }[] }),
+    levers.some((l) => isSessionSource(l.source))
+      ? supabase.from("workouts").select("log_date, activity").eq("owner_id", ownerId).gte("log_date", fromIso).lte("log_date", toIso)
+      : Promise.resolve({ data: [] as { log_date: string; activity: string | null }[] }),
     needs("linked_hours") ? loadLinkedHours(supabase, ownerId, fromIso) : Promise.resolve([] as LinkedHour[]),
+    needsMeals ? loadDailyNutrition(supabase, ownerId, fromIso, toIso) : Promise.resolve(new Map<string, DayNutrition>()),
+    needsMeals ? readHealthProfile(supabase, ownerId) : Promise.resolve(null),
   ]);
 
   const add = (leverId: string, date: string, n: number) => {
@@ -250,8 +260,12 @@ export async function loadLeverDaily(
   for (const lever of levers) {
     if (lever.source === "tick") {
       for (const t of ticks ?? []) if (t.lever_id === lever.id) add(lever.id, t.done_on, Number(t.count));
-    } else if (lever.source === "workouts") {
-      for (const w of workouts ?? []) add(lever.id, w.log_date, 1);
+    } else if (isSessionSource(lever.source)) {
+      for (const w of workouts ?? []) if (sessionCounts(lever.source, w.activity)) add(lever.id, w.log_date, 1);
+    } else if (lever.source === "protein_days") {
+      for (const [date, day] of nutrition) if (hitsProtein(day.protein_g, profile?.daily_protein_g_goal ?? null)) add(lever.id, date, 1);
+    } else if (lever.source === "kcal_days") {
+      for (const [date, day] of nutrition) if (hitsKcal(day.kcal, profile?.daily_kcal_goal ?? null)) add(lever.id, date, 1);
     } else {
       const ids = new Set(subtreeIds(lever.goal_id, allGoals));
       for (const h of hours) if (ids.has(h.goalId) && h.date <= toIso) add(lever.id, h.date, h.hours);

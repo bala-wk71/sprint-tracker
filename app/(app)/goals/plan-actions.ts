@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { todayIsoLocal } from "@/lib/dates";
 import { GOAL_AREA_VALUES } from "@/lib/goals/constants";
-import { MEASURE_SOURCES } from "@/lib/planning/constants";
+import { LEVER_SOURCE_VALUES, MEASURE_SOURCES } from "@/lib/planning/constants";
 import { quarterEndIso, quarterLabel, quarterOf, quarterStartIso, nextQuarter } from "@/lib/planning/quarters";
 
 export type PlanResult<T = undefined> =
@@ -341,7 +341,7 @@ const leverSchema = z.object({
   id: uuid.optional(),
   goalId: uuid,
   title: z.string().trim().min(1, "Name the action.").max(80),
-  source: z.enum(["tick", "workouts", "linked_hours"]),
+  source: z.enum(LEVER_SOURCE_VALUES),
   period: z.enum(["week", "month"]),
   target: z.number().positive("The target needs to be above zero.").max(999),
   floor: z.number().min(0).max(999),

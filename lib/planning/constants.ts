@@ -79,11 +79,27 @@ export type MeasureKind = "number" | "ladder";
 
 export type LadderLevel = { level: number; title: string; proof: string };
 
-export type LeverSource = "tick" | "workouts" | "linked_hours";
+export const LEVER_SOURCE_VALUES = [
+  "tick",
+  "workouts",
+  "strength",
+  "cardio",
+  "sport",
+  "protein_days",
+  "kcal_days",
+  "linked_hours",
+] as const;
+
+export type LeverSource = (typeof LEVER_SOURCE_VALUES)[number];
 
 export const LEVER_SOURCES: { value: LeverSource; label: string; hint: string }[] = [
   { value: "tick", label: "I tick it off", hint: "One tap each time you do it." },
-  { value: "workouts", label: "Workouts (Health)", hint: "Counts sessions logged in Health." },
+  { value: "workouts", label: "Any workout (Health)", hint: "Counts every session logged in Health." },
+  { value: "strength", label: "Strength sessions (Health)", hint: "Counts gym sessions: Push, Pull, Legs, or any session with weights." },
+  { value: "cardio", label: "Walks and cardio (Health)", hint: "Counts walks, runs and other cardio sessions." },
+  { value: "sport", label: "Sport sessions (Health)", hint: "Counts football and other sport logged in Health." },
+  { value: "protein_days", label: "Protein days (meals)", hint: "Counts days your logged meals reach the protein target in Health." },
+  { value: "kcal_days", label: "Calorie days (meals)", hint: "Counts days your logged meals land within 10% of the calorie target in Health." },
   { value: "linked_hours", label: "Hours on linked work", hint: "Time logged on sprint tasks linked to this goal or the goals under it." },
 ];
 

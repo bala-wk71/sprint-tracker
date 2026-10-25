@@ -37,9 +37,11 @@ Measures (how a goal's progress is read):
 
 Habits and weekly work are levers, not measures:
 - Calories, protein, workouts per week, walks, sleep, hours on a project, sales calls, transfers → a lever on the goal they move.
-- Workouts / strength sessions → source "workouts". "Hours on X" → source "linked_hours". Anything else → "tick".
+- Strength or gym sessions → source "strength". Walks, runs, cardio → source "cardio". Football or other sport → source "sport". Workouts of any kind → source "workouts". "Hours on X" → source "linked_hours".
+- Hitting a daily protein amount → source "protein_days"; hitting a daily calorie amount → source "kcal_days". Both count from the meals the person logs, so keep the amount in the title and target = days per week.
+- Anything else → "tick".
 - target is per week (or per month for monthly things); floor is the stated minimum for a hard week, else null.
-- A daily amount (protein 130–160 g a day, 7–8 h of sleep, 30-minute walks) → a "tick" lever with the amount in its title ("Protein 130 g+", "Sleep 7 h+") and target = days per week it should happen: 7 for "every day", or the number of days stated. Never put the daily amount itself in target.
+- Any other daily amount (7–8 h of sleep, 10k steps) → a "tick" lever with the amount in its title ("Sleep 7 h+", "10k steps") and target = days per week it should happen: 7 for "every day", or the number of days stated. Never put the daily amount itself in target.
 - "3–4 times a week" → target 4, floor 3.`;
 
 export function getImportPrompt(todayIso: string, existingStreams: string[]): string {

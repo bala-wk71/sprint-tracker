@@ -968,6 +968,7 @@ export type Database = {
           checkin_every_days: number
           last_checkin_on: string | null
           completed_at: string | null
+          extended_at: string | null
           stream_id: string | null
           level: string | null
           created_at: string
@@ -994,6 +995,7 @@ export type Database = {
           checkin_every_days?: number
           last_checkin_on?: string | null
           completed_at?: string | null
+          extended_at?: string | null
           stream_id?: string | null
           level?: string | null
           created_at?: string
@@ -1020,6 +1022,7 @@ export type Database = {
           checkin_every_days?: number
           last_checkin_on?: string | null
           completed_at?: string | null
+          extended_at?: string | null
           stream_id?: string | null
           level?: string | null
           created_at?: string
@@ -1780,6 +1783,8 @@ export type Database = {
           ended_at: string | null
           rpe: number | null
           notes: string | null
+          activity: string | null
+          duration_min: number | null
           created_at: string
           updated_at: string
         }
@@ -1793,6 +1798,8 @@ export type Database = {
           ended_at?: string | null
           rpe?: number | null
           notes?: string | null
+          activity?: string | null
+          duration_min?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -1806,6 +1813,8 @@ export type Database = {
           ended_at?: string | null
           rpe?: number | null
           notes?: string | null
+          activity?: string | null
+          duration_min?: number | null
           created_at?: string
           updated_at?: string
         }

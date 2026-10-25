@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { awardXp } from "@/lib/gamification";
+import { activityFromSets } from "@/lib/health/daily";
 
 // No revalidatePath on the set-level mutations: the session keeps an optimistic
 // client copy (see store.tsx), and revalidating from a Server Action ships a
@@ -149,10 +150,25 @@ export async function finishWorkout(
     })
     .eq("id", parsed.data.workoutId)
     .eq("owner_id", ctx.user.id)
-    .select("id, log_date")
+    .select("id, log_date, activity")
     .single();
 
   if (error) return { ok: false, error: error.message };
+
+  // Goal actions count strength and cardio separately, so a session logged set
+  // by set is classified from its exercises when it ends.
+  if (!workout.activity) {
+    const { data: sets } = await ctx.supabase
+      .from("workout_sets")
+      .select("exercises(name, muscle_group)")
+      .eq("workout_id", workout.id);
+    const activity = activityFromSets(
+      (sets ?? []).flatMap((s) => (s.exercises ? [s.exercises as { name: string; muscle_group: string }] : []))
+    );
+    if (activity) {
+      await ctx.supabase.from("workouts").update({ activity }).eq("id", workout.id).eq("owner_id", ctx.user.id);
+    }
+  }
 
   // Keyed on the workout, not the day: two sessions in one day both count,
   // and finishing the same one twice does not.

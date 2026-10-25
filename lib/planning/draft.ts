@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { GOAL_AREA_VALUES } from "@/lib/goals/constants";
 import { addMonths, format } from "date-fns";
-import { MEASURE_SOURCES } from "./constants";
+import { LEVER_SOURCE_VALUES, MEASURE_SOURCES } from "./constants";
 
 const AREAS = GOAL_AREA_VALUES;
 const LEVELS = ["destination", "year", "quarter", "project"] as const;
@@ -58,7 +58,7 @@ const LEVER_SCHEMA = {
   type: "object",
   properties: {
     title: { type: "string" },
-    source: { type: "string", enum: ["tick", "workouts", "linked_hours"] },
+    source: { type: "string", enum: [...LEVER_SOURCE_VALUES] },
     period: { type: "string", enum: ["week", "month"] },
     target: { type: "number" },
     floor: nullable({ type: "number" }),
@@ -159,7 +159,7 @@ const measureSchema = z.object({
 
 const leverSchema = z.object({
   title: z.string().trim().min(1).max(80),
-  source: z.enum(["tick", "workouts", "linked_hours"]).catch("tick"),
+  source: z.enum(LEVER_SOURCE_VALUES).catch("tick"),
   period: z.enum(["week", "month"]).catch("week"),
   target: z.number().positive().max(999),
   floor: num,
