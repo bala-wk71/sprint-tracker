@@ -32,7 +32,7 @@ export async function loadStreamOptions(supabase: Client, ownerId: string): Prom
   }));
 }
 
-type StreamGoal = {
+export type StreamGoal = {
   id: string;
   parent_id: string | null;
   stream_id: string | null;
@@ -84,9 +84,30 @@ export async function loadStreamsOverview(
   ownerId: string,
   todayIso: string,
   weekStart: string,
-  onlyStreamId?: string
+  onlyStreamId?: string,
+  /** Every goal of the owner, when the caller has already loaded them. */
+  preloadedGoals?: StreamGoal[]
 ): Promise<StreamOverview[]> {
-  const [{ data: streamRows }, { data: goalRows }, hours] = await Promise.all([
+  const goalsReady: Promise<StreamGoal[]> = preloadedGoals
+    ? Promise.resolve(preloadedGoals)
+    : Promise.resolve(
+        supabase
+          .from("goals")
+          .select("id, parent_id, stream_id, title, status, level, start_date, target_date")
+          .eq("owner_id", ownerId)
+      ).then(({ data }) => (data ?? []) as StreamGoal[]);
+  // Measures only need the goals, so they load alongside the streams rather
+  // than after them.
+  const summariesReady = goalsReady.then((all) => {
+    const streamOf = effectiveStreams(all);
+    return loadMeasureSummaries(
+      supabase,
+      ownerId,
+      all.filter((g) => g.status === "active" && streamOf.get(g.id)),
+      todayIso
+    );
+  });
+  const [{ data: streamRows }, goals, hours, summaries] = await Promise.all([
     supabase
       .from("streams")
       .select("id, name, area, weekly_hours, focus")
@@ -96,19 +117,15 @@ export async function loadStreamsOverview(
       .order("focus", { ascending: false })
       .order("position")
       .order("created_at"),
-    supabase
-      .from("goals")
-      .select("id, parent_id, stream_id, title, status, level, start_date, target_date")
-      .eq("owner_id", ownerId),
+    goalsReady,
     loadLinkedHours(supabase, ownerId, weekStart),
+    summariesReady,
   ]);
   const streams = (streamRows ?? []).filter((s) => !onlyStreamId || s.id === onlyStreamId);
   if (streams.length === 0) return [];
 
-  const goals = (goalRows ?? []) as StreamGoal[];
   const streamOf = effectiveStreams(goals);
   const active = goals.filter((g) => g.status === "active" && streamOf.get(g.id));
-  const summaries = await loadMeasureSummaries(supabase, ownerId, active, todayIso);
   const titleOf = new Map(goals.map((g) => [g.id, g.title]));
 
   return streams.map((s) => {

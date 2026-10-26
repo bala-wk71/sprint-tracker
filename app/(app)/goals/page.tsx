@@ -11,35 +11,53 @@ import { ACTIVE_GOAL_SOFT_LIMIT } from "@/lib/goals/constants";
 import { PlanTabs } from "@/components/goals/PlanTabs";
 import { GoalRow, type GoalRowData } from "@/components/goals/GoalRow";
 
-type Row = GoalRowData & { parent_id: string | null; stream_id: string | null; goal_steps: { done_at: string | null }[] };
+type Row = GoalRowData & {
+  parent_id: string | null;
+  stream_id: string | null;
+  level: string | null;
+  goal_steps: { done_at: string | null }[];
+};
 
 export default async function GoalsPage() {
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data }, todayIso] = await Promise.all([
+  // Two rounds of queries, each in parallel: the goals first, then everything
+  // that depends on them (streams reuse the same rows rather than refetching).
+  const [{ data }, todayIso, weekStartDay] = await Promise.all([
     supabase
       .from("goals")
       .select(
-        "id, parent_id, stream_id, title, area, horizon, start_date, target_date, track_type, start_value, target_value, current_value, unit, status, pinned, is_private, checkin_every_days, last_checkin_on, completed_at, goal_steps(done_at)"
+        "id, parent_id, stream_id, level, title, area, horizon, start_date, target_date, track_type, start_value, target_value, current_value, unit, status, pinned, is_private, checkin_every_days, last_checkin_on, completed_at, goal_steps(done_at)"
       )
       .eq("owner_id", user.id)
       .order("pinned", { ascending: false })
       .order("target_date", { ascending: true }),
     todayIsoLocal(),
+    getWeekStartDay(),
   ]);
   const goals: Row[] = data ?? [];
-  const weekStartDay = await getWeekStartDay();
   const weekStart = weekStartIsoOf(todayIso, weekStartDay);
   const due = reportsDue(todayIso, weekStartDay);
-  const [streams, { data: writtenDue }] = await Promise.all([
-    loadStreamsOverview(supabase, user.id, todayIso, weekStart),
+  const feelingIds = goals.filter((g) => g.track_type === "feeling").map((g) => g.id);
+  const [streams, { data: writtenDue }, { data: ratings }] = await Promise.all([
+    loadStreamsOverview(supabase, user.id, todayIso, weekStart, undefined, goals),
     supabase
       .from("plan_reports")
       .select("period, period_start")
       .eq("owner_id", user.id)
       .in("period_start", due.map((r) => r.start)),
+    feelingIds.length
+      ? supabase
+          .from("journal_entries")
+          .select("goal_id, on_track")
+          .in("goal_id", feelingIds)
+          .not("on_track", "is", null)
+          .order("entry_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(500)
+      : Promise.resolve({ data: [] as { goal_id: string | null; on_track: number | null }[] }),
   ]);
   // Only nudge once there's something to report on.
   const unwritten = streams.some((s) => s.summaries.length > 0)
@@ -48,17 +66,6 @@ export default async function GoalsPage() {
   const streamNameById = new Map(streams.map((s) => [s.id, s.name]));
   const streamOf = effectiveStreams(goals);
 
-  const feelingIds = goals.filter((g) => g.track_type === "feeling").map((g) => g.id);
-  const { data: ratings } = feelingIds.length
-    ? await supabase
-        .from("journal_entries")
-        .select("goal_id, on_track")
-        .in("goal_id", feelingIds)
-        .not("on_track", "is", null)
-        .order("entry_date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(500)
-    : { data: [] };
   const feelings = new Map<string, number[]>();
   for (const r of ratings ?? []) {
     if (!r.goal_id || r.on_track === null) continue;
