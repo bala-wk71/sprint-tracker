@@ -21,6 +21,7 @@ import { CheckInHistory } from "@/components/goals/CheckInHistory";
 import { LinkedWork } from "@/components/goals/LinkedWork";
 import { GoalReview } from "@/components/goals/GoalReview";
 import { PlanSection } from "@/components/goals/plan/PlanSection";
+import { loadPhases, phaseLabel } from "@/lib/planning/phases";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CARD = "rounded-xl border border-border bg-card p-4 sm:p-6";
@@ -50,9 +51,10 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
     weekStartDay,
     { data: reviews },
     { data: profile },
+    phases,
   ] = await Promise.all([
     supabase.from("goals").select("*").eq("id", id).eq("owner_id", user.id).maybeSingle(),
-    supabase.from("goal_steps").select("id, title, done_at").eq("goal_id", id).order("position"),
+    supabase.from("goal_steps").select("id, title, done_at, phase_id").eq("goal_id", id).order("position"),
     supabase
       .from("goals")
       .select("id, parent_id, title, status, area, level, start_date, target_date")
@@ -92,6 +94,7 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
       .order("created_at", { ascending: false })
       .limit(2),
     supabase.from("users").select("coach_reads_journal").eq("id", user.id).single(),
+    loadPhases(supabase, user.id),
   ]);
   if (!goal) notFound();
 
@@ -109,6 +112,7 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
   const feelings = history.flatMap((e) => (e.on_track === null ? [] : [e.on_track]));
 
   const area = goalArea(goal.area);
+  const phase = goal.phase_id ? phases.find((p) => p.id === goal.phase_id) ?? null : null;
   const closed = goal.status === "done" || goal.status === "let_go";
   const pastEnd = isPastEnd(goal, todayIso);
   const targetLabel = format(new Date(`${goal.target_date}T00:00:00`), "d MMM yyyy");
@@ -166,6 +170,11 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
           <span>{horizonLabel(goal.horizon, goal.start_date, goal.target_date)}</span>
           <span>{closed ? `End date ${targetLabel}` : `Ends ${targetLabel} · ${timeLeftLabel(goal.target_date, todayIso)}`}</span>
           <GoalStatusChip status={goal.status} />
+          {phase && (
+            <Link href="/goals/phases" className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary hover:bg-primary/15">
+              {phaseLabel(phase)}
+            </Link>
+          )}
           <span className="inline-flex items-center gap-1">
             {goal.is_private ? <Lock className="h-3 w-3" /> : <Users className="h-3 w-3" />}
             {goal.is_private ? "Only you" : "Shared with your reviewers"}
@@ -208,7 +217,15 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
               stepsTotal={stepRows.length}
               feelings={feelings}
             />
-            {goal.track_type === "steps" && <StepList goalId={goal.id} steps={stepRows} readOnly={closed} />}
+            {goal.track_type === "steps" && (
+              <StepList
+                goalId={goal.id}
+                steps={stepRows}
+                readOnly={closed}
+                // A long-range goal's steps are planned phase by phase.
+                phases={goal.level === "destination" ? phases : undefined}
+              />
+            )}
           </section>
 
           <PlanSection

@@ -23,9 +23,10 @@ function revalidateGoal(goalId: string) {
   revalidatePath("/dashboard");
 }
 
-export async function addGoalStep(goalId: string, title: string): Promise<GoalResult> {
+export async function addGoalStep(goalId: string, title: string, phaseId: string | null = null): Promise<GoalResult> {
   const clean = title.trim();
   if (!uuid.safeParse(goalId).success) return { ok: false, error: "That goal doesn't exist." };
+  if (phaseId !== null && !uuid.safeParse(phaseId).success) return { ok: false, error: "That phase doesn't exist." };
   if (!clean) return { ok: false, error: "Write the step first." };
   if (clean.length > 200) return { ok: false, error: "Keep each step under 200 characters." };
   const ctx = await getUserOrFail();
@@ -44,6 +45,7 @@ export async function addGoalStep(goalId: string, title: string): Promise<GoalRe
     owner_id: ctx.user.id,
     title: clean,
     position: (last?.position ?? -1) + 1,
+    phase_id: phaseId,
   });
   if (error) return { ok: false, error: "Couldn't add the step. Try again." };
   revalidateGoal(goalId);

@@ -451,6 +451,8 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          alignment_note: string | null
+          goal_alignment: string | null
           owner_id: string
           reflection_improve: string | null
           reflection_lesson: string | null
@@ -462,6 +464,8 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          alignment_note?: string | null
+          goal_alignment?: string | null
           owner_id: string
           reflection_improve?: string | null
           reflection_lesson?: string | null
@@ -473,6 +477,8 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          alignment_note?: string | null
+          goal_alignment?: string | null
           owner_id?: string
           reflection_improve?: string | null
           reflection_lesson?: string | null
@@ -891,6 +897,48 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_phases: {
+        Row: {
+          id: string
+          owner_id: string
+          position: number
+          name: string
+          starts_on: string
+          ends_on: string
+          status: string
+          started_at: string | null
+          finished_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          position: number
+          name: string
+          starts_on: string
+          ends_on: string
+          status?: string
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          position?: number
+          name?: string
+          starts_on?: string
+          ends_on?: string
+          status?: string
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       goal_reviews: {
         Row: {
           id: string
@@ -946,6 +994,7 @@ export type Database = {
           title: string
           position: number
           done_at: string | null
+          phase_id: string | null
           created_at: string
         }
         Insert: {
@@ -955,6 +1004,7 @@ export type Database = {
           title: string
           position?: number
           done_at?: string | null
+          phase_id?: string | null
           created_at?: string
         }
         Update: {
@@ -964,6 +1014,7 @@ export type Database = {
           title?: string
           position?: number
           done_at?: string | null
+          phase_id?: string | null
           created_at?: string
         }
         Relationships: [
@@ -999,6 +1050,7 @@ export type Database = {
           last_checkin_on: string | null
           completed_at: string | null
           extended_at: string | null
+          phase_id: string | null
           stream_id: string | null
           level: string | null
           created_at: string
@@ -1026,6 +1078,7 @@ export type Database = {
           last_checkin_on?: string | null
           completed_at?: string | null
           extended_at?: string | null
+          phase_id?: string | null
           stream_id?: string | null
           level?: string | null
           created_at?: string
@@ -1053,6 +1106,7 @@ export type Database = {
           last_checkin_on?: string | null
           completed_at?: string | null
           extended_at?: string | null
+          phase_id?: string | null
           stream_id?: string | null
           level?: string | null
           created_at?: string

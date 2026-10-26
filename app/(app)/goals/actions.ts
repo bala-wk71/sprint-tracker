@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { awardTrackedXp } from "@/lib/gamification";
 import { todayIsoLocal } from "@/lib/dates";
 import { goalFocusProblem } from "@/lib/planning/focus";
+import { currentPhaseOf, loadPhases } from "@/lib/planning/phases";
 import {
   GOAL_AREA_VALUES,
   GOAL_HORIZON_VALUES,
@@ -184,6 +185,8 @@ export async function saveGoal(input: GoalInput): Promise<GoalResult<{ id: strin
     return { ok: true, data: { id: v.id } };
   }
 
+  // A goal that ends inside the current phase is part of it.
+  const current = currentPhaseOf(await loadPhases(ctx.supabase, ctx.user.id));
   const { data, error } = await ctx.supabase
     .from("goals")
     .insert({
@@ -191,6 +194,7 @@ export async function saveGoal(input: GoalInput): Promise<GoalResult<{ id: strin
       owner_id: ctx.user.id,
       start_date: startDate,
       current_value: isNumber ? v.startValue : null,
+      phase_id: current && targetDate <= current.endsOn ? current.id : null,
     })
     .select("id")
     .single();

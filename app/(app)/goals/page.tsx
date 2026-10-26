@@ -10,11 +10,14 @@ import { StreamsOverview } from "@/components/goals/plan/StreamsOverview";
 import { ACTIVE_GOAL_SOFT_LIMIT } from "@/lib/goals/constants";
 import { PlanTabs } from "@/components/goals/PlanTabs";
 import { GoalRow, type GoalRowData } from "@/components/goals/GoalRow";
+import { CurrentPhaseCard } from "@/components/goals/phases/CurrentPhaseCard";
+import { currentPhaseOf, loadPhases } from "@/lib/planning/phases";
 
 type Row = GoalRowData & {
   parent_id: string | null;
   stream_id: string | null;
   level: string | null;
+  phase_id: string | null;
   goal_steps: { done_at: string | null }[];
 };
 
@@ -25,17 +28,18 @@ export default async function GoalsPage() {
 
   // Two rounds of queries, each in parallel: the goals first, then everything
   // that depends on them (streams reuse the same rows rather than refetching).
-  const [{ data }, todayIso, weekStartDay] = await Promise.all([
+  const [{ data }, todayIso, weekStartDay, phases] = await Promise.all([
     supabase
       .from("goals")
       .select(
-        "id, parent_id, stream_id, level, title, area, horizon, start_date, target_date, track_type, start_value, target_value, current_value, unit, status, pinned, is_private, checkin_every_days, last_checkin_on, completed_at, goal_steps(done_at)"
+        "id, parent_id, stream_id, level, phase_id, title, area, horizon, start_date, target_date, track_type, start_value, target_value, current_value, unit, status, pinned, is_private, checkin_every_days, last_checkin_on, completed_at, goal_steps(done_at)"
       )
       .eq("owner_id", user.id)
       .order("pinned", { ascending: false })
       .order("target_date", { ascending: true }),
     todayIsoLocal(),
     getWeekStartDay(),
+    loadPhases(supabase, user.id),
   ]);
   const goals: Row[] = data ?? [];
   const weekStart = weekStartIsoOf(todayIso, weekStartDay);
@@ -78,25 +82,35 @@ export default async function GoalsPage() {
   const today = new Date(`${todayIso}T00:00:00`);
   const soonIso = format(addDays(today, 92), "yyyy-MM-dd");
   const yearIso = format(addDays(today, 366), "yyyy-MM-dd");
+  // The current phase's goals lead in their own card; the rest group by when they end.
+  const currentPhase = currentPhaseOf(phases);
+  const inPhase = (g: Row) => currentPhase !== null && g.phase_id === currentPhase.id;
+  const phaseGoals = goals.filter((g) => inPhase(g) && (g.status === "active" || g.status === "paused"));
   const active = goals.filter((g) => g.status === "active");
+  const activeOutside = active.filter((g) => !inPhase(g));
+  // Long-range goals set direction rather than asking for work each week.
+  const working = active.filter((g) => g.level !== "destination");
   const groups = [
     {
       label: "Next few months",
       hint: "Ending in the next three months.",
-      items: active.filter((g) => g.target_date <= soonIso),
+      items: activeOutside.filter((g) => g.target_date <= soonIso),
     },
     {
       label: "This year",
       hint: "Ending in the next twelve months.",
-      items: active.filter((g) => g.target_date > soonIso && g.target_date <= yearIso),
+      items: activeOutside.filter((g) => g.target_date > soonIso && g.target_date <= yearIso),
     },
     {
-      label: "Further out",
-      hint: "The big ones. Check in now and then, and keep a smaller goal underneath.",
-      items: active.filter((g) => g.target_date > yearIso),
+      label: phases.length ? "Long range" : "Further out",
+      hint: phases.length
+        ? "Where the phases lead. Each one's later steps become a phase's goals when it starts."
+        : "The big ones. Check in now and then, and keep a smaller goal underneath.",
+      items: activeOutside.filter((g) => g.target_date > yearIso),
+      folded: phases.length > 0,
     },
   ].filter((group) => group.items.length > 0);
-  const paused = goals.filter((g) => g.status === "paused");
+  const paused = goals.filter((g) => g.status === "paused" && !inPhase(g));
   const closed = goals
     .filter((g) => g.status === "done" || g.status === "let_go")
     .sort((a, b) => (b.completed_at ?? b.target_date).localeCompare(a.completed_at ?? a.target_date));
@@ -177,6 +191,12 @@ export default async function GoalsPage() {
         </Link>
       )}
 
+      {phases.length > 0 && (
+        <CurrentPhaseCard phases={phases} current={currentPhase} todayIso={todayIso} goalCount={phaseGoals.length}>
+          {list(phaseGoals)}
+        </CurrentPhaseCard>
+      )}
+
       {streams.length > 0 ? (
         <section className="space-y-2">
           <div className="flex items-baseline justify-between gap-2">
@@ -207,9 +227,9 @@ export default async function GoalsPage() {
         )
       )}
 
-      {active.length > ACTIVE_GOAL_SOFT_LIMIT && (
+      {working.length > ACTIVE_GOAL_SOFT_LIMIT && (
         <p className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          You have {active.length} active goals. Three to five tends to work
+          You&apos;re working on {working.length} goals at once. Three to five tends to work
           best. Pausing one keeps it safe without the reminders.
         </p>
       )}
@@ -232,15 +252,25 @@ export default async function GoalsPage() {
         </div>
       )}
 
-      {groups.map((group) => (
-        <section key={group.label} className="space-y-2">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">{group.label}</h2>
-            <p className="text-xs text-muted-foreground">{group.hint}</p>
-          </div>
-          {list(group.items)}
-        </section>
-      ))}
+      {groups.map((group) =>
+        "folded" in group && group.folded ? (
+          <details key={group.label} className="space-y-2">
+            <summary className="cursor-pointer text-sm font-semibold text-foreground">
+              {group.label} ({group.items.length})
+              <span className="block text-xs font-normal text-muted-foreground">{group.hint}</span>
+            </summary>
+            <div className="pt-2">{list(group.items)}</div>
+          </details>
+        ) : (
+          <section key={group.label} className="space-y-2">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">{group.label}</h2>
+              <p className="text-xs text-muted-foreground">{group.hint}</p>
+            </div>
+            {list(group.items)}
+          </section>
+        )
+      )}
 
       {paused.length > 0 && (
         <section className="space-y-2">
