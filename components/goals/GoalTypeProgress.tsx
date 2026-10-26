@@ -56,13 +56,17 @@ export async function GoalTypeProgress({
   const longRange = goal.level === "destination";
   const weekStart = weekStartIsoOf(todayIso, weekStartDay);
 
+  // Both load whatever the type, so a goal made before the types keeps
+  // showing the numbers and weekly actions it already had.
   const [summaries, levers, typed] = await Promise.all([
-    type === "number" ? loadMeasureSummaries(supabase, ownerId, [goal], todayIso) : Promise.resolve(null),
-    type === "habit" ? loadLeverSummaries(supabase, ownerId, [goal.id], allGoals, todayIso, weekStart) : Promise.resolve(null),
+    loadMeasureSummaries(supabase, ownerId, [goal], todayIso),
+    loadLeverSummaries(supabase, ownerId, [goal.id], allGoals, todayIso, weekStart),
     type === "habit" ? loadTypedProgress(supabase, ownerId, [goal], todayIso, weekStartDay, { allGoals }) : Promise.resolve(null),
   ]);
-  const own = summaries?.get(goal.id) ?? [];
+  const own = summaries.get(goal.id) ?? [];
   const habit = typed?.get(goal.id);
+  const extraMeasures = type === "number" ? [] : own;
+  const extraLevers = type === "habit" ? levers.slice(1) : levers;
   const stepsDone = steps.filter((s) => s.done_at).length;
 
   const stepList = (
@@ -98,7 +102,7 @@ export async function GoalTypeProgress({
           ))}
 
         {type === "habit" &&
-          (levers && levers.length > 0 ? (
+          (levers.length > 0 ? (
             <div className="space-y-3">
               <ul>
                 <LeverRow lever={levers[0]} readOnly={readOnly} />
@@ -179,6 +183,21 @@ export async function GoalTypeProgress({
             stepsTotal={0}
             feelings={feelings}
           />
+        )}
+        {(extraMeasures.length > 0 || extraLevers.length > 0) && (
+          <div className="space-y-3 border-t border-border pt-3">
+            <h3 className="text-sm font-semibold text-foreground">Also tracked</h3>
+            {extraMeasures.map((s) => (
+              <MeasureCard key={s.measure.id} summary={s} goalId={goal.id} todayIso={todayIso} readOnly={readOnly} />
+            ))}
+            {extraLevers.length > 0 && (
+              <ul className="divide-y divide-border">
+                {extraLevers.map((l) => (
+                  <LeverRow key={l.id} lever={l} readOnly={readOnly} />
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </section>
 

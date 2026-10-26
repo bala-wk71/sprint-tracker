@@ -2,12 +2,11 @@
 
 import { useOptimistic, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, X } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FIELD_LABEL, INPUT } from "@/components/goals/GoalFormParts";
-import { LEVER_SOURCES, type LeverSource } from "@/lib/planning/constants";
+import { LEVER_SOURCES } from "@/lib/planning/constants";
 import type { LeverSummary } from "@/lib/planning/load";
-import { archiveLever, saveLever, tickLever } from "@/app/(app)/goals/plan-actions";
+import { tickLever } from "@/app/(app)/goals/plan-actions";
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
@@ -97,131 +96,5 @@ export function LeverRow({
       {error && <p className="text-xs text-destructive">{error}</p>}
       {extra}
     </li>
-  );
-}
-
-/** The weekly actions behind a goal, with a small form to add one. */
-export function LeverList({ goalId, levers, readOnly = false }: { goalId: string; levers: LeverSummary[]; readOnly?: boolean }) {
-  const [adding, setAdding] = useState(false);
-
-  return (
-    <div className="space-y-2">
-      {levers.length > 0 ? (
-        <ul className="divide-y divide-border">
-          {levers.map((l) => (
-            <LeverRow
-              key={l.id}
-              lever={l}
-              readOnly={readOnly}
-              extra={readOnly ? null : <RemoveLever id={l.id} goalId={goalId} title={l.title} />}
-            />
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Big numbers move slowly. Add the actions that move them (workouts, practice hours, sales calls), so every week shows progress.
-        </p>
-      )}
-      {!readOnly &&
-        (adding ? (
-          <LeverForm goalId={goalId} onDone={() => setAdding(false)} />
-        ) : (
-          <button type="button" onClick={() => setAdding(true)} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            <Plus className="h-3.5 w-3.5" />
-            Add a weekly action
-          </button>
-        ))}
-    </div>
-  );
-}
-
-function RemoveLever({ id, goalId, title }: { id: string; goalId: string; title: string }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() =>
-        window.confirm(`Remove "${title}"? Its history is kept.`) &&
-        startTransition(async () => {
-          await archiveLever(id, goalId);
-          router.refresh();
-        })
-      }
-      aria-label={`Remove ${title}`}
-      className="absolute -right-1 top-1 rounded p-1 text-muted-foreground opacity-0 hover:text-destructive focus:opacity-100 group-hover:opacity-100"
-    >
-      <X className="h-3.5 w-3.5" />
-    </button>
-  );
-}
-
-function LeverForm({ goalId, onDone }: { goalId: string; onDone: () => void }) {
-  const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [source, setSource] = useState<LeverSource>("tick");
-  const [period, setPeriod] = useState<"week" | "month">("week");
-  const [target, setTarget] = useState("4");
-  const [floor, setFloor] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  const targetN = Number(target);
-  const floorN = floor.trim() === "" ? Math.ceil(targetN / 2) : Number(floor);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!Number.isFinite(targetN) || targetN <= 0) return setError("The target needs to be a number above zero.");
-    if (!Number.isFinite(floorN)) return setError("The minimum should be a number.");
-    setError(null);
-    startTransition(async () => {
-      const result = await saveLever({ goalId, title, source, period, target: targetN, floor: floorN });
-      if (!result.ok) return setError(result.error);
-      onDone();
-      router.refresh();
-    });
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-3 rounded-lg border border-border p-3">
-      <div>
-        <label htmlFor="lever_title" className={FIELD_LABEL}>Action</label>
-        <input id="lever_title" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} placeholder="Strength session, practice hours, quotes sent" className={INPUT} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label htmlFor="lever_source" className={FIELD_LABEL}>Counted by</label>
-          <select id="lever_source" value={source} onChange={(e) => setSource(e.target.value as LeverSource)} className={INPUT}>
-            {LEVER_SOURCES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-muted-foreground">{LEVER_SOURCES.find((s) => s.value === source)?.hint}</p>
-        </div>
-        <div>
-          <label htmlFor="lever_period" className={FIELD_LABEL}>Per</label>
-          <select id="lever_period" value={period} onChange={(e) => setPeriod(e.target.value as "week" | "month")} className={INPUT}>
-            <option value="week">Week</option>
-            <option value="month">Month</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="lever_target" className={FIELD_LABEL}>Target{source === "linked_hours" ? " (hours)" : ""}</label>
-          <input id="lever_target" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} className={INPUT} />
-        </div>
-        <div>
-          <label htmlFor="lever_floor" className={FIELD_LABEL}>Minimum in a hard week</label>
-          <input id="lever_floor" inputMode="decimal" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder={Number.isFinite(targetN) ? String(Math.ceil(targetN / 2)) : ""} className={INPUT} />
-        </div>
-      </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-          {pending ? "Adding…" : "Add action"}
-        </button>
-        <button type="button" onClick={onDone} className="text-sm text-muted-foreground hover:text-foreground">Cancel</button>
-      </div>
-    </form>
   );
 }

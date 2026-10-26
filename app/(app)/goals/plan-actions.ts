@@ -6,11 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { todayIsoLocal } from "@/lib/dates";
 import { GOAL_AREA_VALUES } from "@/lib/goals/constants";
 import { LEVER_SOURCE_VALUES, MEASURE_SOURCES } from "@/lib/planning/constants";
-import { quarterEndIso, quarterLabel, quarterOf, quarterStartIso, nextQuarter } from "@/lib/planning/quarters";
 import {
   budgetProblem,
   freeHours,
-  goalFocusProblem,
   loadTimeBudget,
   PUSH_LIMIT,
   PUSH_LIMIT_MESSAGE,
@@ -512,80 +510,4 @@ export async function tickLever(leverId: string, delta: 1 | -1): Promise<PlanRes
   if (error) return { ok: false, error: "Couldn't save that. Try again." };
   revalidatePlan(lever.goal_id);
   return { ok: true, data: { today: next } };
-}
-
-// ---------------------------------------------------------------------------
-// The cascade
-
-/**
- * Adds a quarter goal under this goal for the current quarter (or the next
- * one), in the same stream and area. Projects go on it as steps, and the
- * week's sprint tasks link to it.
- */
-export async function addQuarterGoal(goalId: string, which: "current" | "next"): Promise<PlanResult<{ id: string }>> {
-  if (!uuid.safeParse(goalId).success) return { ok: false, error: "That goal doesn't exist." };
-  const ctx = await ctxOrNull();
-  if (!ctx) return { ok: false, error: SIGNED_OUT };
-  const today = await todayIsoLocal();
-
-  const { data: parent } = await ctx.supabase
-    .from("goals")
-    .select("id, title, area, stream_id, is_private, target_date, level")
-    .eq("id", goalId)
-    .eq("owner_id", ctx.userId)
-    .maybeSingle();
-  if (!parent) return { ok: false, error: "That goal doesn't exist anymore." };
-
-  const quarter = which === "current" ? quarterOf(today) : nextQuarter(quarterOf(today));
-  const start = which === "current" ? today : quarterStartIso(quarter);
-  const end = quarterEndIso(quarter);
-  if (start > parent.target_date) return { ok: false, error: "This goal ends before that quarter starts." };
-  const focus = await goalFocusProblem(
-    ctx.supabase,
-    ctx.userId,
-    { stream_id: parent.stream_id, level: "quarter", start_date: start, target_date: end },
-    today
-  );
-  if (focus) return { ok: false, error: focus };
-
-  const label = quarterLabel(quarter);
-  const { data: existing } = await ctx.supabase
-    .from("goals")
-    .select("id")
-    .eq("owner_id", ctx.userId)
-    .eq("parent_id", goalId)
-    .eq("level", "quarter")
-    .gte("target_date", quarterStartIso(quarter))
-    .lte("target_date", end)
-    .limit(1)
-    .maybeSingle();
-  if (existing) return { ok: true, data: { id: existing.id } };
-
-  const title = `${label}: ${parent.title}`.slice(0, 120);
-  const { data, error } = await ctx.supabase
-    .from("goals")
-    .insert({
-      owner_id: ctx.userId,
-      parent_id: goalId,
-      stream_id: parent.stream_id,
-      level: "quarter",
-      title,
-      why: "",
-      area: parent.area,
-      horizon: "custom",
-      start_date: start,
-      target_date: end <= parent.target_date ? end : parent.target_date,
-      track_type: "steps",
-      is_private: parent.is_private,
-      checkin_every_days: 7,
-    })
-    .select("id")
-    .single();
-  if (error || !data) return { ok: false, error: "Couldn't add the quarter. Try again." };
-
-  if (!parent.level) {
-    await ctx.supabase.from("goals").update({ level: "destination" }).eq("id", goalId).eq("owner_id", ctx.userId);
-  }
-  revalidatePlan(goalId);
-  return { ok: true, data: { id: data.id } };
 }

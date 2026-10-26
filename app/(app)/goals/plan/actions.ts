@@ -384,7 +384,14 @@ export async function savePlanDraft(
           horizon: "custom",
           start_date: start,
           target_date: g.targetDate,
-          track_type: "steps",
+          // One number and nothing else is a Target, one weekly action a Habit;
+          // anything with steps, or a mix, is Milestones.
+          track_type:
+            g.steps.length === 0 && g.measures.length === 1 && g.levers.length === 0
+              ? "number"
+              : g.steps.length === 0 && g.measures.length === 0 && g.levers.length === 1
+                ? "habit"
+                : "steps",
           checkin_every_days: defaultCheckinDays(lengthInDays(start, g.targetDate)),
           // Plans hold money and health numbers; they start private and can be shared per goal.
           is_private: true,
