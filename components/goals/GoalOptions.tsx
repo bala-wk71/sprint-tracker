@@ -138,7 +138,7 @@ export function TaskGoalSelect({
         )}
       >
         <option value="" disabled>
-          Which goal does this serve?
+          Pick a goal, or none
         </option>
         <option value={NOT_FOR_A_GOAL}>Not for a goal</option>
         {groupsOf(goals).map(({ group, items }) =>

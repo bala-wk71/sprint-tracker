@@ -341,7 +341,7 @@ export function GoalForm({
 
       {!goal && activeCount >= ACTIVE_GOAL_SOFT_LIMIT && (
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          You already have {activeCount} active goals. Three to five tends to work best, but it&apos;s your call.
+          {`You already have ${activeCount} active goals. Three to five tends to work best, but it's your call.`}
         </p>
       )}
 

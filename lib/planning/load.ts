@@ -57,8 +57,10 @@ export async function loadMeasureSummaries(
   const earliest = measures
     .map((m) => [m.baseline_on, startOf.get(m.goal_id)].filter(Boolean).sort()[0] as string)
     .sort()[0];
-  // A week before the earliest start, so the first 7-day average has history.
-  const bodySince = addDaysIso(earliest, -7);
+  // Three months before the earliest start: a goal started between weigh-ins
+  // still shows the last one, and the first 7-day average has history. One
+  // goal or many, a Target reads the same latest weight.
+  const bodySince = addDaysIso(earliest, -90);
 
   const [{ data: checkpointRows }, { data: readingRows }, { data: bodyRows }] = await Promise.all([
     supabase

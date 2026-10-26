@@ -149,7 +149,7 @@ export default async function SprintDetailPage({
             <p className="text-xs text-muted-foreground">
               {linkedCount === 0
                 ? "None of this week's tasks are linked to a goal yet"
-                : `${linkedCount} of ${tasks.length} ${tasks.length === 1 ? "task helps" : "tasks help"} a goal`}
+                : `${linkedCount} of ${tasks.length} ${tasks.length === 1 ? "task serves" : "tasks serve"} a goal`}
             </p>
           )}
         </div>

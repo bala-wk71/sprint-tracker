@@ -46,8 +46,8 @@ export function LinkedWork({ hoursWeek, hoursMonth, hoursTotal, quiet, tasks, to
 
       {nothingLinked ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          Nothing linked yet. When you add a sprint task or a todo, choose this
-          goal under &ldquo;Helps a goal&rdquo; and its logged hours count here.
+          Nothing linked yet. Pick this goal under &ldquo;Serves&rdquo; on a sprint task, or
+          &ldquo;Helps a goal&rdquo; on a todo, and its logged hours count here.
         </p>
       ) : (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
