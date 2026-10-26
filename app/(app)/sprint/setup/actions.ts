@@ -8,6 +8,7 @@ import { awardTrackedXp } from "@/lib/gamification";
 import { WEEK_HOURS } from "@/lib/constants";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
+import { ALIGNMENT_VALUES, loadAlignmentGoals } from "@/lib/planning/alignment";
 
 const TASK_CATEGORY = z.enum([
   "strong_signal",
@@ -30,6 +31,8 @@ const createSprintSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Week start must be a date"),
     notes: z.string().trim().max(1000).optional().nullable(),
+    goal_alignment: z.enum(ALIGNMENT_VALUES).optional().nullable(),
+    alignment_note: z.string().trim().max(160, "Keep the goals line to one line.").optional().nullable(),
     tasks: z.array(taskInputSchema).min(1, "Add at least one task").max(50),
   })
   .refine(
@@ -63,6 +66,12 @@ export async function createSprintWithTasks(
     return { ok: false, error: "Not authenticated" };
   }
 
+  // With goals in progress, the week has to say how it lines up with them.
+  const { goals } = await loadAlignmentGoals(supabase, user.id);
+  if (goals.length > 0 && (!parsed.data.goal_alignment || (parsed.data.alignment_note ?? "").length < 3)) {
+    return { ok: false, error: "Say in one line how this week lines up with your goals." };
+  }
+
   // Sprints are keyed by the first day of the week. A date from anywhere
   // inside the week means that week, so snap it — a sprint filed on the wrong
   // day is invisible to every screen that looks weeks up by their start.
@@ -77,6 +86,8 @@ export async function createSprintWithTasks(
       owner_id: user.id,
       week_start_date: weekStart,
       notes: parsed.data.notes ?? null,
+      goal_alignment: parsed.data.goal_alignment ?? null,
+      alignment_note: parsed.data.alignment_note || null,
     })
     .select("id")
     .single();

@@ -7,6 +7,7 @@ import { weekEndIsoOf, weekStartIsoOf } from "@/lib/week";
 import { PlanTabs } from "@/components/goals/PlanTabs";
 import { CreateSprintForm } from "./CreateSprintForm";
 import { UseAsTemplateButton } from "./UseAsTemplateButton";
+import { alignmentLabel, loadAlignmentGoals } from "@/lib/planning/alignment";
 
 export default async function SprintSetupPage() {
   const supabase = await createClient();
@@ -15,11 +16,14 @@ export default async function SprintSetupPage() {
   // (app)/layout.tsx already redirects unauthenticated users; this is just for TS.
   if (!user) return null;
 
-  const { data: sprints } = await supabase
-    .from("sprints")
-    .select("id, week_start_date, notes, created_at, tasks(target_hours)")
-    .eq("owner_id", user.id)
-    .order("week_start_date", { ascending: false });
+  const [{ data: sprints }, alignmentGoals] = await Promise.all([
+    supabase
+      .from("sprints")
+      .select("id, week_start_date, notes, created_at, goal_alignment, tasks(target_hours)")
+      .eq("owner_id", user.id)
+      .order("week_start_date", { ascending: false }),
+    loadAlignmentGoals(supabase, user.id),
+  ]);
 
   const weekStartDay = await getWeekStartDay();
   const defaultWeekStart = weekStartIsoOf(await todayIsoLocal(), weekStartDay);
@@ -41,6 +45,7 @@ export default async function SprintSetupPage() {
         <CreateSprintForm
           defaultWeekStart={defaultWeekStart}
           weekStartDay={weekStartDay}
+          alignmentGoals={alignmentGoals}
         />
       </section>
 
@@ -74,6 +79,7 @@ export default async function SprintSetupPage() {
                     <p className="text-xs text-muted-foreground">
                       {taskCount} {taskCount === 1 ? "task" : "tasks"}
                       {plannedHours > 0 ? ` · ${plannedHours}h planned` : ""}
+                      {sprint.goal_alignment ? ` · ${alignmentLabel(sprint.goal_alignment)}` : ""}
                       {sprint.notes ? ` · ${sprint.notes}` : ""}
                     </p>
                   </div>

@@ -14,6 +14,8 @@ import {
 } from "@/lib/week";
 import { CategoryPicker } from "@/components/sprint/CategoryPicker";
 import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
+import { GoalAlignmentField } from "@/components/sprint/GoalAlignmentField";
+import type { Alignment, AlignmentGoals } from "@/lib/planning/alignment";
 import { createSprintWithTasks } from "./actions";
 
 type FormValues = {
@@ -45,14 +47,20 @@ const EMPTY_TASK: FormValues["tasks"][number] = {
 export function CreateSprintForm({
   defaultWeekStart,
   weekStartDay,
+  alignmentGoals,
 }: {
   defaultWeekStart: string;
   /** The day the user's sprint week begins — the picker snaps to it. */
   weekStartDay: WeekStartDay;
+  /** Goals in progress; when there are any, the week says how it lines up. */
+  alignmentGoals: AlignmentGoals;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [alignment, setAlignment] = useState<Alignment | null>(null);
+  const [alignmentNote, setAlignmentNote] = useState("");
+  const asksAlignment = alignmentGoals.goals.length > 0;
 
   const { register, control, handleSubmit, formState, reset, setValue } =
     useForm<FormValues>({
@@ -81,9 +89,17 @@ export function CreateSprintForm({
       );
       return;
     }
+    if (asksAlignment && (!alignment || alignmentNote.trim().length < 3)) {
+      setServerError("Say in one line how this week lines up with your goals.");
+      return;
+    }
     setServerError(null);
     startTransition(async () => {
-      const result = await createSprintWithTasks(values);
+      const result = await createSprintWithTasks({
+        ...values,
+        goal_alignment: asksAlignment ? alignment : null,
+        alignment_note: asksAlignment ? alignmentNote.trim() : null,
+      });
       if (!result.ok) {
         setServerError(result.error);
         return;
@@ -226,6 +242,16 @@ export function CreateSprintForm({
           ))}
         </div>
       </div>
+
+      {asksAlignment && (
+        <GoalAlignmentField
+          goals={alignmentGoals}
+          alignment={alignment}
+          note={alignmentNote}
+          onAlignment={setAlignment}
+          onNote={setAlignmentNote}
+        />
+      )}
 
       {serverError && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
