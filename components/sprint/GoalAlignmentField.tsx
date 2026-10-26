@@ -24,11 +24,11 @@ export function GoalAlignmentField({
   idPrefix?: string;
 }) {
   return (
-    <fieldset className="space-y-2 rounded-md border border-border bg-background p-3">
-      <legend className="flex items-center gap-1.5 px-1 text-sm font-semibold text-foreground">
-        <Target className="h-4 w-4 text-primary" />
+    <div role="group" aria-labelledby={`${idPrefix}_alignment_q`} className="space-y-2 rounded-md border border-border bg-background p-3">
+      <p id={`${idPrefix}_alignment_q`} className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+        <Target className="h-4 w-4 shrink-0 text-primary" />
         Does this week line up with your goals?
-      </legend>
+      </p>
       <p className="text-xs text-muted-foreground">
         {goals.phase ? `${goals.phase}: ` : "Working on: "}
         {goals.goals.map((g) => g.title).join(" · ")}
@@ -68,6 +68,6 @@ export function GoalAlignmentField({
         }
         className="w-full rounded-md border border-input bg-background px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm"
       />
-    </fieldset>
+    </div>
   );
 }

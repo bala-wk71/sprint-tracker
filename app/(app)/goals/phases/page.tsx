@@ -150,11 +150,9 @@ export default async function PhasesPage() {
                   ) : (
                     <>
                       <p className="text-sm text-foreground">
-                        Starting it creates{" "}
                         {nextPlan.goals.length === 0
-                          ? "no goals: no push stream has steps planned for it."
-                          : nextPlan.goals.map((g) => `“${g.title}” (${g.steps.length} steps)`).join(", ")}
-                        .
+                          ? "Starting it creates no goals yet: no push stream has steps planned for it."
+                          : `Starting it creates ${nextPlan.goals.map((g) => `“${g.title}” (${g.steps.length} ${g.steps.length === 1 ? "step" : "steps"})`).join(", ")}.`}
                       </p>
                       {nextPlan.waiting.length > 0 && (
                         <p className="text-xs text-muted-foreground">
@@ -174,7 +172,9 @@ export default async function PhasesPage() {
 
       <div className="rounded-xl border border-dashed border-border p-4">
         <p className="mb-3 text-sm font-medium text-foreground">{phases.length ? "Add a phase" : "Add your first phase"}</p>
-        <PhaseForm defaults={{ startsOn: newStart, endsOn: addDaysIso(newStart, 364) }} />
+        {/* Keyed on the suggested start, so after an add the form offers the
+            stretch after the new last phase rather than repeating its dates. */}
+        <PhaseForm key={newStart} defaults={{ startsOn: newStart, endsOn: addDaysIso(newStart, 364) }} />
       </div>
     </div>
   );
