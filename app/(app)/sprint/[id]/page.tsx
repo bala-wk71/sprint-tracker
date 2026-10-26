@@ -10,8 +10,8 @@ import { loadStreamOptions } from "@/lib/planning/streams";
 import { groupGoalOptions } from "@/lib/planning/goalOptions";
 import { TasksEditor, type EditableTask } from "./TasksEditor";
 import { DeleteSprintButton } from "./DeleteSprintButton";
-import { SprintAlignment } from "./SprintAlignment";
-import { ALIGNMENT_VALUES, loadAlignmentGoals, type Alignment } from "@/lib/planning/alignment";
+import { SprintGoalSplit } from "./SprintGoalSplit";
+import { goalSplit } from "@/lib/planning/alignment";
 
 export default async function SprintDetailPage({
   params,
@@ -23,10 +23,10 @@ export default async function SprintDetailPage({
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: sprint }, { data: taskRows }, { data: goalRows }, streams, todayIso, alignmentGoals] = await Promise.all([
+  const [{ data: sprint }, { data: taskRows }, { data: goalRows }, streams, todayIso] = await Promise.all([
     supabase
       .from("sprints")
-      .select("id, week_start_date, notes, owner_id, goal_alignment, alignment_note")
+      .select("id, week_start_date, notes, owner_id")
       .eq("id", id)
       .eq("owner_id", user.id)
       .maybeSingle(),
@@ -42,7 +42,6 @@ export default async function SprintDetailPage({
       .order("target_date", { ascending: true }),
     loadStreamOptions(supabase, user.id),
     todayIsoLocal(),
-    loadAlignmentGoals(supabase, user.id),
   ]);
 
   if (!sprint) {
@@ -71,6 +70,8 @@ export default async function SprintDetailPage({
     todayIso
   );
   const linkedCount = tasks.filter((t) => t.goal_id).length;
+  const goalTitleOf = new Map((goalRows ?? []).map((g) => [g.id, g.title]));
+  const split = goalSplit(tasks, (goalId) => goalTitleOf.get(goalId) ?? null);
 
   const totalTarget = tasks.reduce((sum, t) => sum + t.target_hours, 0);
 
@@ -113,18 +114,7 @@ export default async function SprintDetailPage({
         <DeleteSprintButton sprintId={sprint.id} />
       </div>
 
-      {(sprint.goal_alignment || alignmentGoals.goals.length > 0) && (
-        <SprintAlignment
-          sprintId={sprint.id}
-          goals={alignmentGoals}
-          alignment={
-            (ALIGNMENT_VALUES as readonly string[]).includes(sprint.goal_alignment ?? "")
-              ? (sprint.goal_alignment as Alignment)
-              : null
-          }
-          note={sprint.alignment_note}
-        />
-      )}
+      {goals.length > 0 && tasks.length > 0 && <SprintGoalSplit split={split} />}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4">

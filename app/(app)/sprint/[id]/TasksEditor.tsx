@@ -8,7 +8,7 @@ import { CategoryPicker } from "@/components/sprint/CategoryPicker";
 import { CategoryBadge } from "@/components/sprint/CategoryBadge";
 import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
 import { GoalChip } from "@/components/goals/GoalChip";
-import { GoalSelect, type GoalOption } from "@/components/goals/GoalOptions";
+import { NOT_FOR_A_GOAL, TaskGoalSelect, goalIdOf, type GoalOption } from "@/components/goals/GoalOptions";
 import { addTaskToSprint, deleteTask, updateTask } from "./actions";
 
 export type EditableTask = {
@@ -42,6 +42,8 @@ export function TasksEditor({
     is_recurring: false,
     goal_id: null,
   });
+  // A new task says which goal it serves before it's added: "" until it does.
+  const [newGoal, setNewGoal] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Live planned total, accounting for an in-progress edit or new task.
@@ -116,6 +118,10 @@ export function TasksEditor({
       setError("Task name is required");
       return;
     }
+    if (goals.length > 0 && !newGoal) {
+      setError("Say which goal this task serves, or pick Not for a goal.");
+      return;
+    }
     if (overCapacity) {
       setError(
         `That task puts the week at ${liveTotal}h — only ${WEEK_HOURS}h available.`
@@ -127,6 +133,7 @@ export function TasksEditor({
       const result = await addTaskToSprint({
         sprintId,
         ...newTask,
+        goal_id: goalIdOf(newGoal),
       });
       if (!result.ok) {
         setError(result.error);
@@ -139,6 +146,7 @@ export function TasksEditor({
         is_recurring: false,
         goal_id: null,
       });
+      setNewGoal("");
       setAdding(false);
       router.refresh();
     });
@@ -210,11 +218,11 @@ export function TasksEditor({
               value={draft.category}
               onChange={(category) => setDraft({ ...draft, category })}
             />
-            <GoalSelect
+            <TaskGoalSelect
               id={`task_goal_${draft.id}`}
-              value={draft.goal_id}
+              value={draft.goal_id ?? NOT_FOR_A_GOAL}
               goals={goals}
-              onChange={(goal_id) => setDraft({ ...draft, goal_id })}
+              onChange={(value) => setDraft({ ...draft, goal_id: goalIdOf(value) })}
             />
           </div>
         ) : (
@@ -233,8 +241,10 @@ export function TasksEditor({
                   Recurring
                 </span>
               )}
-              {task.goal_id && goalTitle(task.goal_id) && (
+              {task.goal_id && goalTitle(task.goal_id) ? (
                 <GoalChip goalId={task.goal_id} title={goalTitle(task.goal_id)!} />
+              ) : (
+                goals.length > 0 && <span className="text-xs text-muted-foreground">Not for a goal</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -315,12 +325,7 @@ export function TasksEditor({
             value={newTask.category}
             onChange={(category) => setNewTask({ ...newTask, category })}
           />
-          <GoalSelect
-            id="task_goal_new"
-            value={newTask.goal_id}
-            goals={goals}
-            onChange={(goal_id) => setNewTask({ ...newTask, goal_id })}
-          />
+          <TaskGoalSelect id="task_goal_new" value={newGoal} goals={goals} onChange={setNewGoal} />
         </div>
       ) : (
         <button

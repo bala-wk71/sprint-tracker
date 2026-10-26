@@ -1,47 +1,41 @@
-// How a week lines up with the goals: the sprint says it in one line, against
-// the goals being worked on now (the current phase's, when there are phases).
+// How a week lines up with the goals: every sprint task says which goal it
+// serves, or that it serves none, and the week adds the hours up per goal.
+// Pure and client-safe.
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
-import { currentPhaseOf, loadPhases, phaseLabel } from "./phases";
+export type SplitTask = { name: string; target_hours: number; goal_id: string | null };
 
-type Client = SupabaseClient<Database>;
+export type GoalShare = { goalId: string; title: string; hours: number; tasks: number };
 
-export const ALIGNMENTS = [
-  { value: "aligned", label: "Aligned", hint: "Most of the week moves a goal" },
-  { value: "partly", label: "Partly", hint: "Some of it does" },
-  { value: "off", label: "Not this week", hint: "Other things come first, and that's a choice" },
-] as const;
+export type GoalSplit = {
+  byGoal: GoalShare[];
+  goalHours: number;
+  /** Tasks that serve no goal, biggest first: the job, sleep, chores. */
+  other: { name: string; hours: number }[];
+  otherHours: number;
+};
 
-export type Alignment = (typeof ALIGNMENTS)[number]["value"];
+const round = (n: number) => Math.round(n * 10) / 10;
 
-export const ALIGNMENT_VALUES = ALIGNMENTS.map((a) => a.value) as [Alignment, ...Alignment[]];
-
-export const alignmentLabel = (value: string | null) => ALIGNMENTS.find((a) => a.value === value)?.label ?? null;
-
-export type AlignmentGoals = { phase: string | null; goals: { id: string; title: string }[] };
-
-/**
- * The goals a week is weighed against: the current phase's when there is one,
- * otherwise every active goal that isn't long-range. Empty means no line is
- * asked for.
- */
-export async function loadAlignmentGoals(supabase: Client, ownerId: string): Promise<AlignmentGoals> {
-  const [phases, { data }] = await Promise.all([
-    loadPhases(supabase, ownerId),
-    supabase
-      .from("goals")
-      .select("id, title, level, phase_id")
-      .eq("owner_id", ownerId)
-      .eq("status", "active")
-      .order("target_date"),
-  ]);
-  const current = currentPhaseOf(phases);
-  const working = (data ?? []).filter((g) => g.level !== "destination");
-  const inPhase = current ? working.filter((g) => g.phase_id === current.id) : [];
-  const goals = inPhase.length > 0 ? inPhase : working;
+export function goalSplit(tasks: SplitTask[], titleOf: (goalId: string) => string | null): GoalSplit {
+  const byGoal = new Map<string, GoalShare>();
+  const other: { name: string; hours: number }[] = [];
+  for (const t of tasks) {
+    const hours = Number(t.target_hours) || 0;
+    const title = t.goal_id ? titleOf(t.goal_id) : null;
+    if (t.goal_id && title) {
+      const share = byGoal.get(t.goal_id) ?? { goalId: t.goal_id, title, hours: 0, tasks: 0 };
+      share.hours += hours;
+      share.tasks += 1;
+      byGoal.set(t.goal_id, share);
+    } else {
+      other.push({ name: t.name, hours });
+    }
+  }
+  const shares = [...byGoal.values()].map((s) => ({ ...s, hours: round(s.hours) })).sort((a, b) => b.hours - a.hours);
   return {
-    phase: current && inPhase.length > 0 ? phaseLabel(current) : null,
-    goals: goals.map((g) => ({ id: g.id, title: g.title })),
+    byGoal: shares,
+    goalHours: round(shares.reduce((sum, s) => sum + s.hours, 0)),
+    other: other.sort((a, b) => b.hours - a.hours),
+    otherHours: round(other.reduce((sum, o) => sum + o.hours, 0)),
   };
 }

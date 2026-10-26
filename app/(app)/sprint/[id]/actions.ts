@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { WEEK_HOURS } from "@/lib/constants";
-import { ALIGNMENT_VALUES } from "@/lib/planning/alignment";
 
 const TASK_CATEGORY = z.enum([
   "strong_signal",
@@ -207,28 +206,4 @@ export async function deleteSprintAndRedirect(sprintId: string) {
   revalidatePath("/sprint/setup");
   revalidatePath("/dashboard");
   redirect("/sprint/setup");
-}
-
-const alignmentSchema = z.object({
-  sprintId: z.string().uuid(),
-  alignment: z.enum(ALIGNMENT_VALUES),
-  note: z.string().trim().min(3, "Say in one line how.").max(160, "Keep it to one line."),
-});
-
-/** How the week lines up with the goals, set or changed after it was made. */
-export async function setSprintAlignment(input: z.input<typeof alignmentSchema>): Promise<ActionResult> {
-  const parsed = alignmentSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
-  const ctx = await getUserOrFail();
-  if (!ctx) return { ok: false, error: "Not authenticated" };
-
-  const { error } = await ctx.supabase
-    .from("sprints")
-    .update({ goal_alignment: parsed.data.alignment, alignment_note: parsed.data.note })
-    .eq("id", parsed.data.sprintId)
-    .eq("owner_id", ctx.user.id);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath(`/sprint/${parsed.data.sprintId}`);
-  revalidatePath("/sprint/setup");
-  return { ok: true };
 }

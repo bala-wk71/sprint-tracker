@@ -7,7 +7,8 @@ import { weekEndIsoOf, weekStartIsoOf } from "@/lib/week";
 import { PlanTabs } from "@/components/goals/PlanTabs";
 import { CreateSprintForm } from "./CreateSprintForm";
 import { UseAsTemplateButton } from "./UseAsTemplateButton";
-import { alignmentLabel, loadAlignmentGoals } from "@/lib/planning/alignment";
+import { loadStreamOptions } from "@/lib/planning/streams";
+import { groupGoalOptions } from "@/lib/planning/goalOptions";
 
 export default async function SprintSetupPage() {
   const supabase = await createClient();
@@ -16,17 +17,25 @@ export default async function SprintSetupPage() {
   // (app)/layout.tsx already redirects unauthenticated users; this is just for TS.
   if (!user) return null;
 
-  const [{ data: sprints }, alignmentGoals] = await Promise.all([
+  const [{ data: sprints }, { data: goalRows }, streams, todayIso, weekStartDay] = await Promise.all([
     supabase
       .from("sprints")
-      .select("id, week_start_date, notes, created_at, goal_alignment, tasks(target_hours)")
+      .select("id, week_start_date, notes, created_at, tasks(target_hours, goal_id)")
       .eq("owner_id", user.id)
       .order("week_start_date", { ascending: false }),
-    loadAlignmentGoals(supabase, user.id),
+    supabase
+      .from("goals")
+      .select("id, title, parent_id, stream_id, level, start_date, target_date")
+      .eq("owner_id", user.id)
+      .in("status", ["active", "paused"])
+      .order("target_date", { ascending: true }),
+    loadStreamOptions(supabase, user.id),
+    todayIsoLocal(),
+    getWeekStartDay(),
   ]);
 
-  const weekStartDay = await getWeekStartDay();
-  const defaultWeekStart = weekStartIsoOf(await todayIsoLocal(), weekStartDay);
+  const defaultWeekStart = weekStartIsoOf(todayIso, weekStartDay);
+  const goals = groupGoalOptions(goalRows ?? [], streams, todayIso);
 
   return (
     <div className="space-y-8">
@@ -45,7 +54,7 @@ export default async function SprintSetupPage() {
         <CreateSprintForm
           defaultWeekStart={defaultWeekStart}
           weekStartDay={weekStartDay}
-          alignmentGoals={alignmentGoals}
+          goals={goals}
         />
       </section>
 
@@ -57,6 +66,10 @@ export default async function SprintSetupPage() {
               const taskCount = sprint.tasks?.length ?? 0;
               const plannedHours = (sprint.tasks ?? []).reduce(
                 (sum, t) => sum + Number(t.target_hours || 0),
+                0
+              );
+              const goalHours = (sprint.tasks ?? []).reduce(
+                (sum, t) => sum + (t.goal_id ? Number(t.target_hours || 0) : 0),
                 0
               );
               return (
@@ -79,7 +92,7 @@ export default async function SprintSetupPage() {
                     <p className="text-xs text-muted-foreground">
                       {taskCount} {taskCount === 1 ? "task" : "tasks"}
                       {plannedHours > 0 ? ` · ${plannedHours}h planned` : ""}
-                      {sprint.goal_alignment ? ` · ${alignmentLabel(sprint.goal_alignment)}` : ""}
+                      {goalHours > 0 ? ` · ${goalHours}h on goals` : ""}
                       {sprint.notes ? ` · ${sprint.notes}` : ""}
                     </p>
                   </div>

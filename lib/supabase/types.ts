@@ -451,8 +451,6 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
-          alignment_note: string | null
-          goal_alignment: string | null
           owner_id: string
           reflection_improve: string | null
           reflection_lesson: string | null
@@ -464,8 +462,6 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          alignment_note?: string | null
-          goal_alignment?: string | null
           owner_id: string
           reflection_improve?: string | null
           reflection_lesson?: string | null
@@ -477,8 +473,6 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          alignment_note?: string | null
-          goal_alignment?: string | null
           owner_id?: string
           reflection_improve?: string | null
           reflection_lesson?: string | null

@@ -8,7 +8,6 @@ import { awardTrackedXp } from "@/lib/gamification";
 import { WEEK_HOURS } from "@/lib/constants";
 import { getWeekStartDay, todayIsoLocal } from "@/lib/dates";
 import { weekStartIsoOf } from "@/lib/week";
-import { ALIGNMENT_VALUES, loadAlignmentGoals } from "@/lib/planning/alignment";
 
 const TASK_CATEGORY = z.enum([
   "strong_signal",
@@ -23,6 +22,8 @@ const taskInputSchema = z.object({
   category: TASK_CATEGORY,
   target_hours: z.coerce.number().min(0).max(168),
   is_recurring: z.boolean().default(false),
+  /** The goal the task serves; null means it serves none. */
+  goal_id: z.string().uuid().nullable().optional(),
 });
 
 const createSprintSchema = z
@@ -31,8 +32,6 @@ const createSprintSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Week start must be a date"),
     notes: z.string().trim().max(1000).optional().nullable(),
-    goal_alignment: z.enum(ALIGNMENT_VALUES).optional().nullable(),
-    alignment_note: z.string().trim().max(160, "Keep the goals line to one line.").optional().nullable(),
     tasks: z.array(taskInputSchema).min(1, "Add at least one task").max(50),
   })
   .refine(
@@ -66,10 +65,13 @@ export async function createSprintWithTasks(
     return { ok: false, error: "Not authenticated" };
   }
 
-  // With goals in progress, the week has to say how it lines up with them.
-  const { goals } = await loadAlignmentGoals(supabase, user.id);
-  if (goals.length > 0 && (!parsed.data.goal_alignment || (parsed.data.alignment_note ?? "").length < 3)) {
-    return { ok: false, error: "Say in one line how this week lines up with your goals." };
+  // A task can only serve one of the user's own goals.
+  const goalIds = [...new Set(parsed.data.tasks.flatMap((t) => (t.goal_id ? [t.goal_id] : [])))];
+  if (goalIds.length > 0) {
+    const { data: owned } = await supabase.from("goals").select("id").eq("owner_id", user.id).in("id", goalIds);
+    if ((owned ?? []).length !== goalIds.length) {
+      return { ok: false, error: "One of those goals doesn't exist anymore. Pick again." };
+    }
   }
 
   // Sprints are keyed by the first day of the week. A date from anywhere
@@ -86,8 +88,6 @@ export async function createSprintWithTasks(
       owner_id: user.id,
       week_start_date: weekStart,
       notes: parsed.data.notes ?? null,
-      goal_alignment: parsed.data.goal_alignment ?? null,
-      alignment_note: parsed.data.alignment_note || null,
     })
     .select("id")
     .single();
@@ -109,6 +109,7 @@ export async function createSprintWithTasks(
     category: task.category,
     target_hours: task.target_hours,
     is_recurring: task.is_recurring,
+    goal_id: task.goal_id ?? null,
     position: index,
   }));
 
@@ -180,7 +181,7 @@ export async function rolloverSprint(
   // Load template tasks (must belong to this user).
   const { data: templateTasks, error: taskLoadErr } = await supabase
     .from("tasks")
-    .select("name, category, target_hours, is_recurring, position")
+    .select("name, category, target_hours, is_recurring, position, goal_id, goals(status)")
     .eq("sprint_id", templateSprintId)
     .eq("owner_id", user.id)
     .order("position", { ascending: true });
@@ -216,6 +217,8 @@ export async function rolloverSprint(
       category: t.category,
       target_hours: t.target_hours,
       is_recurring: t.is_recurring,
+      // A task keeps serving its goal while the goal is still open.
+      goal_id: t.goal_id && openGoal(t.goals) ? t.goal_id : null,
       position: i,
     }))
   );
@@ -228,4 +231,9 @@ export async function rolloverSprint(
   revalidatePath("/sprint/setup");
   revalidatePath("/dashboard");
   return { ok: true, sprintId: newSprint.id };
+}
+
+function openGoal(goal: { status: string } | { status: string }[] | null): boolean {
+  const g = Array.isArray(goal) ? goal[0] : goal;
+  return g?.status === "active" || g?.status === "paused";
 }

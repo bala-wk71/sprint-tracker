@@ -14,8 +14,7 @@ import {
 } from "@/lib/week";
 import { CategoryPicker } from "@/components/sprint/CategoryPicker";
 import { WeekCapacityBar } from "@/components/sprint/WeekCapacityBar";
-import { GoalAlignmentField } from "@/components/sprint/GoalAlignmentField";
-import type { Alignment, AlignmentGoals } from "@/lib/planning/alignment";
+import { TaskGoalSelect, goalIdOf, type GoalOption } from "@/components/goals/GoalOptions";
 import { createSprintWithTasks } from "./actions";
 
 type FormValues = {
@@ -26,6 +25,8 @@ type FormValues = {
     category: TaskCategory;
     target_hours: number;
     is_recurring: boolean;
+    /** A goal id, "none", or "" until the task says which goal it serves. */
+    goal: string;
   }[];
 };
 
@@ -42,25 +43,25 @@ const EMPTY_TASK: FormValues["tasks"][number] = {
   category: "strong_signal",
   target_hours: 0,
   is_recurring: false,
+  goal: "",
 };
 
 export function CreateSprintForm({
   defaultWeekStart,
   weekStartDay,
-  alignmentGoals,
+  goals,
 }: {
   defaultWeekStart: string;
   /** The day the user's sprint week begins — the picker snaps to it. */
   weekStartDay: WeekStartDay;
-  /** Goals in progress; when there are any, the week says how it lines up. */
-  alignmentGoals: AlignmentGoals;
+  /** Goals a task can serve; when there are any, every task says which (or none). */
+  goals: GoalOption[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [alignment, setAlignment] = useState<Alignment | null>(null);
-  const [alignmentNote, setAlignmentNote] = useState("");
-  const asksAlignment = alignmentGoals.goals.length > 0;
+  const [missingGoal, setMissingGoal] = useState(false);
+  const asksGoal = goals.length > 0;
 
   const { register, control, handleSubmit, formState, reset, setValue } =
     useForm<FormValues>({
@@ -89,16 +90,17 @@ export function CreateSprintForm({
       );
       return;
     }
-    if (asksAlignment && (!alignment || alignmentNote.trim().length < 3)) {
-      setServerError("Say in one line how this week lines up with your goals.");
+    if (asksGoal && values.tasks.some((t) => !t.goal)) {
+      setMissingGoal(true);
+      setServerError("Say which goal each task serves, or pick Not for a goal.");
       return;
     }
+    setMissingGoal(false);
     setServerError(null);
     startTransition(async () => {
       const result = await createSprintWithTasks({
         ...values,
-        goal_alignment: asksAlignment ? alignment : null,
-        alignment_note: asksAlignment ? alignmentNote.trim() : null,
+        tasks: values.tasks.map(({ goal, ...task }) => ({ ...task, goal_id: goalIdOf(goal) })),
       });
       if (!result.ok) {
         setServerError(result.error);
@@ -238,20 +240,24 @@ export function CreateSprintForm({
                   />
                 )}
               />
+
+              <Controller
+                control={control}
+                name={`tasks.${index}.goal`}
+                render={({ field: goalField }) => (
+                  <TaskGoalSelect
+                    id={`new_task_goal_${index}`}
+                    value={goalField.value}
+                    goals={goals}
+                    onChange={goalField.onChange}
+                    invalid={missingGoal && !goalField.value}
+                  />
+                )}
+              />
             </div>
           ))}
         </div>
       </div>
-
-      {asksAlignment && (
-        <GoalAlignmentField
-          goals={alignmentGoals}
-          alignment={alignment}
-          note={alignmentNote}
-          onAlignment={setAlignment}
-          onNote={setAlignmentNote}
-        />
-      )}
 
       {serverError && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
