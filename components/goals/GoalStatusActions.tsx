@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Check, Pause, Pencil, Pin, PinOff, Play, RotateCcw, Trash2, Wind } from "lucide-react";
+import { CalendarClock, Check, Pause, Pin, PinOff, Play, RotateCcw, Wind } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   changeGoalEndDate,
-  deleteGoal,
   setGoalPinned,
   setGoalStatus,
   type GoalResult,
@@ -58,19 +56,6 @@ export function GoalStatusActions({ goal, pastEnd }: Props) {
         setNote("");
       }
     );
-
-  const remove = () => {
-    if (!window.confirm("Delete this goal? Its check-ins stay in your journal.")) return;
-    startTransition(async () => {
-      const result = await deleteGoal(goal.id);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      router.push("/goals");
-      router.refresh();
-    });
-  };
 
   return (
     <div className="space-y-1">
@@ -166,14 +151,6 @@ export function GoalStatusActions({ goal, pastEnd }: Props) {
       <button type="button" onClick={() => run(() => setGoalPinned(goal.id, !goal.pinned))} disabled={pending} className={cn(ACTION, "text-foreground hover:bg-accent")}>
         {goal.pinned ? <PinOff className="h-4 w-4 text-muted-foreground" /> : <Pin className="h-4 w-4 text-muted-foreground" />}
         {goal.pinned ? "Unpin from dashboard" : "Pin to dashboard"}
-      </button>
-      <Link href={`/goals/${goal.id}/edit`} className={cn(ACTION, "text-foreground hover:bg-accent")}>
-        <Pencil className="h-4 w-4 text-muted-foreground" />
-        Edit goal
-      </Link>
-      <button type="button" onClick={remove} disabled={pending} className={cn(ACTION, "text-destructive hover:bg-destructive/10")}>
-        <Trash2 className="h-4 w-4" />
-        Delete goal
       </button>
 
       {(error || flash) && (

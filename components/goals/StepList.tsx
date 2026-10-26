@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { addGoalStep, deleteGoalStep, setGoalStepDone } from "@/app/(app)/goals/step-actions";
+import { addGoalStep, deleteGoalStep, renameGoalStep, setGoalStepDone } from "@/app/(app)/goals/step-actions";
 import { announceXp } from "@/lib/xpToast";
 
 type Step = { id: string; title: string; done_at: string | null };
@@ -23,6 +23,14 @@ export function StepList({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id: string; title: string } | null>(null);
+
+  const saveRename = () => {
+    if (!editing) return;
+    const step = steps.find((s) => s.id === editing.id);
+    if (!step || editing.title.trim() === step.title) return setEditing(null);
+    run(() => renameGoalStep(editing.id, editing.title), () => setEditing(null));
+  };
 
   const run = (action: () => Promise<{ ok: true; xp?: number } | { ok: false; error: string }>, after?: () => void) => {
     setError(null);
@@ -53,15 +61,43 @@ export function StepList({
                 onChange={(e) => run(() => setGoalStepDone(step.id, e.target.checked))}
                 className="h-4 w-4 shrink-0 rounded border-input accent-primary"
               />
-              <label
-                htmlFor={`step_${step.id}`}
-                className={cn(
-                  "min-w-0 flex-1 text-sm",
-                  step.done_at ? "text-muted-foreground line-through" : "text-foreground"
-                )}
-              >
-                {step.title}
-              </label>
+              {editing?.id === step.id ? (
+                <input
+                  autoFocus
+                  aria-label="Step"
+                  value={editing.title}
+                  maxLength={200}
+                  disabled={pending}
+                  onChange={(e) => setEditing({ id: step.id, title: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveRename();
+                    if (e.key === "Escape") setEditing(null);
+                  }}
+                  onBlur={saveRename}
+                  className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm"
+                />
+              ) : (
+                <label
+                  htmlFor={`step_${step.id}`}
+                  className={cn(
+                    "min-w-0 flex-1 text-sm",
+                    step.done_at ? "text-muted-foreground line-through" : "text-foreground"
+                  )}
+                >
+                  {step.title}
+                </label>
+              )}
+              {!readOnly && editing?.id !== step.id && (
+                <button
+                  type="button"
+                  onClick={() => setEditing({ id: step.id, title: step.title })}
+                  disabled={pending}
+                  aria-label={`Rename step: ${step.title}`}
+                  className="rounded p-1 text-muted-foreground opacity-60 hover:text-foreground group-hover:opacity-100"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
               {!readOnly && (
                 <button
                   type="button"

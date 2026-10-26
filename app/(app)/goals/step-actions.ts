@@ -94,3 +94,23 @@ export async function deleteGoalStep(stepId: string): Promise<GoalResult> {
   revalidateGoal(data.goal_id);
   return { ok: true };
 }
+
+export async function renameGoalStep(stepId: string, title: string): Promise<GoalResult> {
+  const clean = title.trim();
+  if (!uuid.safeParse(stepId).success) return { ok: false, error: "That step doesn't exist." };
+  if (!clean) return { ok: false, error: "A step needs some words. Remove it instead?" };
+  if (clean.length > 200) return { ok: false, error: "Keep each step under 200 characters." };
+  const ctx = await getUserOrFail();
+  if (!ctx) return { ok: false, error: "You're signed out. Sign in and try again." };
+
+  const { data, error } = await ctx.supabase
+    .from("goal_steps")
+    .update({ title: clean })
+    .eq("id", stepId)
+    .eq("owner_id", ctx.user.id)
+    .select("goal_id")
+    .single();
+  if (error || !data) return { ok: false, error: "Couldn't rename the step. Try again." };
+  revalidateGoal(data.goal_id);
+  return { ok: true };
+}

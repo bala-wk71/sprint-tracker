@@ -16,6 +16,7 @@ import { GoalStatusChip } from "@/components/goals/GoalStatusChip";
 import { StepList } from "@/components/goals/StepList";
 import { CheckInForm } from "@/components/goals/CheckInForm";
 import { GoalStatusActions } from "@/components/goals/GoalStatusActions";
+import { GoalHeaderActions } from "@/components/goals/GoalHeaderActions";
 import { CheckInHistory } from "@/components/goals/CheckInHistory";
 import { LinkedWork } from "@/components/goals/LinkedWork";
 import { GoalReview } from "@/components/goals/GoalReview";
@@ -148,10 +149,13 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-6">
-      <Link href="/goals" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-4 w-4" />
-        Goals
-      </Link>
+      <div className="flex items-start justify-between gap-3">
+        <Link href="/goals" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="h-4 w-4" />
+          Goals
+        </Link>
+        <GoalHeaderActions goalId={goal.id} childCount={children.length} />
+      </div>
 
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
