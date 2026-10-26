@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getWeekStartDay } from "@/lib/dates";
+import { loadTypedProgress, type TypedProgress } from "@/lib/goals/typed";
 import { goalArea, horizonLabel } from "@/lib/goals/constants";
 import {
   formatValue,
@@ -27,7 +29,7 @@ export async function GoalsCard({ ownerId, todayIso }: Props) {
     supabase
       .from("goals")
       .select(
-        "id, title, area, horizon, status, start_date, target_date, track_type, start_value, target_value, current_value, unit, checkin_every_days, last_checkin_on, goal_steps(done_at)"
+        "id, parent_id, title, area, horizon, status, start_date, target_date, track_type, start_value, target_value, current_value, unit, checkin_every_days, last_checkin_on, goal_steps(done_at)"
       )
       .eq("owner_id", ownerId)
       .eq("status", "active")
@@ -41,6 +43,9 @@ export async function GoalsCard({ ownerId, todayIso }: Props) {
       .eq("status", "active"),
   ]);
   const goals = goalRows ?? [];
+  const typedReady = goals.some((g) => g.track_type === "number" || g.track_type === "habit")
+    ? getWeekStartDay().then((weekStartDay) => loadTypedProgress(supabase, ownerId, goals, todayIso, weekStartDay))
+    : Promise.resolve(new Map<string, TypedProgress>());
 
   // Last few ratings for every feeling goal on the card, in one query.
   const feelingIds = goals.filter((g) => g.track_type === "feeling").map((g) => g.id);
@@ -63,6 +68,7 @@ export async function GoalsCard({ ownerId, todayIso }: Props) {
   }
 
   const total = activeCount ?? goals.length;
+  const typed = await typedReady;
 
   return (
     <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
@@ -144,13 +150,18 @@ export async function GoalsCard({ ownerId, todayIso }: Props) {
                     </Progress>
                   )}
 
-                  {goal.track_type === "number" && (
-                    <Progress
-                      label={`${formatValue(goal.current_value ?? goal.start_value, null)} of ${formatValue(goal.target_value, goal.unit)}`}
-                    >
-                      <Bar value={progress} />
-                    </Progress>
-                  )}
+                  {(goal.track_type === "number" || goal.track_type === "habit") &&
+                    (typed.get(goal.id) ? (
+                      <Progress label={typed.get(goal.id)!.label}>
+                        <Bar value={typed.get(goal.id)!.pct} />
+                      </Progress>
+                    ) : goal.track_type === "number" && goal.target_value !== null ? (
+                      <Progress
+                        label={`${formatValue(goal.current_value ?? goal.start_value, null)} of ${formatValue(goal.target_value, goal.unit)}`}
+                      >
+                        <Bar value={progress} />
+                      </Progress>
+                    ) : null)}
 
                   {goal.track_type === "feeling" && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

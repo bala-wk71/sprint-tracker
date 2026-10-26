@@ -86,7 +86,9 @@ export async function loadStreamsOverview(
   weekStart: string,
   onlyStreamId?: string,
   /** Every goal of the owner, when the caller has already loaded them. */
-  preloadedGoals?: StreamGoal[]
+  preloadedGoals?: StreamGoal[],
+  /** Measure summaries the caller is already loading for at least the active goals. */
+  preloadedSummaries?: Promise<Map<string, MeasureSummary[]>>
 ): Promise<StreamOverview[]> {
   const goalsReady: Promise<StreamGoal[]> = preloadedGoals
     ? Promise.resolve(preloadedGoals)
@@ -98,7 +100,7 @@ export async function loadStreamsOverview(
       ).then(({ data }) => (data ?? []) as StreamGoal[]);
   // Measures only need the goals, so they load alongside the streams rather
   // than after them.
-  const summariesReady = goalsReady.then((all) => {
+  const summariesReady = preloadedSummaries ?? goalsReady.then((all) => {
     const streamOf = effectiveStreams(all);
     return loadMeasureSummaries(
       supabase,

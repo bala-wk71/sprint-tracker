@@ -12,6 +12,8 @@ import { PlanTabs } from "@/components/goals/PlanTabs";
 import { GoalRow, type GoalRowData } from "@/components/goals/GoalRow";
 import { CurrentPhaseCard } from "@/components/goals/phases/CurrentPhaseCard";
 import { currentPhaseOf, loadPhases } from "@/lib/planning/phases";
+import { loadMeasureSummaries } from "@/lib/planning/load";
+import { loadTypedProgress } from "@/lib/goals/typed";
 
 type Row = GoalRowData & {
   parent_id: string | null;
@@ -45,8 +47,14 @@ export default async function GoalsPage() {
   const weekStart = weekStartIsoOf(todayIso, weekStartDay);
   const due = reportsDue(todayIso, weekStartDay);
   const feelingIds = goals.filter((g) => g.track_type === "feeling").map((g) => g.id);
-  const [streams, { data: writtenDue }, { data: ratings }] = await Promise.all([
-    loadStreamsOverview(supabase, user.id, todayIso, weekStart, undefined, goals),
+  const open = goals.filter((g) => g.status === "active" || g.status === "paused");
+  // Measures load once: the streams roll them up, Targets show them per goal.
+  const summariesReady = loadMeasureSummaries(supabase, user.id, open, todayIso);
+  const [streams, typed, { data: writtenDue }, { data: ratings }] = await Promise.all([
+    loadStreamsOverview(supabase, user.id, todayIso, weekStart, undefined, goals, summariesReady),
+    summariesReady.then((summaries) =>
+      loadTypedProgress(supabase, user.id, open, todayIso, weekStartDay, { summaries, allGoals: goals })
+    ),
     supabase
       .from("plan_reports")
       .select("period, period_start")
@@ -124,6 +132,7 @@ export default async function GoalsPage() {
           stepsDone={g.goal_steps.filter((s) => s.done_at).length}
           stepsTotal={g.goal_steps.length}
           feelings={feelings.get(g.id) ?? []}
+          typed={typed.get(g.id) ?? null}
           parentTitle={g.parent_id ? titleById.get(g.parent_id) ?? null : null}
           todayIso={todayIso}
           streamName={streamNameById.get(streamOf.get(g.id) ?? "") ?? null}
@@ -140,8 +149,8 @@ export default async function GoalsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-foreground">Goals</h1>
           <p className="max-w-prose text-sm text-muted-foreground">
-            Things bigger than one week, from a fortnight to ten years. The
-            longer the goal, the less often it asks you to check in.
+            Each goal is a Target (a number by a date), a Habit (so many times a
+            week) or Milestones (a list to get done), and tracks itself that way.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -238,9 +247,8 @@ export default async function GoalsPage() {
         <div className="rounded-xl border border-dashed border-border p-6 text-center">
           <p className="font-medium text-foreground">Nothing here yet</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            A goal can be anything you want to reach: run a half marathon,
-            save an emergency fund, become a calmer parent. Pick how long it
-            runs and how you&apos;ll know you&apos;re getting there.
+            A goal is a number to move by a date, something to do each week, or
+            a short list of things to get done. Pick the kind and it tracks itself.
           </p>
           <Link
             href="/goals/new"

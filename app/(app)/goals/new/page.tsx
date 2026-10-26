@@ -4,6 +4,8 @@ import { createClient, getUser } from "@/lib/supabase/server";
 import { todayIsoLocal } from "@/lib/dates";
 import { GoalForm } from "@/components/goals/GoalForm";
 import { loadStreamOptions } from "@/lib/planning/streams";
+import { BODY_COLUMNS, type BodySource, type MeasureSource } from "@/lib/planning/constants";
+import type { LatestReading } from "@/components/goals/GoalTypeFields";
 
 export default async function NewGoalPage({
   searchParams,
@@ -15,7 +17,7 @@ export default async function NewGoalPage({
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data }, todayIso, streams] = await Promise.all([
+  const [{ data }, todayIso, streams, { data: body }] = await Promise.all([
     supabase
       .from("goals")
       .select("id, title, status, stream_id")
@@ -24,9 +26,21 @@ export default async function NewGoalPage({
       .order("target_date", { ascending: false }),
     todayIsoLocal(),
     loadStreamOptions(supabase, user.id),
+    supabase
+      .from("body_metrics")
+      .select("measured_on, weight_kg, waist_cm, body_fat_pct, muscle_mass_kg, skeletal_muscle_pct")
+      .eq("owner_id", user.id)
+      .order("measured_on", { ascending: false })
+      .limit(30),
   ]);
   const options = data ?? [];
   const parentGoal = options.find((g) => g.id === parent) ?? null;
+  // The newest reading of each body number, so a Target starts from the scale.
+  const latest: Partial<Record<MeasureSource, LatestReading>> = {};
+  for (const [source, column] of Object.entries(BODY_COLUMNS) as [BodySource, (typeof BODY_COLUMNS)[BodySource]][]) {
+    const row = (body ?? []).find((r) => r[column] !== null);
+    if (row) latest[source] = { value: Number(row[column]), on: row.measured_on };
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -57,6 +71,7 @@ export default async function NewGoalPage({
           initialParentId={parentGoal?.id ?? null}
           streams={streams}
           initialStreamId={parentGoal?.stream_id ?? stream ?? null}
+          latest={latest}
         />
       </section>
     </div>

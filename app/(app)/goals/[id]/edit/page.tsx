@@ -13,6 +13,7 @@ import {
 } from "@/lib/goals/constants";
 import { GoalForm } from "@/components/goals/GoalForm";
 import { loadStreamOptions } from "@/lib/planning/streams";
+import { LEVER_SOURCE_VALUES, type LeverSource } from "@/lib/planning/constants";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -28,7 +29,7 @@ export default async function EditGoalPage({ params }: { params: Promise<{ id: s
   const user = await getUser();
   if (!user) return null;
 
-  const [{ data: goal }, { data: others }, todayIso, streams] = await Promise.all([
+  const [{ data: goal }, { data: others }, todayIso, streams, { data: lever }] = await Promise.all([
     supabase.from("goals").select("*").eq("id", id).eq("owner_id", user.id).maybeSingle(),
     supabase
       .from("goals")
@@ -39,6 +40,15 @@ export default async function EditGoalPage({ params }: { params: Promise<{ id: s
       .order("target_date", { ascending: false }),
     todayIsoLocal(),
     loadStreamOptions(supabase, user.id),
+    supabase
+      .from("goal_levers")
+      .select("source, target, floor")
+      .eq("goal_id", id)
+      .eq("owner_id", user.id)
+      .is("archived_at", null)
+      .order("position")
+      .limit(1)
+      .maybeSingle(),
   ]);
   if (!goal) notFound();
 
@@ -69,9 +79,14 @@ export default async function EditGoalPage({ params }: { params: Promise<{ id: s
             startDate: goal.start_date,
             targetDate: goal.target_date,
             trackType: oneOf<TrackType>(TRACK_TYPE_VALUES, goal.track_type, "feeling"),
-            startValue: goal.start_value,
-            targetValue: goal.target_value,
-            unit: goal.unit,
+            habit:
+              goal.track_type === "habit"
+                ? {
+                    source: oneOf<LeverSource>(LEVER_SOURCE_VALUES, lever?.source ?? "tick", "tick"),
+                    perWeek: String(Number(lever?.target ?? 3)),
+                    floor: String(Number(lever?.floor ?? 2)),
+                  }
+                : null,
             parentId: goal.parent_id,
             streamId: goal.stream_id,
             isPrivate: goal.is_private,

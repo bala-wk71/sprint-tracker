@@ -11,16 +11,14 @@ import { BIG_GOAL_DAYS, goalArea, horizonLabel, lengthInDays } from "@/lib/goals
 import { isPastEnd, nextCheckinLabel, timeLeftLabel } from "@/lib/goals/progress";
 import { loadComments } from "@/components/comments/loadComments";
 import { CommentThread } from "@/components/comments/CommentThread";
-import { GoalProgressBar } from "@/components/goals/GoalProgressBar";
 import { GoalStatusChip } from "@/components/goals/GoalStatusChip";
-import { StepList } from "@/components/goals/StepList";
 import { CheckInForm } from "@/components/goals/CheckInForm";
 import { GoalStatusActions } from "@/components/goals/GoalStatusActions";
 import { GoalHeaderActions } from "@/components/goals/GoalHeaderActions";
 import { CheckInHistory } from "@/components/goals/CheckInHistory";
 import { LinkedWork } from "@/components/goals/LinkedWork";
 import { GoalReview } from "@/components/goals/GoalReview";
-import { PlanSection } from "@/components/goals/plan/PlanSection";
+import { GoalTypeProgress } from "@/components/goals/GoalTypeProgress";
 import { loadPhases, phaseLabel } from "@/lib/planning/phases";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -205,34 +203,15 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="min-w-0 space-y-6">
-          <section className={CARD}>
-            <h2 className="mb-3 text-lg font-semibold text-foreground">Progress</h2>
-            <GoalProgressBar
-              trackType={goal.track_type}
-              startValue={goal.start_value}
-              targetValue={goal.target_value}
-              currentValue={goal.current_value}
-              unit={goal.unit}
-              stepsDone={stepRows.filter((s) => s.done_at).length}
-              stepsTotal={stepRows.length}
-              feelings={feelings}
-            />
-            {goal.track_type === "steps" && (
-              <StepList
-                goalId={goal.id}
-                steps={stepRows}
-                readOnly={closed}
-                // A long-range goal's steps are planned phase by phase.
-                phases={goal.level === "destination" ? phases : undefined}
-              />
-            )}
-          </section>
-
-          <PlanSection
+          <GoalTypeProgress
             goal={goal}
+            steps={stepRows}
+            feelings={feelings}
+            phases={phases}
             allGoals={allGoals ?? []}
             ownerId={user.id}
             todayIso={todayIso}
+            weekStartDay={weekStartDay}
             readOnly={closed}
           />
 
@@ -247,7 +226,8 @@ export default async function GoalPage({ params }: { params: Promise<{ id: strin
               <CheckInForm
                 goal={{
                   id: goal.id,
-                  trackType: goal.track_type,
+                  // A Target's number is logged on its measure, not in the check-in.
+                  trackType: goal.track_type === "number" ? "measured" : goal.track_type,
                   unit: goal.unit,
                   currentValue: goal.current_value,
                   startValue: goal.start_value,

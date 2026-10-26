@@ -12,17 +12,31 @@ import {
   CHECKIN_OPTIONS,
   GOAL_AREAS,
   GOAL_HORIZONS,
-  TRACK_TYPES,
   defaultCheckinDays,
+  goalTypeLabel,
   lengthInDays,
   targetDateFor,
   type GoalArea,
   type GoalHorizon,
+  type GoalType,
   type TrackType,
 } from "@/lib/goals/constants";
 import { saveGoal } from "@/app/(app)/goals/actions";
+import type { MeasureSource } from "@/lib/planning/constants";
 import type { StreamOption } from "@/lib/planning/streams";
-import { FIELD_HINT, FIELD_LABEL, INPUT, NumberFields, PillGroup, StepsEditor } from "./GoalFormParts";
+import { FIELD_HINT, FIELD_LABEL, INPUT, PillGroup, StepsEditor } from "./GoalFormParts";
+import {
+  EMPTY_HABIT,
+  EMPTY_TARGET,
+  GoalTypePicker,
+  HabitFields,
+  TargetFields,
+  readHabitDraft,
+  readTargetDraft,
+  type HabitDraft,
+  type LatestReading,
+  type TargetDraft,
+} from "./GoalTypeFields";
 
 export type EditableGoal = {
   id: string;
@@ -33,9 +47,8 @@ export type EditableGoal = {
   startDate: string;
   targetDate: string;
   trackType: TrackType;
-  startValue: number | null;
-  targetValue: number | null;
-  unit: string | null;
+  /** A Habit's weekly count, edited here; a Target's number is edited on the goal page. */
+  habit: HabitDraft | null;
   parentId: string | null;
   streamId: string | null;
   isPrivate: boolean;
@@ -50,6 +63,8 @@ type Props = {
   goal?: EditableGoal;
   streams?: StreamOption[];
   initialStreamId?: string | null;
+  /** The newest Health readings, so a Target on weight starts from the scale. */
+  latest?: Partial<Record<MeasureSource, LatestReading>>;
 };
 
 const HORIZON_OPTIONS = [
@@ -57,7 +72,11 @@ const HORIZON_OPTIONS = [
   { value: "custom" as const, label: "Pick a date" },
 ];
 
-const toNumber = (text: string) => (text.trim() === "" ? null : Number(text));
+const TITLE_PLACEHOLDER: Record<GoalType, string> = {
+  number: "87–88 kg by 31 Dec",
+  habit: "Strength train 4 times a week",
+  steps: "Protect the family",
+};
 
 export function GoalForm({
   todayIso,
@@ -67,6 +86,7 @@ export function GoalForm({
   goal,
   streams = [],
   initialStreamId = null,
+  latest = {},
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(goal?.title ?? "");
@@ -76,13 +96,14 @@ export function GoalForm({
   const [streamId, setStreamId] = useState(initialStream?.id ?? "");
   const [horizon, setHorizon] = useState<GoalHorizon>(goal?.horizon ?? "3m");
   const [customDate, setCustomDate] = useState(goal?.horizon === "custom" ? goal.targetDate : "");
-  const [trackType, setTrackType] = useState<TrackType>(goal?.trackType ?? "steps");
+  const [goalType, setGoalType] = useState<GoalType | null>(null);
   const [steps, setSteps] = useState<string[]>([""]);
-  const [numbers, setNumbers] = useState({
-    startValue: goal?.startValue?.toString() ?? "",
-    targetValue: goal?.targetValue?.toString() ?? "",
-    unit: goal?.unit ?? "",
+  const [target, setTarget] = useState<TargetDraft>(() => {
+    const weight = latest["body.weight_kg"];
+    return weight ? { ...EMPTY_TARGET, start: String(weight.value) } : EMPTY_TARGET;
   });
+  const [habit, setHabit] = useState<HabitDraft>(goal?.habit ?? EMPTY_HABIT);
+  const kind: TrackType | null = goal ? goal.trackType : goalType;
   const [parentId, setParentId] = useState(goal?.parentId ?? initialParentId ?? "");
   const [isPrivate, setIsPrivate] = useState(goal?.isPrivate ?? false);
   // Follows the goal's length until the user picks a rhythm themselves.
@@ -99,14 +120,22 @@ export function GoalForm({
     : [...CHECKIN_OPTIONS, { days: checkinDays, label: `Every ${checkinDays} days` }];
 
   const submit = () => {
+    if (!kind) {
+      setError("Pick what kind of goal it is.");
+      return;
+    }
     if (!area) {
       setError("Pick a life area.");
       return;
     }
-    const startValue = toNumber(numbers.startValue);
-    const targetValue = toNumber(numbers.targetValue);
-    if (trackType === "number" && (Number.isNaN(startValue) || Number.isNaN(targetValue))) {
-      setError("Enter plain numbers for where you are and where you want to be.");
+    const targetInput = !goal && kind === "number" ? readTargetDraft(target) : null;
+    if (typeof targetInput === "string") {
+      setError(targetInput);
+      return;
+    }
+    const habitInput = kind === "habit" ? readHabitDraft(habit) : null;
+    if (typeof habitInput === "string") {
+      setError(habitInput);
       return;
     }
     setError(null);
@@ -118,10 +147,9 @@ export function GoalForm({
         area,
         horizon,
         customTargetDate: horizon === "custom" ? customDate || null : null,
-        trackType,
-        startValue,
-        targetValue,
-        unit: numbers.unit,
+        trackType: kind,
+        target: targetInput,
+        habit: habitInput,
         steps: goal ? [] : steps,
         parentId: parentId || null,
         streamId: streams.length ? streamId || null : undefined,
@@ -139,6 +167,16 @@ export function GoalForm({
 
   return (
     <div className="space-y-6">
+      {goal ? (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{goalTypeLabel(goal.trackType)}</span>
+          {goal.trackType === "number" && ". Change the number and its checkpoints with Edit path on the goal page."}
+          {goal.trackType === "steps" && ". Add, rename and tick milestones on the goal page."}
+        </p>
+      ) : (
+        <GoalTypePicker value={goalType} onChange={setGoalType} />
+      )}
+
       <div>
         <label htmlFor="goal_title" className={FIELD_LABEL}>
           What do you want to reach?
@@ -148,7 +186,7 @@ export function GoalForm({
           value={title}
           maxLength={120}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Run a half marathon"
+          placeholder={kind && kind !== "feeling" ? TITLE_PLACEHOLDER[kind] : "Run a half marathon"}
           className={INPUT}
         />
       </div>
@@ -231,19 +269,11 @@ export function GoalForm({
         )}
       </div>
 
-      <div className="space-y-3">
-        <PillGroup
-          label="How you'll track it"
-          hint={TRACK_TYPES.find((t) => t.value === trackType)?.hint}
-          value={trackType}
-          options={TRACK_TYPES}
-          onChange={setTrackType}
-        />
-        {trackType === "steps" && !goal && <StepsEditor steps={steps} onChange={setSteps} />}
-        {trackType === "number" && (
-          <NumberFields {...numbers} onChange={(patch) => setNumbers((n) => ({ ...n, ...patch }))} />
-        )}
-      </div>
+      {!goal && kind === "number" && (
+        <TargetFields draft={target} onChange={(patch) => setTarget((t) => ({ ...t, ...patch }))} latest={latest} todayIso={todayIso} />
+      )}
+      {kind === "habit" && <HabitFields draft={habit} onChange={(patch) => setHabit((h) => ({ ...h, ...patch }))} />}
+      {!goal && kind === "steps" && <StepsEditor steps={steps} onChange={setSteps} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>

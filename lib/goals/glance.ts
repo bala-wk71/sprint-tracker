@@ -4,7 +4,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { goalArea } from "./constants";
+import { getWeekStartDay } from "@/lib/dates";
 import { formatValue, goalProgress, isCheckinDue } from "./progress";
+import { loadTypedProgress, type TypedProgress } from "./typed";
 
 /** How many goals the daily surfaces show. Pinned first, then soonest to end. */
 export const GLANCE_GOALS = 3;
@@ -30,7 +32,7 @@ export async function loadGoalsGlance(
     supabase
       .from("goals")
       .select(
-        "id, title, area, status, start_date, target_date, track_type, start_value, target_value, current_value, unit, checkin_every_days, last_checkin_on, goal_steps(done_at)"
+        "id, parent_id, title, area, status, start_date, target_date, track_type, start_value, target_value, current_value, unit, checkin_every_days, last_checkin_on, goal_steps(done_at)"
       )
       .eq("owner_id", ownerId)
       .eq("status", "active")
@@ -48,6 +50,11 @@ export async function loadGoalsGlance(
       .gte("target_date", todayIso),
   ]);
   const goals = rows ?? [];
+
+  // Targets and Habits read their measure or their weeks.
+  const typedReady = goals.some((g) => g.track_type === "number" || g.track_type === "habit")
+    ? getWeekStartDay().then((weekStartDay) => loadTypedProgress(supabase, ownerId, goals, todayIso, weekStartDay))
+    : Promise.resolve(new Map<string, TypedProgress>());
 
   // Latest rating for each feeling goal, in one query.
   const feelingIds = goals.filter((g) => g.track_type === "feeling").map((g) => g.id);
@@ -67,9 +74,21 @@ export async function loadGoalsGlance(
     }
   }
 
+  const typed = await typedReady;
   return {
     total: count ?? goals.length,
     goals: goals.map((goal) => {
+      const read = typed.get(goal.id);
+      if (read) {
+        return {
+          id: goal.id,
+          title: goal.title,
+          dot: goalArea(goal.area).dot,
+          progress: read.pct,
+          label: read.label,
+          checkinDue: isCheckinDue(goal, todayIso),
+        };
+      }
       const steps = goal.goal_steps ?? [];
       const stepsDone = steps.filter((s) => s.done_at).length;
       const feeling = lastFeeling.get(goal.id) ?? null;

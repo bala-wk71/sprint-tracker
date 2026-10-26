@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { formatValue, goalProgress } from "@/lib/goals/progress";
+import type { TypedProgress } from "@/lib/goals/typed";
 
 type Props = {
   trackType: string;
@@ -11,13 +12,53 @@ type Props = {
   stepsTotal: number;
   /** On-track ratings, newest first. */
   feelings: number[];
+  /** A Target's or Habit's read, from loadTypedProgress. */
+  typed?: TypedProgress | null;
 };
 
 const TRACK = "h-1.5 overflow-hidden rounded-full bg-muted";
 const LABEL = "shrink-0 text-xs tabular-nums text-muted-foreground";
 
-/** One compact progress line for any of the three ways a goal is tracked. */
+/** Weeks shown as dots before the line falls back to a bar. */
+const HABIT_DOTS = 12;
+
+/** One compact progress line for any kind of goal. */
 export function GoalProgressBar(p: Props) {
+  if (p.typed?.kind === "habit") {
+    const { habit } = p.typed;
+    const recent = habit.weeks.slice(-HABIT_DOTS);
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex h-2.5 max-w-xs flex-1 items-center gap-1" aria-hidden>
+          {recent.map((w) => (
+            <span
+              key={w.start}
+              className={cn(
+                "h-2.5 flex-1 rounded-sm",
+                w.kept ? (w.hit ? "bg-progress-good" : "bg-primary") : w.current ? "border border-primary/50" : "bg-muted"
+              )}
+            />
+          ))}
+        </div>
+        <span className={LABEL}>{p.typed.label}</span>
+      </div>
+    );
+  }
+
+  if (p.typed?.kind === "target") {
+    return (
+      <div className="flex items-center gap-3">
+        <div className={cn(TRACK, "max-w-xs flex-1")} aria-hidden>
+          <div className="h-full rounded-full bg-primary" style={{ width: `${(p.typed.pct ?? 0) * 100}%` }} />
+        </div>
+        <span className={cn(LABEL, "min-w-0 truncate")}>{p.typed.label}</span>
+      </div>
+    );
+  }
+
+  if (p.trackType === "habit") return <p className={LABEL}>Weekly habit</p>;
+  if (p.trackType === "number" && p.targetValue === null) return <p className={LABEL}>No number yet</p>;
+
   if (p.trackType === "steps") {
     if (p.stepsTotal === 0) return <p className={LABEL}>No steps yet</p>;
     const segmented = p.stepsTotal <= 12;

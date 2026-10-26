@@ -4,6 +4,7 @@ import { Lock, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { goalArea, horizonLabel } from "@/lib/goals/constants";
 import { isCheckinDue, isPastEnd, nextCheckinLabel, timeLeftLabel } from "@/lib/goals/progress";
+import type { TypedProgress } from "@/lib/goals/typed";
 import { GoalProgressBar } from "./GoalProgressBar";
 import { GoalStatusChip } from "./GoalStatusChip";
 
@@ -32,6 +33,8 @@ type Props = {
   stepsDone: number;
   stepsTotal: number;
   feelings: number[];
+  /** A Target's or Habit's read, when the page loaded one. */
+  typed?: TypedProgress | null;
   parentTitle: string | null;
   todayIso: string;
   /** Where the title links; reviewers read goals under their own route. */
@@ -47,6 +50,7 @@ export function GoalRow({
   stepsDone,
   stepsTotal,
   feelings,
+  typed = null,
   parentTitle,
   todayIso,
   hrefBase = "/goals",
@@ -95,6 +99,7 @@ export function GoalRow({
             stepsDone={stepsDone}
             stepsTotal={stepsTotal}
             feelings={feelings}
+            typed={typed}
           />
         )}
       </div>

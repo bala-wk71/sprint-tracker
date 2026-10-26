@@ -72,14 +72,41 @@ export const CHECKIN_OPTIONS = [
   { days: 90, label: "Every 3 months" },
 ] as const;
 
-export const TRACK_TYPES = [
-  { value: "steps", label: "Steps", hint: "A checklist of milestones. Good for projects." },
-  { value: "number", label: "A number", hint: "Where you started, where you want to be, and where you are now." },
-  { value: "feeling", label: "A feeling", hint: "For things you can't count. Rate how on track you feel, 1 to 10." },
+/**
+ * The three kinds of goal. Each brings its own tracking, so a goal never
+ * needs its numbers set up by hand. Stored in goals.track_type.
+ */
+export const GOAL_TYPES = [
+  {
+    value: "number",
+    label: "Target",
+    hint: "Move one number by a date. Weight, waist and body fat fill in from Health, a loan from its EMIs; anything else, like profit or savings, you enter once a month.",
+    example: "87–88 kg by 31 Dec",
+  },
+  {
+    value: "habit",
+    label: "Habit",
+    hint: "Do something a set number of times a week. Gym, cardio, sport and food days count themselves from Health; hours come from linked sprint tasks.",
+    example: "Strength train 4 times a week",
+  },
+  {
+    value: "steps",
+    label: "Milestones",
+    hint: "A short list of things to get done. Progress is how many are ticked.",
+    example: "Term plan, parents' insurance, card on autopay",
+  },
 ] as const;
 
-export const TRACK_TYPE_VALUES = ["steps", "number", "feeling"] as const;
+export const GOAL_TYPE_VALUES = ["number", "habit", "steps"] as const;
+export type GoalType = (typeof GOAL_TYPE_VALUES)[number];
+
+/** Every value goals.track_type can hold; "feeling" is from before the types. */
+export const TRACK_TYPE_VALUES = ["steps", "number", "habit", "feeling"] as const;
 export type TrackType = (typeof TRACK_TYPE_VALUES)[number];
+
+export function goalTypeLabel(trackType: string): string {
+  return GOAL_TYPES.find((t) => t.value === trackType)?.label ?? "Check-ins";
+}
 
 export const GOAL_STATUSES = [
   { value: "active", label: "Active" },
